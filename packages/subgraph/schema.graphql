@@ -272,7 +272,7 @@ type ProviderRiskSnapshot @entity(immutable: true) {
 Per-provider, per-day rollup (MANUAL day-bucket — plan §3.5.5; native @aggregation avoided for
 Matchstick #433). id = provider ++ dayId, dayId = timestamp / 86400 (seconds). Updated only on claim
 resolutions so the agent can compute a trailing-window recentFailureRate = sum(upheldFailures) /
-sum(resolvedClaims) over the last N days (both a numerator AND a denominator series are required).
+sum(closedWindows) over the last N days (both a numerator AND a denominator series are required).
 """
 type ProviderDailyMetric @entity(immutable: false) {
   id: Bytes!
@@ -281,10 +281,10 @@ type ProviderDailyMetric @entity(immutable: false) {
   dayId: BigInt!
   "Bucket start timestamp (dayId * 86400), seconds."
   dayStartTimestamp: BigInt!
-  "Claims upheld (covered) that day — the recent-failure numerator."
+  "Covered failures that closed a window that day (paid a service credit) — the recent-failure numerator."
   upheldFailures: BigInt!
-  "Claims resolved by a real verdict that day (excludes timeouts) — the denominator."
-  resolvedClaims: BigInt!
+  "Coverage windows that CLOSED that day (covered payout + clean/contested completion) — the recent-failure denominator, i.e. recent volume (028)."
+  closedWindows: BigInt!
   "Service credit paid out that day."
   payoutAmount: BigInt!
   lastUpdatedBlock: BigInt!

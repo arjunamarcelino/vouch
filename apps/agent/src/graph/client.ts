@@ -34,7 +34,7 @@ const RISK_QUERY = `
       }
       dailyMetrics(where: { dayStartTimestamp_gte: $since }, orderBy: dayStartTimestamp, orderDirection: desc, first: 31) {
         upheldFailures
-        resolvedClaims
+        closedWindows
       }
     }
   }
@@ -48,7 +48,7 @@ interface RawSnapshot {
 }
 interface RawDaily {
   upheldFailures: string;
-  resolvedClaims: string;
+  closedWindows: string;
 }
 interface RawProvider {
   id: string;
@@ -68,16 +68,19 @@ function toBigIntOrThrow(value: string, what: string): bigint {
   }
 }
 
-/** Trailing-window recent-failure rate in bps, computed as BigInt (num*10000/den; -1 undefined). */
+/**
+ * Trailing-window recent-failure rate in bps = recent upheld failures / recent CLOSED windows
+ * (failures over recent volume), BigInt (num*10000/den; -1 when no recent volume). (028)
+ */
 function recentFailureRateBps(daily: RawDaily[]): bigint {
   let upheld = 0n;
-  let resolved = 0n;
+  let closed = 0n;
   for (const d of daily) {
     upheld += toBigIntOrThrow(d.upheldFailures, "dailyMetric.upheldFailures");
-    resolved += toBigIntOrThrow(d.resolvedClaims, "dailyMetric.resolvedClaims");
+    closed += toBigIntOrThrow(d.closedWindows, "dailyMetric.closedWindows");
   }
-  if (resolved === 0n) return -1n;
-  return (upheld * 10_000n) / resolved;
+  if (closed === 0n) return -1n;
+  return (upheld * 10_000n) / closed;
 }
 
 export async function getProviderRisk(

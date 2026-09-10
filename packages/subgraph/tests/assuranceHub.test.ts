@@ -75,7 +75,8 @@ describe("AssuranceHub mappings", () => {
     assert.fieldEquals("Coverage", jobIdBytes(1).toHexString(), "amount", "100");
     assert.fieldEquals("Provider", P, "jobsAccepted", "1");
     assert.fieldEquals("Provider", P, "activeGuaranteeAmount", "100");
-    assert.fieldEquals("Provider", P, "totalGuaranteedValue", "100");
+    // totalGuaranteedValue is booked at APPROVAL, not accept (028) — still 0 here.
+    assert.fieldEquals("Provider", P, "totalGuaranteedValue", "0");
     assert.entityCount("CollateralMovement", 1);
     assert.fieldEquals("Job", jobIdBytes(1).toHexString(), "status", "ACCEPTED");
   });
@@ -94,6 +95,8 @@ describe("AssuranceHub mappings", () => {
     assert.fieldEquals("Provider", P, "jobsInitiallyApproved", "1");
     assert.fieldEquals("Provider", P, "totalCoveredAmount", "20");
     assert.fieldEquals("Provider", P, "totalFeesEarned", "20");
+    // totalGuaranteedValue booked at approval over the same approved-job population (028).
+    assert.fieldEquals("Provider", P, "totalGuaranteedValue", "100");
     assert.fieldEquals("Job", jobIdBytes(1).toHexString(), "status", "INITIALLY_APPROVED");
     assert.entityCount("InitialEvaluation", 1);
     assert.fieldEquals("Coverage", jobIdBytes(1).toHexString(), "coverageDeadline", "87400");
@@ -107,6 +110,10 @@ describe("AssuranceHub mappings", () => {
     assert.fieldEquals("Provider", P, "activeGuaranteeAmount", "0");
     assert.fieldEquals("Job", jobIdBytes(1).toHexString(), "status", "COMPLETED");
     assert.fieldEquals("Coverage", jobIdBytes(1).toHexString(), "status", "RELEASED");
+    // a completion closes a window → counts as recent volume, no failure (028)
+    const day = PROVIDER.concatI32(200000 / 86400).toHexString();
+    assert.fieldEquals("ProviderDailyMetric", day, "closedWindows", "1");
+    assert.fieldEquals("ProviderDailyMetric", day, "upheldFailures", "0");
   });
 
   test("completion materializes a snapshot; hasEnoughHistory needs >= 3 closed windows (011/029)", () => {
@@ -140,8 +147,10 @@ describe("AssuranceHub mappings", () => {
     assert.fieldEquals("Job", jobIdBytes(1).toHexString(), "status", "CLAIM_PAID");
     assert.fieldEquals("Coverage", jobIdBytes(1).toHexString(), "status", "PAID");
     assert.entityCount("GuaranteePayout", 1);
-    // day-bucket id = provider ++ concatI32(dayId); ts 3000 → dayId 0
+    // day-bucket id = provider ++ concatI32(dayId); ts 3000 → dayId 0. A covered payout closes the
+    // window: one failure over one unit of recent volume (028).
     assert.fieldEquals("ProviderDailyMetric", PROVIDER.concatI32(0).toHexString(), "upheldFailures", "1");
+    assert.fieldEquals("ProviderDailyMetric", PROVIDER.concatI32(0).toHexString(), "closedWindows", "1");
   });
 
   test("payout accumulation is latched per job — replay does not double-count (020)", () => {

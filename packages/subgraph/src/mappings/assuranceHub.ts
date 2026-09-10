@@ -181,6 +181,8 @@ function releaseExposureIfLocked(
       } else {
         provider.contestedCompletions = provider.contestedCompletions.plus(ONE); // contested window
       }
+      // A clean/contested completion closes the window — count it as recent volume (028).
+      bumpDailyMetric(provider, false, ZERO, event);
     }
   }
   provider.lastActivityTimestamp = event.block.timestamp;
@@ -241,11 +243,12 @@ function materializeRiskSnapshot(provider: Provider, event: ethereum.Event): voi
   provider.save();
 }
 
-// Manual per-provider day-bucket (plan §3.5.5). Updated ONLY on real claim resolutions so the agent
-// can compute a trailing-window recentFailureRate = sum(upheldFailures)/sum(resolvedClaims).
+// Manual per-provider day-bucket (plan §3.5.5). Bumped on every coverage-window CLOSE — a covered
+// payout (upheldFailure) or a clean/contested completion — so the agent computes a trailing-window
+// recentFailureRate = sum(upheldFailures)/sum(closedWindows), i.e. failures over recent VOLUME (028).
 function bumpDailyMetric(
   provider: Provider,
-  upheld: boolean,
+  upheldFailure: boolean,
   payoutAmount: BigInt,
   event: ethereum.Event,
 ): void {
@@ -258,11 +261,11 @@ function bumpDailyMetric(
     metric.dayId = dayId;
     metric.dayStartTimestamp = dayId.times(SECONDS_PER_DAY);
     metric.upheldFailures = ZERO;
-    metric.resolvedClaims = ZERO;
+    metric.closedWindows = ZERO;
     metric.payoutAmount = ZERO;
   }
-  metric.resolvedClaims = metric.resolvedClaims.plus(ONE);
-  if (upheld) {
+  metric.closedWindows = metric.closedWindows.plus(ONE);
+  if (upheldFailure) {
     metric.upheldFailures = metric.upheldFailures.plus(ONE);
     metric.payoutAmount = metric.payoutAmount.plus(payoutAmount);
   }
@@ -332,7 +335,9 @@ export function handleProviderAccepted(event: ProviderAccepted): void {
 
     provider.jobsAccepted = provider.jobsAccepted.plus(ONE);
     provider.activeGuaranteeAmount = provider.activeGuaranteeAmount.plus(event.params.collateral);
-    provider.totalGuaranteedValue = provider.totalGuaranteedValue.plus(event.params.collateral);
+    // NOTE: totalGuaranteedValue is booked at APPROVAL, not here, so it counts the same approved-job
+    // population as totalCoveredAmount (averageCoverageRatioBps is then a per-covered-window ratio, not
+    // a cross-population lifetime aggregate that never corrects for expired/cancelled jobs) (028).
 
     let movement = new CollateralMovement(eventId(event));
     movement.job = id;
@@ -400,6 +405,8 @@ export function handleInitialEvaluationResolved(event: InitialEvaluationResolved
         provider.jobsInitiallyApproved = provider.jobsInitiallyApproved.plus(ONE);
         provider.totalFeesEarned = provider.totalFeesEarned.plus(job.taskFee);
         provider.totalCoveredAmount = provider.totalCoveredAmount.plus(job.taskFee);
+        // Book guaranteed value here (same approved-job population as totalCoveredAmount) — see 028.
+        provider.totalGuaranteedValue = provider.totalGuaranteedValue.plus(job.guaranteeAmount);
         provider.lastActivityTimestamp = event.block.timestamp;
         provider.lastUpdatedBlock = event.block.number;
         provider.save();
@@ -503,12 +510,12 @@ export function handleConfidentialEvaluationResolved(event: ConfidentialEvaluati
   if (firstResolution && !claim.resolvedByTimeout) {
     let provider = Provider.load(claim.provider);
     if (provider != null) {
+      // Day-bucket is bumped on window CLOSE (covered payout / completion), not here — a not-covered
+      // verdict returns the job to coverage and is not yet a close (028).
       if (event.params.covered) {
         provider.claimsUpheld = provider.claimsUpheld.plus(ONE);
-        bumpDailyMetric(provider, true, event.params.serviceCredit, event);
       } else {
         provider.claimsRejected = provider.claimsRejected.plus(ONE);
-        bumpDailyMetric(provider, false, ZERO, event);
       }
       provider.lastActivityTimestamp = event.block.timestamp;
       provider.lastUpdatedBlock = event.block.number;
@@ -565,6 +572,8 @@ export function handleGuaranteePaid(event: GuaranteePaid): void {
     protocol.totalGuaranteePaidOut = protocol.totalGuaranteePaidOut.plus(event.params.amount);
     protocol.save();
     job.payoutCounted = true;
+    // A covered payout closes the window — count it as recent volume + a recent failure (028).
+    bumpDailyMetric(provider, true, event.params.amount, event);
   }
   provider.lastActivityTimestamp = event.block.timestamp;
   provider.lastUpdatedBlock = event.block.number;

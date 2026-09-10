@@ -61,7 +61,7 @@ async function main() {
           sampleSize hasEnoughHistory blockNumber
         }
         dailyMetrics(orderBy: dayStartTimestamp, orderDirection: desc, first: 5) {
-          upheldFailures resolvedClaims dayStartTimestamp
+          upheldFailures closedWindows dayStartTimestamp
         }
       }
     }`;
@@ -114,7 +114,7 @@ async function main() {
   }
   for (const d of p.dailyMetrics) {
     assertInt(d, "upheldFailures", "dailyMetric");
-    assertInt(d, "resolvedClaims", "dailyMetric");
+    assertInt(d, "closedWindows", "dailyMetric");
   }
 
   console.log(

@@ -35,7 +35,7 @@ query RiskAgentInput($id: ID!, $since: BigInt!) {
       first: 31
     ) {
       upheldFailures
-      resolvedClaims
+      closedWindows
     }
   }
 }
