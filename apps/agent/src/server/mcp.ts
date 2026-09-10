@@ -14,7 +14,11 @@ import type { RestOptions } from "./rest";
  */
 
 function ok(data: unknown) {
-  return { content: [{ type: "text" as const, text: JSON.stringify(data) }], structuredContent: data as Record<string, unknown> };
+  const content = [{ type: "text" as const, text: JSON.stringify(data) }];
+  // `structuredContent` must be a JSON object per the MCP spec — attach it only for plain objects; the
+  // decision-trace tool returns an array, which falls back to text content (review 042).
+  const isPlainObject = typeof data === "object" && data !== null && !Array.isArray(data);
+  return isPlainObject ? { content, structuredContent: data as Record<string, unknown> } : { content };
 }
 
 function fail(err: unknown) {
