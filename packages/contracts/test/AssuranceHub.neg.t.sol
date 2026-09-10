@@ -256,6 +256,21 @@ contract AssuranceHubNegativeTest is AssuranceHubBase {
         _assertState(accepted, AssuranceHub.State.Expired);
     }
 
+    // A pause must NOT strip a client's earned coverage: openClaim works while paused (finding 001).
+    function test_PausedOpenClaim_DoesNotStrandClient() public {
+        uint256 jobId = _driveTo(AssuranceHub.State.InitiallyApproved);
+        vm.prank(admin);
+        hub.pause();
+        // Client can still open a claim while paused (non-pausable, accesses earned coverage).
+        vm.prank(client);
+        hub.openClaim(jobId, EVIDENCE_COMMIT);
+        _assertState(jobId, AssuranceHub.State.ClaimPending);
+        // And the confidential path can still finalize (also non-pausable).
+        _onReport(jobId, true, GUARANTEE);
+        _assertState(jobId, AssuranceHub.State.ClaimPaid);
+        assertEq(usdc.balanceOf(client), MINT - FUNDED + GUARANTEE, "client paid despite pause");
+    }
+
     function test_UnpauseIsAdminOnly() public {
         vm.prank(admin);
         hub.pause();

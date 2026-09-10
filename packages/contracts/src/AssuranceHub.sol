@@ -328,7 +328,10 @@ contract AssuranceHub is ReceiverBase, AccessControl, Pausable, ReentrancyGuard 
 
     /// @notice Client opens a claim within the coverage window. InitiallyApproved -> ClaimPending.
     /// @dev Sets the claim latch (one claim per job, ever) and stamps the resolution timeout (B1).
-    function openClaim(uint256 jobId, bytes32 evidenceCommitment) external whenNotPaused {
+    ///      NOT `whenNotPaused`: opening a claim accesses ALREADY-earned coverage (collateral is
+    ///      locked, no new liability) and is time-bounded by `coverageEnd`; pausing it would let a
+    ///      pause run out the window and strip the client's remedy (review finding 001).
+    function openClaim(uint256 jobId, bytes32 evidenceCommitment) external {
         AssuranceJob storage job = _jobs[jobId];
         if (job.status != State.InitiallyApproved) revert Errors.BadState();
         if (msg.sender != job.client) revert Errors.NotClient();
