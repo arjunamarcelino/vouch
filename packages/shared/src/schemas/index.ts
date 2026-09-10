@@ -16,11 +16,15 @@ const hexAddress = z
 
 const baseUnits = z.string().regex(/^\d+$/u, "must be an integer string of USDC base units");
 
-/** Integer basis-point string. Allows the `-1` "undefined ratio" sentinel from the subgraph. */
-const bpsString = z.string().regex(/^-?\d+$/u, "must be an integer basis-point string");
-
-/** Non-negative integer string (counts / block numbers). */
+/** Non-negative integer string (counts / block numbers / positive bps like a premium factor). */
 const uintString = z.string().regex(/^\d+$/u, "must be a non-negative integer string");
+
+/**
+ * A ratio in basis points: a non-negative integer, or exactly `-1` (the "undefined ratio" sentinel
+ * the subgraph emits on a zero denominator). Any OTHER negative is rejected so a spurious value can't
+ * be silently read as zero-risk (017).
+ */
+const ratioBpsString = z.string().regex(/^(-1|\d+)$/u, "must be a bps integer or the -1 sentinel");
 
 /** Parse at a boundary, mapping ZodError → typed VouchError (plan §5.1 D5). */
 export function parseOrThrow<T>(schema: z.ZodType<T>, value: unknown, what: string): T {
@@ -47,9 +51,9 @@ export const SCORING_FN_VERSION = "1.0.0" as const;
  */
 export const providerRiskFeaturesSchema = z.object({
   completedJobs: uintString,
-  upheldClaimRateBps: bpsString,
-  recentFailureRateBps: bpsString,
-  averageCoverageRatioBps: bpsString,
+  upheldClaimRateBps: ratioBpsString,
+  recentFailureRateBps: ratioBpsString,
+  averageCoverageRatioBps: ratioBpsString,
   totalCoveredAmount: baseUnits,
   totalPaidClaims: uintString,
   sampleSize: uintString,
@@ -73,9 +77,9 @@ export type ProviderRiskEnvelope = z.infer<typeof providerRiskEnvelopeSchema>;
 export const riskQuoteSchema = z.object({
   provider: hexAddress,
   recommendedGuaranteeCap: baseUnits,
-  premiumBps: bpsString,
-  upheldClaimRateBps: bpsString,
-  recentFailureRateBps: bpsString,
+  premiumBps: uintString,
+  upheldClaimRateBps: ratioBpsString,
+  recentFailureRateBps: ratioBpsString,
   dataConfidence: dataConfidenceSchema,
   asOfBlock: uintString,
   scoringFnVersion: z.literal(SCORING_FN_VERSION),
