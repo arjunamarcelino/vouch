@@ -98,6 +98,10 @@ Everything is built and config-gated; a real tx is blocked only on credentials +
 - [ ] **⚠️ RPC host resolved [BLOCKING VERIFY]:** repo `chains.ts`/`.env` use `rpc.testnet.arc.network`;
       Circle/Arc docs say **`rpc.testnet.arc.io`**. Confirm the live host; make `chains.ts` + env agree.
 - [ ] `USDC_ADDRESS` = `0x3600…0000` confirmed at `docs.arc.io/.../contract-addresses`.
+- [ ] **DB integrity constraints applied:** after `prisma db push`, run `pnpm --filter @vouch/db
+      db:constraints` (sets the amount CHECKs, the rolling-cap partial index, and REVOKEs UPDATE/DELETE
+      on `DecisionTrace` from the app role — set `APP_DB_ROLE`). Without it the append-only/tamper-evident
+      guarantees and money-column domain checks are not enforced.
 - [ ] **🔴 B1:** Circle-side spending controls (per-tx/daily caps + allowlist) **active** — confirm field
       names — as the *primary* limit (app-side `policy.ts` is defense-in-depth only).
 - [ ] **🔴 B3:** `POST /quotes` fronted by auth + rate-limit before any funded run.

@@ -12,7 +12,8 @@
     "lint": "eslint .",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
-    "db:deploy": "prisma migrate deploy"
+    "db:deploy": "prisma migrate deploy",
+    "db:constraints": "psql \"$DATABASE_URL\" -v app_role=\"${APP_DB_ROLE:-vouch_app}\" -f prisma/manual/001-agent-constraints.sql"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",
