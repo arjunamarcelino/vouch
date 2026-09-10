@@ -78,8 +78,9 @@ function toBigIntOrThrow(value: string, what: string): bigint {
 /**
  * Trailing-window recent-failure rate in bps = recent upheld failures / recent CLOSED windows
  * (failures over recent volume), BigInt (num*10000/den; -1 when no recent volume). (028)
+ * Exported for unit testing (022).
  */
-function recentFailureRateBps(daily: RawDaily[]): bigint {
+export function recentFailureRateBps(daily: RawDaily[]): bigint {
   let upheld = 0n;
   let closed = 0n;
   for (const d of daily) {
