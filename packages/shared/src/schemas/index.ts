@@ -31,51 +31,6 @@ export function parseOrThrow<T>(schema: z.ZodType<T>, value: unknown, what: stri
   return parsed.data;
 }
 
-export const jobStatusSchema = z.enum([
-  "Created",
-  "TaskFunded",
-  "GuaranteeLocked",
-  "PublicTestsPassed",
-  "TaskFeeReleased",
-  "CoverageOpen",
-  "RegressionProven",
-  "GuaranteePaid",
-  "GuaranteeReleased",
-]);
-export type JobStatus = z.infer<typeof jobStatusSchema>;
-
-export const guaranteeStatusSchema = z.enum(["LOCKED", "PAID", "RELEASED"]);
-export type GuaranteeStatus = z.infer<typeof guaranteeStatusSchema>;
-
-export const jobSchema = z.object({
-  jobId: z.string(),
-  client: hexAddress,
-  provider: hexAddress,
-  taskFee: baseUnits,
-  guaranteeCap: baseUnits,
-  lockedCollateral: baseUnits,
-  coverageDeadline: z.number().int().nonnegative(),
-  status: jobStatusSchema,
-});
-export type Job = z.infer<typeof jobSchema>;
-
-export const guaranteeSchema = z.object({
-  guaranteeId: z.string(),
-  jobId: z.string(),
-  provider: hexAddress,
-  amount: baseUnits,
-  status: guaranteeStatusSchema,
-});
-export type Guarantee = z.infer<typeof guaranteeSchema>;
-
-export const payoutSchema = z.object({
-  jobId: z.string(),
-  amount: baseUnits,
-  recipient: hexAddress,
-  at: z.number().int().nonnegative(),
-});
-export type Payout = z.infer<typeof payoutSchema>;
-
 /** Freshness classification the consumer stamps on every read (plan §6). */
 export const dataConfidenceSchema = z.enum(["FRESH", "DEGRADED", "STALE"]);
 export type DataConfidence = z.infer<typeof dataConfidenceSchema>;
