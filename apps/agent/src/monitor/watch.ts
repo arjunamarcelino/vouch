@@ -15,6 +15,11 @@ export function createArcClient(env: ChainEnv, rpcUrl: string | undefined): Publ
   return createPublicClient({ chain, transport: http(rpcUrl) });
 }
 
+/**
+ * Scope (finding 015): intentionally watches only `CoverageStarted` — the signal the risk agent
+ * acts on (a new coverage window opened). It is read-only and never settles funds (§17.3). Extend
+ * with `ClaimOpened`/coverage-expiry watchers if the agent's role grows.
+ */
 export function watchCoverageWindows(
   client: PublicClient,
   assuranceHubAddress: `0x${string}`,

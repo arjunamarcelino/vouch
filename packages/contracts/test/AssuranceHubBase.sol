@@ -13,6 +13,9 @@ abstract contract AssuranceHubBase is AssuranceHubConstants {
     AssuranceHub internal hub;
     MockUSDC internal usdc;
 
+    // Re-declared for `vm.expectEmit`. Scope: the lifecycle + money-moving events asserted by the
+    // suites. Config events (ClaimTimedOut, FeeRecipientUpdated, Forwarder/ExpectedWorkflow*) are
+    // not mirrored here; a test asserting one should declare it locally (finding 015).
     event JobCreated(
         uint256 indexed jobId,
         address indexed client,

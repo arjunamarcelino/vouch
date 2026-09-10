@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {AssuranceHubBase} from "./AssuranceHubBase.sol";
 import {AssuranceHub} from "../src/AssuranceHub.sol";
+import {Errors} from "../src/libraries/Errors.sol";
 
 /// @title AssuranceHubUnitTest
 /// @notice Happy transition coverage: no-claim completion, initial rejection, successful
@@ -153,8 +154,8 @@ contract AssuranceHubUnitTest is AssuranceHubBase {
         uint256 jobId = _driveTo(AssuranceHub.State.ClaimPending);
         uint64 coverageEnd = hub.getJob(jobId).coverageEnd;
 
-        // Before the resolution deadline: reverts.
-        vm.expectRevert();
+        // Before the resolution deadline: reverts with the specific selector.
+        vm.expectRevert(Errors.ClaimNotTimedOut.selector);
         hub.resolveClaimTimeout(jobId);
 
         // After it: permissionless timeout returns to InitiallyApproved.
