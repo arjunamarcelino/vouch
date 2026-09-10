@@ -13,7 +13,7 @@ on:
 
 jobs:
   foundry:
-    name: forge fmt · build · test
+    name: forge fmt · build · test · abi-sync
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -28,6 +28,11 @@ jobs:
         with:
           version: stable
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
       - name: Format check
         run: forge fmt --check
 
@@ -36,3 +41,14 @@ jobs:
 
       - name: Test
         run: forge test -vvv
+
+      # Enforce the ABI single source of truth (finding 002): regenerate from the fresh build and
+      # fail if the committed shared/subgraph ABIs drifted from the contract. sync-abis uses only
+      # Node builtins, so no pnpm install is needed.
+      - name: ABI drift check
+        working-directory: ${{ github.workspace }}
+        run: |
+          node packages/contracts/script/sync-abis.mjs
+          git diff --exit-code -- \
+            packages/shared/src/abis/assuranceHub.ts \
+            packages/subgraph/abis/AssuranceHub.json

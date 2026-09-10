@@ -18,14 +18,14 @@
  * unresolved import would break `tsc --noEmit`. The confidential runtime is
  * therefore represented by a thin local `CreRuntime` adapter that throws until
  * the real SDK is installed and wired. The genuinely testable, SDK-independent
- * logic — the ABI encoding of the verdict payload the VouchCore receiver
+ * logic — the ABI encoding of the verdict payload the AssuranceHub receiver
  * decodes — lives in `buildVerdictPayload` below and is fully exercised.
  *
  * CONFIDENTIALITY INVARIANT (plan §11, §17.6-H3): private regression tests,
  * repo credentials, and pass/fail thresholds are NEVER inlined in this source.
  * They are released by the Vault DON at runtime (`.env` only for local
  * `cre workflow simulate`) and processed inside the enclave. Only the minimal
- * verdict {jobId, regressed, amount} crosses back to the DON for the signed
+ * verdict {jobId, covered, amount} crosses back to the DON for the signed
  * report.
  */
 
@@ -41,7 +41,7 @@ export const configSchema = z.object({
   /** CRE chain-selector NAME for the settlement chain. Arc value TBD — resolve
    *  via getNetwork() at build; confirm the Arc string (plan §17.2 Unresolved). */
   chainSelectorName: z.string(),
-  /** VouchCore receiver address on Arc that decodes the verdict report. */
+  /** AssuranceHub receiver address on Arc that decodes the verdict report. */
   consumerAddress: z.string(),
   /** Gas limit for EVMClient.writeReport, as a decimal string. */
   gasLimit: z.string(),
@@ -54,31 +54,43 @@ export const configSchema = z.object({
 export type Config = z.infer<typeof configSchema>;
 
 // ---------------------------------------------------------------------------
-// Verdict payload — the REAL onchain contract. VouchCore's onReport receiver
-// abi-decodes exactly this (uint256 jobId, bool regressed, uint256 amount)
-// tuple. This is SDK-independent and fully testable. (plan §17.2)
+// Verdict payload — the REAL onchain contract. AssuranceHub's onReport receiver
+// abi-decodes exactly this report: abi.encode(uint256 jobId, bool covered,
+// uint256 amount). `covered` is the confidential regression verdict; the
+// contract caps `amount` at the job's guaranteeAmount. onReport itself is gated
+// by the forwarder plus packed Keystone metadata
+// (bytes32 workflowId | bytes10 workflowName | address owner). This encoding is
+// SDK-independent and fully testable. (plan §17.2, §19 D7)
 // ---------------------------------------------------------------------------
 export const VerdictParams = [
+  { name: "chainId", type: "uint256" },
+  { name: "hub", type: "address" },
   { name: "jobId", type: "uint256" },
-  { name: "regressed", type: "bool" },
+  { name: "covered", type: "bool" },
   { name: "amount", type: "uint256" },
 ] as const;
 
 /**
- * Encode the minimal verdict tuple the VouchCore receiver decodes.
+ * Encode the verdict report the AssuranceHub receiver decodes.
  *
+ * @param chainId   `block.chainid` of the target settlement chain (anti cross-chain replay, 003)
+ * @param hub       the AssuranceHub contract address the report is bound to (must == the receiver)
  * @param jobId     the coverage/job identifier
- * @param regressed true if the private regression test detected a regression
- * @param amount    payout amount (the contract caps this; pass 0n to defer to
- *                  the contract cap, per §17.2)
+ * @param covered   true if the confidential test proved a covered failure (regression)
+ * @param amount    the service credit to pay the client. The CRE MUST pass a value in
+ *                  (0, guaranteeAmount]: onReport REVERTS on `0` (ZeroPayout) and on
+ *                  `amount > guaranteeAmount` (AmountAboveCap) — it does NOT clamp.
+ *                  Compute `min(decidedCredit, guaranteeAmount)`, never 0. (finding 005)
  * @returns ABI-encoded `0x`-prefixed hex payload
  */
 export function buildVerdictPayload(
+  chainId: bigint,
+  hub: `0x${string}`,
   jobId: bigint,
-  regressed: boolean,
+  covered: boolean,
   amount: bigint,
 ): `0x${string}` {
-  return encodeAbiParameters(VerdictParams, [jobId, regressed, amount]);
+  return encodeAbiParameters(VerdictParams, [chainId, hub, jobId, covered, amount]);
 }
 
 // ---------------------------------------------------------------------------
@@ -137,10 +149,13 @@ export function createCreRuntime(_config: Config): CreRuntime {
 //     const { passRate, threshold, jobId } = json(res) as {
 //       passRate: number; threshold: number; jobId: string;
 //     };
-//     const regressed = passRate < threshold;
-//     if (!regressed) return "clean"; // no payout report; provider reclaims later
+//     const covered = passRate < threshold;
+//     if (!covered) return "clean"; // no payout report; provider reclaims later
 //
-//     const payload = buildVerdictPayload(BigInt(jobId), true, 0n /* contract caps */);
+//     // amount MUST be nonzero and <= guaranteeAmount — the contract reverts, never clamps (005).
+//     const credit = min(decidedCredit, guaranteeAmount); // > 0
+//     // Bind the report to this chain + receiver (anti cross-chain replay, 003):
+//     const payload = buildVerdictPayload(chainId, consumerAddress, BigInt(jobId), true, credit);
 //     const report = runtime
 //       .report(prepareReportRequest(hexToBase64(payload)))
 //       .result();

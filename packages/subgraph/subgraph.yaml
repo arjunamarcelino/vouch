@@ -1,46 +1,57 @@
 specVersion: 1.3.0
-description: Vouch — indexes VouchCore events into authoritative provider performance history.
+description: Vouch — indexes AssuranceHub events into authoritative provider performance history.
 schema:
   file: ./schema.graphql
 indexerHints:
   prune: auto
 dataSources:
   - kind: ethereum
-    name: VouchCore
-    # Arc testnet (eip155:5042002). Only `network` changes between environments; addresses and
-    # startBlocks are driven per-network via networks.json (see plan §17.4).
+    name: AssuranceHub
     network: arc-testnet
     source:
-      # TODO: replace with the deployed VouchCore address (also update networks.json).
+      # TODO: replace with the deployed AssuranceHub address (also update networks.json).
       address: "0x0000000000000000000000000000000000000000"
-      abi: VouchCore
-      # TODO: set to the VouchCore deploy block (never 0 in production — 0 forces a full-chain scan).
+      abi: AssuranceHub
+      # TODO: set to the AssuranceHub deploy block (never 0 in production — forces a full scan).
       startBlock: 0
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
       language: wasm/assemblyscript
-      file: ./src/mappings/vouchcore.ts
+      file: ./src/mappings/assuranceHub.ts
       entities:
         - Provider
         - Job
         - Guarantee
+        - Claim
         - Payout
       abis:
-        - name: VouchCore
-          file: ./abis/VouchCore.json
+        - name: AssuranceHub
+          file: ./abis/AssuranceHub.json
       eventHandlers:
-        - event: JobCreated(indexed uint256,indexed address,indexed address,uint256,uint256)
+        - event: JobCreated(indexed uint256,indexed address,indexed address,address,uint256,uint256,uint256,uint64,uint64,bytes32,bytes32)
           handler: handleJobCreated
-        - event: GuaranteeLocked(indexed uint256,indexed address,uint256,uint256)
-          handler: handleGuaranteeLocked
-        - event: TaskFeeReleased(indexed uint256,indexed address,uint256)
-          handler: handleTaskFeeReleased
-        - event: CoverageOpened(indexed uint256,indexed address,uint64)
-          handler: handleCoverageOpened
-        - event: RegressionProven(indexed uint256,indexed address,indexed address,uint256)
-          handler: handleRegressionProven
+        - event: ProviderAccepted(indexed uint256,indexed address,uint256)
+          handler: handleProviderAccepted
+        - event: DeliverableSubmitted(indexed uint256,indexed address,bytes32)
+          handler: handleDeliverableSubmitted
+        - event: InitialEvaluationResolved(indexed uint256,indexed address,bool)
+          handler: handleInitialEvaluationResolved
+        - event: CoverageStarted(indexed uint256,uint64)
+          handler: handleCoverageStarted
+        - event: ClaimOpened(indexed uint256,indexed address,bytes32)
+          handler: handleClaimOpened
+        - event: ConfidentialEvaluationResolved(indexed uint256,bool,uint256)
+          handler: handleConfidentialEvaluationResolved
+        - event: ClaimTimedOut(indexed uint256)
+          handler: handleClaimTimedOut
         - event: GuaranteePaid(indexed uint256,indexed address,uint256)
           handler: handleGuaranteePaid
-        - event: GuaranteeReleased(indexed uint256,indexed address,uint256)
-          handler: handleGuaranteeReleased
+        - event: CollateralReleased(indexed uint256,indexed address,uint256)
+          handler: handleCollateralReleased
+        - event: JobExpired(indexed uint256,indexed address,uint256,uint256)
+          handler: handleJobExpired
+        - event: JobCancelled(indexed uint256,indexed address,uint256,uint256)
+          handler: handleJobCancelled
+        - event: ServiceFeePaid(indexed uint256,indexed address,uint256)
+          handler: handleServiceFeePaid

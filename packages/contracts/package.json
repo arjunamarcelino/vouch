@@ -2,7 +2,7 @@
   "name": "@vouch/contracts",
   "version": "0.0.0",
   "private": true,
-  "description": "Foundry package for VouchCore — onchain financial settlement on Circle Arc.",
+  "description": "Foundry package for AssuranceHub — onchain financial settlement on Circle Arc.",
   "scripts": {
     "build": "forge build",
     "test:contracts": "forge test -vvv",

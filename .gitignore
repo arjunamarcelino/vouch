@@ -29,6 +29,9 @@ packages/cre-workflow/secrets.yaml
 # --- plan docs are git-ignored per project instruction ---
 docs/plans/
 
+# --- code-review findings are git-ignored (local working docs) ---
+todos/
+
 # --- misc ---
 .DS_Store
 *.log

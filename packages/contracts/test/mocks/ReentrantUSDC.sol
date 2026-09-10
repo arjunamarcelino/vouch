@@ -3,17 +3,13 @@ pragma solidity 0.8.28;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-interface IReleaseGuarantee {
-    function releaseGuarantee(uint256 jobId) external;
-}
-
 /// @title ReentrantUSDC
-/// @notice A malicious 6-decimal ERC-20 that attempts to re-enter VouchCore during a
-///         `transfer` (the outbound leg of a settlement), used to prove the
-///         `nonReentrant` guard holds (plan E11).
+/// @notice Malicious 6-decimal ERC-20: on the next `_update` (outbound transfer leg) it re-enters
+///         `target` with `data` and BUBBLES any revert, proving the nonReentrant guard trips on
+///         every outbound path.
 contract ReentrantUSDC is ERC20 {
     address public target;
-    uint256 public armedJobId;
+    bytes public data;
     bool public armed;
 
     constructor() ERC20("Reentrant USD Coin", "rUSDC") {}
@@ -26,17 +22,22 @@ contract ReentrantUSDC is ERC20 {
         _mint(to, amount);
     }
 
-    /// @notice Arm the token to re-enter `releaseGuarantee(jobId)` on the next transfer.
-    function arm(address target_, uint256 jobId) external {
+    /// @notice Arm a one-shot re-entry into `target_.call(data_)` on the next transfer.
+    function arm(address target_, bytes calldata data_) external {
         target = target_;
-        armedJobId = jobId;
+        data = data_;
         armed = true;
     }
 
     function _update(address from, address to, uint256 value) internal override {
         if (armed) {
-            armed = false; // one-shot to avoid infinite loop if the guard somehow passed
-            IReleaseGuarantee(target).releaseGuarantee(armedJobId);
+            armed = false; // one-shot
+            (bool ok, bytes memory ret) = target.call(data);
+            if (!ok) {
+                assembly {
+                    revert(add(ret, 0x20), mload(ret)) // bubble ReentrancyGuardReentrantCall
+                }
+            }
         }
         super._update(from, to, value);
     }

@@ -5,7 +5,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 /// @title MockUSDC
 /// @notice Minimal 6-decimal ERC-20 mock for local Foundry tests. Models the USDC
-///         ERC-20 interface (6 decimals) used by VouchCore accounting (plan E10).
+///         ERC-20 interface (6 decimals) used by AssuranceHub accounting.
 contract MockUSDC is ERC20 {
     constructor() ERC20("Mock USD Coin", "USDC") {}
 

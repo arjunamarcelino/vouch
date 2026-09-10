@@ -2,39 +2,43 @@
 pragma solidity 0.8.28;
 
 /// @title Errors
-/// @notice Gas-cheap custom errors for VouchCore. Selectors are stable and can be
+/// @notice Gas-cheap custom errors for AssuranceHub / ReceiverBase. Selectors are stable and
 ///         asserted in tests via `vm.expectRevert(Errors.<Name>.selector)`.
 library Errors {
-    /// @dev Caller is not the job's client.
+    // --- Auth / actor ---
     error NotClient();
-    /// @dev Caller is not the job's provider.
     error NotProvider();
-    /// @dev Caller is not the configured KeystoneForwarder / relay.
     error NotForwarder();
-    /// @dev The job is not in a state that permits this transition.
-    error BadState();
-    /// @dev The job has already been settled (idempotency latch).
-    error AlreadySettled();
-    /// @dev The coverage window is still open (action requires it closed).
-    error CoverageWindowOpen();
-    /// @dev The coverage window has closed (action requires it open).
-    error CoverageWindowClosed();
-    /// @dev A payout report was delivered but does not prove a covered regression.
-    error NoRegressionProven();
-    /// @dev A payout would move zero tokens.
-    error ZeroPayout();
-    /// @dev Provider attempted to lock less collateral than the advertised cap.
-    error InsufficientCollateral();
-    /// @dev The report was signed by / bound to a workflow that is not authorized.
     error UnauthorizedWorkflow();
-    /// @dev A zero address was supplied where a real address is required.
+    error ZeroWorkflowIdentity(); // workflowId or workflowName is zero (weakens the settlement gate)
+    error ReportDomainMismatch(); // report chainId/receiver != this deployment (cross-chain replay)
+    error NoPendingChange(); // apply* called with nothing queued
+    error TimelockNotElapsed(); // apply* called before the timelock eta
+
+    // --- State machine ---
+    error BadState();
+    error AlreadySettled();
+
+    // --- Claim / coverage windows ---
+    error ClaimAlreadyFiled();
+    error ClaimWindowClosed();
+    error CoverageWindowOpen(); // withdrawCollateral before coverageEnd
+    error CoverageTooLong(); // coverageDuration > MAX_COVERAGE
+    error CoverageTooShort(); // coverageDuration < MIN_COVERAGE
+
+    // --- Deadlines / expiry ---
+    error SubmissionExpired();
+    error DeadlineInPast();
+    error NotExpiredYet();
+    error ClaimNotTimedOut();
+
+    // --- Validation ---
+    error InvalidToken();
     error ZeroAddress();
-    /// @dev A zero amount was supplied where a positive amount is required.
     error ZeroAmount();
-    /// @dev Public acceptance tests have not been attested as passing.
-    error TestsNotPassed();
-    /// @dev The funding deadline has not yet elapsed (cannot cancel yet).
-    error FundingWindowNotElapsed();
-    /// @dev A job with this id already exists.
-    error JobAlreadyExists();
+    error ZeroPayout();
+    error BadCommitment();
+    error BadMetadata(); // packed CRE metadata shorter than 62 bytes
+    error SelfDealing(); // provider == client
+    error AmountAboveCap(); // reported service credit exceeds the guarantee
 }

@@ -9,7 +9,7 @@ paid out — is what makes Vouch's guarantee meaningful and what the agent needs
 history has to be authoritative and tamper-evident, and it has to be queryable by an AI agent as
 live data.
 
-Two ways to hold it: (a) store rich reputation aggregates **onchain** in `VouchCore`, or (b) emit
+Two ways to hold it: (a) store rich reputation aggregates **onchain** in `AssuranceHub`, or (b) emit
 **minimal events** onchain and derive the aggregates off-chain in an indexer. Storing aggregates
 onchain is expensive (every counter update costs gas and bloats contract storage) and couples the
 reputation schema to contract upgrades. It also does nothing for The Graph track, which requires
@@ -17,10 +17,12 @@ The Graph to be **load-bearing**.
 
 ## Decision
 
-`VouchCore` emits **minimal events** (`JobCreated`, `GuaranteeLocked`, `TaskFeeReleased`,
-`RegressionProven`, `GuaranteePaid`, `GuaranteeReleased`) carrying only `jobId`, `amount`,
-`toClient`, and booleans. **The Graph subgraph derives reputation** by indexing those events into
-`Job`, `Guarantee`, `Payout`, and `Provider` (the reputation aggregate) entities.
+`AssuranceHub` emits **minimal events** (`JobCreated`, `JobFunded`, `ProviderAccepted`,
+`InitialEvaluationResolved`, `ConfidentialEvaluationResolved`, `GuaranteePaid`, `CollateralReleased`,
+and the rest of the 12 canonical events plus `ServiceFeePaid`) carrying only `jobId`, `amount`,
+addresses, commitments, and booleans. **The Graph subgraph derives reputation** by indexing those
+events into `Job`, `Guarantee`, `Claim`, `Payout`, and `Provider` (the reputation aggregate)
+entities.
 
 Entity/counter rules (per plan §17.4): `Provider.id` = address; `Job.id` / `Guarantee.id` /
 `Payout.id` = `jobId` (one terminal payout per job, matching contract idempotency); `Job`/`Payout`

@@ -7,8 +7,9 @@ Chainlink CRE Confidential Workflow — runs the private regression test inside 
 - Run the confidential regression evaluation inside the enclave when a coverage window closes.
 - Fetch/inject private material at runtime via **Vault DON secrets** (`{{.token}}` templating) —
   private tests, private pass/fail thresholds, repo credentials.
-- Reduce the result to the minimal verdict `{jobId, regressed, amount}` and declassify only that
-  for a DON-signed report delivered to `VouchCore.onReport`.
+- Reduce the result to the minimal verdict `{jobId, covered, amount}` — abi-encoded as
+  `(uint256 jobId, bool covered, uint256 amount)` — and declassify only that for a DON-signed report
+  delivered to `AssuranceHub.onReport`.
 - Document and support `cre workflow simulate` as prize evidence.
 
 ## Non-responsibilities

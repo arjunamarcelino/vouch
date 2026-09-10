@@ -1,1 +1,1 @@
-export { vouchCoreAbi } from "./vouchCore";
+export { assuranceHubAbi } from "./assuranceHub";

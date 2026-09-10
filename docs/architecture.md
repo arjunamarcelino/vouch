@@ -8,33 +8,70 @@ decisions** (full ADRs live in [`docs/decisions/`](decisions/)).
 
 ## 1. Protocol state machine
 
+The `AssuranceHub` settlement contract implements the `AssuranceJob` lifecycle. Amounts are
+6-decimal USDC base units; only salted **commitments** (`bytes32`) are stored for private material,
+never preimages.
+
 Happy-path lifecycle:
 
-`Created → TaskFunded → GuaranteeLocked → PublicTestsPassed → TaskFeeReleased → CoverageOpen →
-(RegressionProven → GuaranteePaid) | (WindowExpiredClean → GuaranteeReleased)`
+`Funded → AcceptedByProvider → Submitted → InitiallyApproved → (ClaimPending → ClaimPaid) | Completed`
+
+with `Cancelled` / `Expired` as refund exits. There is **no** separate `Created` state: a single
+`openJob` merges job creation and client funding into one transaction (emitting `JobCreated` then
+`JobFunded`).
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Created: client createJob(fee, provider)
-    Created --> TaskFunded: client deposits task fee (USDC)
-    TaskFunded --> GuaranteeLocked: provider locks capped collateral (USDC)
-    GuaranteeLocked --> PublicTestsPassed: public acceptance tests pass
-    PublicTestsPassed --> TaskFeeReleased: task fee -> provider
-    TaskFeeReleased --> CoverageOpen: coverage window opens (e.g. 24h)
-    CoverageOpen --> RegressionProven: CRE confidential verdict = regressed (signed report)
-    CoverageOpen --> WindowExpiredClean: window elapses, no covered regression
-    RegressionProven --> GuaranteePaid: guarantee -> client (capped, idempotent)
-    WindowExpiredClean --> GuaranteeReleased: collateral -> provider
-    GuaranteePaid --> [*]
-    GuaranteeReleased --> [*]
+    [*] --> Funded: openJob (client escrows taskFee + serviceFee, auto jobId)
+    Funded --> AcceptedByProvider: acceptJob (provider locks guaranteeAmount collateral)
+    AcceptedByProvider --> Submitted: submitDeliverable (provider, before submissionDeadline)
+    Submitted --> InitiallyApproved: resolveInitialEvaluation(approve) [EVALUATOR_ROLE]\n taskFee->provider, serviceFee->feeRecipient, coverage opens
+    Submitted --> Cancelled: resolveInitialEvaluation(reject)\n refund client, collateral->provider
+    InitiallyApproved --> ClaimPending: openClaim (client, within coverage window)
+    ClaimPending --> ClaimPaid: onReport(covered=true) [CRE receiver]\n service credit->client, remainder->provider
+    ClaimPending --> InitiallyApproved: onReport(covered=false) or resolveClaimTimeout\n no funds move
+    InitiallyApproved --> Completed: withdrawCollateral (provider, after coverageEnd)
+    Funded --> Cancelled: cancelJob (client, provider never accepted)
+    AcceptedByProvider --> Expired: expireJob (past submissionDeadline)
+    Submitted --> Expired: expireJob (past submissionDeadline + resolution grace)
+    ClaimPaid --> [*]
+    Completed --> [*]
+    Cancelled --> [*]
+    Expired --> [*]
 ```
 
-The contract design must additionally handle the edge cases enumerated in the plan (E1–E11, plus
-E8b and the invariants in §17.6): public-test failure, missing collateral, window expiry, a
-verdict arriving after the window closes, double-payout / replayed report (idempotency), payout
-exceeding locked collateral (cap), mid-window withdrawal attempts, unauthorized callers,
-inconclusive tests, USDC decimal confusion, and reentrancy. See `packages/contracts` for the
-test suite covering these.
+`State` enum (per plan §19 D2): `None, Funded, AcceptedByProvider, Submitted, InitiallyApproved,
+ClaimPending, ClaimPaid, Completed, Cancelled, Expired`.
+
+**Canonical events.** All downstream consumers (subgraph, shared ABI, agent) bind to these exact
+signatures — the 12 canonical lifecycle events plus `ServiceFeePaid`:
+
+| Event | Emitted when |
+|---|---|
+| `JobCreated` | `openJob` — record created (fires with `JobFunded` in the same tx) |
+| `JobFunded` | `openJob` — client escrows `taskFee + serviceFee` |
+| `ProviderAccepted` | `acceptJob` — provider locks the guarantee collateral |
+| `DeliverableSubmitted` | `submitDeliverable` — provider posts the submission commitment |
+| `InitialEvaluationResolved` | `resolveInitialEvaluation` — evaluator approves/rejects |
+| `CoverageStarted` | approval — `coverageEnd` stamped, coverage window opens |
+| `ClaimOpened` | `openClaim` — client opens a claim within coverage |
+| `ConfidentialEvaluationResolved` | `onReport` / `resolveClaimTimeout` — confidential verdict |
+| `GuaranteePaid` | covered claim — capped service credit paid to client |
+| `CollateralReleased` | provider collateral returned (clean completion or covered remainder) |
+| `JobExpired` | `expireJob` — deadline missed, refund |
+| `JobCancelled` | `cancelJob` / initial rejection — refund |
+| `ServiceFeePaid` | approval — optional service fee routed to `feeRecipient` |
+
+Event payloads carry only ids, amounts, addresses, booleans, and **commitments (hashes)** — never
+criteria/evidence preimages or failure strings.
+
+The contract additionally handles the edge cases enumerated in the plan: submission-deadline
+expiry, initial rejection, a confidential verdict never arriving (`resolveClaimTimeout` returns
+collateral to the provider — plan §19 D3 / BLOCKER B1), double-payout / replayed report
+(idempotency via the `settled` + `claimFiled` latches), payout exceeding the guarantee (capped at
+`min(amount, guaranteeAmount)`), mid-coverage withdrawal attempts, unauthorized callers, USDC
+decimal confusion, and reentrancy. The solvency invariant `usdc.balanceOf(this) >=
+totalLiabilities` holds at every state. See `packages/contracts` for the test suite covering these.
 
 ---
 
@@ -63,7 +100,7 @@ flowchart TB
     end
 
     subgraph Chain["Circle Arc (Testnet 5042002) — AUTHORITATIVE financial state"]
-        CORE["VouchCore.sol\n(escrow, guarantee, coverage,\ncapped+idempotent payout,\nIReceiver.onReport)"]
+        CORE["AssuranceHub.sol\n(escrow, guarantee, coverage,\ncapped+idempotent payout,\nIReceiver.onReport)"]
         USDC[["USDC (ERC-20, 6-dec)"]]
     end
 
@@ -111,8 +148,8 @@ This is the non-negotiable architectural constraint that governs where every pie
 - **Contracts → ABIs → `packages/shared`** are consumed by `web`, `api`, `agent`, `cre-workflow`,
   and `subgraph`. Contracts are the single source of truth for ABIs.
 - **Authoritative money / reputation:**
-  - **Arc contracts (`VouchCore`)** hold all financial *state*: escrowed task fees, locked
-    guarantee collateral, capped + idempotent payouts.
+  - **Arc contracts (`AssuranceHub`)** hold all financial *state*: escrowed task fees + optional
+    service fees, locked guarantee collateral, capped + idempotent payouts.
   - **The Graph** holds all performance / reputation *history*, derived by indexing Arc events.
 - **Operational / rebuildable:** **PostgreSQL via Prisma** stores only offchain operational data
   (UI cache, orchestration metadata, notification state, non-authoritative mirrors). It is
@@ -124,9 +161,38 @@ This is the non-negotiable architectural constraint that governs where every pie
   Onchain, only **hashes / commitments / verdicts** are committed — never criteria or test
   contents.
 
+### Onchain roles & trust surfaces (`AssuranceHub`)
+
+`AssuranceHub` composes `ReceiverBase, AccessControl, Pausable, ReentrancyGuard` (it drops
+`Ownable2Step`). Authority is split across two deliberately separated trust surfaces plus admin
+config:
+
+- **`DEFAULT_ADMIN_ROLE`** — config and role management only: `setForwarder`,
+  `setExpectedWorkflow`, `setFeeRecipient`, `pause` / `unpause`. It can **never** redirect principal
+  (task fee or collateral) to itself — every admin function is routing/config, machine-checked by
+  `test_NoAdminCanSeizeFunds`. Hold in a multisig for production (deployer EOA for the hackathon).
+- **`EVALUATOR_ROLE`** — the *public* trust surface: `resolveInitialEvaluation` only. It approves or
+  rejects the public submission (off-chain judgement, on-chain call). It is a global role, not
+  per-job. It cannot pay itself.
+- **CRE receiver** (`ReceiverBase`) — the *confidential* trust surface and the **only** path that
+  finalizes a claim and can trigger a guarantee payout (`onReport`). The receiver is gated by both
+  the **forwarder** address and the **workflow identity** (packed Keystone metadata:
+  `bytes32 workflowId | bytes10 workflowName | address workflowOwner`), so a different workflow on
+  the same forwarder cannot settle Vouch jobs.
+
+**Pausable pauses entries, never exits.** `whenNotPaused` guards liability-growing entries
+(`openJob`, `acceptJob`, `submitDeliverable`, `resolveInitialEvaluation`). Fund **exits** are never
+pausable — `withdrawCollateral`, `cancelJob`, `expireJob`, `resolveClaimTimeout`, and `onReport`
+stay callable while paused so no party's rightful funds can be trapped. `unpause` is admin-only.
+
+The **guarantee terms are negotiated off-chain** (from the agent's risk quote): `openJob` encodes
+the agreed `guaranteeAmount`, and the provider's `acceptJob` locking exactly that amount **is** the
+agreement (plan §19 D1). The optional **service fee** is separate protocol revenue routed to a
+configurable `feeRecipient` at approval — it is never part of the escrowed principal.
+
 | Concern | Authoritative store | Notes |
 |---|---|---|
-| Escrow, guarantee collateral, payouts | Arc `VouchCore` contract | Capped, idempotent, DON-gated payout. |
+| Escrow, service fee, guarantee collateral, payouts | Arc `AssuranceHub` contract | Capped, idempotent, receiver-gated payout. |
 | Provider reputation / performance history | The Graph subgraph | Derived from minimal onchain events. |
 | UI cache, orchestration metadata, notifications | Postgres / Prisma | Operational only; rebuildable; never money/reputation. |
 | Private tests, criteria, repo credentials | CRE TEE (Vault DON) | Never in Postgres, onchain metadata, subgraph, or IPFS. |
