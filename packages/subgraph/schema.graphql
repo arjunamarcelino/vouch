@@ -130,6 +130,8 @@ type Job @entity(immutable: false) {
   feeCounted: Boolean!
   "Idempotency latch: serviceFee counted exactly once."
   serviceFeeCounted: Boolean!
+  "Idempotency latch: payout counted into totalPayoutAmount / totalGuaranteePaidOut exactly once (020)."
+  payoutCounted: Boolean!
   createdAtBlock: BigInt!
   createdAtTimestamp: BigInt!
   txHash: Bytes!

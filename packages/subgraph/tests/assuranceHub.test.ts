@@ -144,6 +144,17 @@ describe("AssuranceHub mappings", () => {
     assert.fieldEquals("ProviderDailyMetric", PROVIDER.concatI32(0).toHexString(), "upheldFailures", "1");
   });
 
+  test("payout accumulation is latched per job — replay does not double-count (020)", () => {
+    approve(1, 20, 100, 1000);
+    handleClaimOpened(claimOpened(1, txHash(5), 0, 5, 2000));
+    let tx = txHash(6);
+    handleConfidentialEvaluationResolved(confidentialEvaluationResolved(1, true, 60, tx, 0, 6, 3000));
+    handleGuaranteePaid(guaranteePaid(1, 60, tx, 1, 6, 3000));
+    handleGuaranteePaid(guaranteePaid(1, 60, tx, 1, 6, 3000)); // replay same event
+    assert.fieldEquals("Provider", P, "totalPayoutAmount", "60");
+    assert.fieldEquals("Job", jobIdBytes(1).toHexString(), "payoutCounted", "true");
+  });
+
   test("not-covered verdict counts a rejection, returns to coverage, then contested completion", () => {
     approve(1, 20, 100, 1000);
     handleClaimOpened(claimOpened(1, txHash(5), 0, 5, 2000));

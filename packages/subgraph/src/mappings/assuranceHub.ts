@@ -296,6 +296,7 @@ export function handleJobCreated(event: JobCreated): void {
     job.submissionCommitment = null;
     job.feeCounted = false;
     job.serviceFeeCounted = false;
+    job.payoutCounted = false;
     job.createdAtBlock = event.block.number;
     job.createdAtTimestamp = event.block.timestamp;
     job.txHash = event.transaction.hash;
@@ -554,16 +555,21 @@ export function handleGuaranteePaid(event: GuaranteePaid): void {
     }
   }
 
-  provider.totalPayoutAmount = provider.totalPayoutAmount.plus(event.params.amount);
+  // Payout accumulation is latched per-job (mirrors feeCounted) so totalPayoutAmount /
+  // totalGuaranteePaidOut — which feed payoutToCoveredValueBps — can't double-count on replay,
+  // independent of the C_LOCKED exposure guard above (020, ADR-003 discipline).
+  let job = Job.load(id);
+  if (job != null && !job.payoutCounted) {
+    provider.totalPayoutAmount = provider.totalPayoutAmount.plus(event.params.amount);
+    let protocol = getOrCreateProtocol(event);
+    protocol.totalGuaranteePaidOut = protocol.totalGuaranteePaidOut.plus(event.params.amount);
+    protocol.save();
+    job.payoutCounted = true;
+  }
   provider.lastActivityTimestamp = event.block.timestamp;
   provider.lastUpdatedBlock = event.block.number;
   provider.save();
 
-  let protocol = getOrCreateProtocol(event);
-  protocol.totalGuaranteePaidOut = protocol.totalGuaranteePaidOut.plus(event.params.amount);
-  protocol.save();
-
-  let job = Job.load(id);
   if (job != null) {
     job.status = CLAIM_PAID;
     job.save();
