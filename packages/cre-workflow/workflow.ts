@@ -25,7 +25,7 @@
  * repo credentials, and pass/fail thresholds are NEVER inlined in this source.
  * They are released by the Vault DON at runtime (`.env` only for local
  * `cre workflow simulate`) and processed inside the enclave. Only the minimal
- * verdict {jobId, regressed, amount} crosses back to the DON for the signed
+ * verdict {jobId, covered, amount} crosses back to the DON for the signed
  * report.
  */
 
@@ -64,7 +64,7 @@ export type Config = z.infer<typeof configSchema>;
 // ---------------------------------------------------------------------------
 export const VerdictParams = [
   { name: "jobId", type: "uint256" },
-  { name: "regressed", type: "bool" },
+  { name: "covered", type: "bool" },
   { name: "amount", type: "uint256" },
 ] as const;
 
@@ -72,7 +72,7 @@ export const VerdictParams = [
  * Encode the minimal verdict tuple the AssuranceHub receiver decodes.
  *
  * @param jobId     the coverage/job identifier
- * @param regressed true if the private regression test detected a regression
+ * @param covered   true if the confidential test proved a covered failure (regression)
  * @param amount    the service credit to pay the client. The CRE MUST pass a value in
  *                  (0, guaranteeAmount]: onReport REVERTS on `0` (ZeroPayout) and on
  *                  `amount > guaranteeAmount` (AmountAboveCap) — it does NOT clamp.
@@ -81,10 +81,10 @@ export const VerdictParams = [
  */
 export function buildVerdictPayload(
   jobId: bigint,
-  regressed: boolean,
+  covered: boolean,
   amount: bigint,
 ): `0x${string}` {
-  return encodeAbiParameters(VerdictParams, [jobId, regressed, amount]);
+  return encodeAbiParameters(VerdictParams, [jobId, covered, amount]);
 }
 
 // ---------------------------------------------------------------------------
@@ -143,8 +143,8 @@ export function createCreRuntime(_config: Config): CreRuntime {
 //     const { passRate, threshold, jobId } = json(res) as {
 //       passRate: number; threshold: number; jobId: string;
 //     };
-//     const regressed = passRate < threshold;
-//     if (!regressed) return "clean"; // no payout report; provider reclaims later
+//     const covered = passRate < threshold;
+//     if (!covered) return "clean"; // no payout report; provider reclaims later
 //
 //     // amount MUST be nonzero and <= guaranteeAmount — the contract reverts, never clamps (005).
 //     const credit = min(decidedCredit, guaranteeAmount); // > 0
