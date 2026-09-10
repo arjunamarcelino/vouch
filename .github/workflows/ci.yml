@@ -37,5 +37,7 @@ jobs:
       - name: Unit tests
         run: pnpm test
 
+      # Contracts (forge build) are covered by the dedicated Contracts workflow,
+      # which installs Foundry. Exclude them here so the JS job needs no forge.
       - name: Build
-        run: pnpm build
+        run: pnpm build --filter='!@vouch/contracts'
