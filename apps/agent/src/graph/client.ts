@@ -25,6 +25,8 @@ export type ProviderRiskResult =
 
 const TRAILING_DAYS = 30;
 const SECONDS_PER_DAY = 86_400;
+// first: 31 (not 30) is a deliberate boundary guard: a partial day-bucket at the window edge can slip
+// in without skewing the ratio (both numerator and denominator include it). (031)
 
 // Single request: _meta rides with the data so freshness + data share ONE block (015). Reads the
 // CURRENT denormalized risk view off Provider (no snapshot-partition sort — 023). No @derivedFrom

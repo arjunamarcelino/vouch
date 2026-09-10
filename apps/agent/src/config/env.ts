@@ -7,7 +7,6 @@ const envSchema = z
     ARC_RPC_URL: z.string().url().optional(),
     SUBGRAPH_URL: z.string().url().optional(),
     SUBGRAPH_DEPLOYMENT_ID: z.string().optional(),
-    SUBGRAPH_STATUS_URL: z.string().url().optional(),
     SUBGRAPH_MAX_LAG_BLOCKS: z.coerce.number().int().positive().default(25),
     SUBGRAPH_MAX_STALENESS_SECONDS: z.coerce.number().int().positive().default(180),
     VOUCH_CORE_ADDRESS: z

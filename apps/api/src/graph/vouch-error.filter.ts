@@ -26,6 +26,12 @@ export class VouchErrorFilter implements ExceptionFilter {
   catch(exception: VouchError, host: ArgumentsHost): void {
     const res = host.switchToHttp().getResponse<JsonResponse>();
     const status = STATUS[exception.code];
-    res.status(status).json({ error: exception.code, message: exception.message });
+    // Don't leak internal config detail on 5xx-that-are-our-fault (031). SUBGRAPH_* are 503 with
+    // useful operational messages ("N blocks behind") — those are safe to surface.
+    const internal = exception.code === "CONFIG_INVALID" || exception.code === "CHAIN_NOT_CONFIGURED";
+    res.status(status).json({
+      error: exception.code,
+      message: internal ? "Service temporarily unavailable" : exception.message,
+    });
   }
 }
