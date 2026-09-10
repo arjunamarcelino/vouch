@@ -91,7 +91,7 @@ const payments: PaymentDriver = {
 };
 const health: HealthProbe = { subgraphOk: async () => true, walletConfigured: () => false };
 
-function server(allowManualPay = false) {
+function server(allowManualPay = false, apiKey?: string) {
   const core = new AgentCore({
     getProviderRisk: async () => RISK,
     scoreParams: { baseGuaranteeCap: 100_000_000n },
@@ -106,8 +106,24 @@ function server(allowManualPay = false) {
     now: () => 1_760_000_000n,
     salt: () => "s",
   });
-  return createRestServer(core, { allowManualPay });
+  return createRestServer(core, { allowManualPay, apiKey });
 }
+
+test("with an API key, POST /quotes rejects missing/bad auth and accepts the bearer token", async () => {
+  const app = server(false, "secret-key");
+  const noAuth = await app.inject({ method: "POST", url: "/quotes", payload: job() });
+  assert.equal(noAuth.statusCode, 401);
+  const badAuth = await app.inject({ method: "POST", url: "/quotes", payload: job(), headers: { authorization: "Bearer wrong" } });
+  assert.equal(badAuth.statusCode, 401);
+  const ok = await app.inject({ method: "POST", url: "/quotes", payload: job(), headers: { authorization: "Bearer secret-key" } });
+  assert.equal(ok.statusCode, 201);
+});
+
+test("GET /health is open (no auth) even when an API key is set", async () => {
+  const app = server(false, "secret-key");
+  const res = await app.inject({ method: "GET", url: "/health" });
+  assert.equal(res.statusCode, 200);
+});
 
 test("GET /health returns subgraph + wallet status", async () => {
   const app = server();

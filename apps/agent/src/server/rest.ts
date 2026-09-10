@@ -36,6 +36,36 @@ const HTTP_STATUS = {
 export interface RestOptions {
   /** Gate the destructive pay endpoint (§0.6). Default false: production runs autonomous-only. */
   allowManualPay?: boolean;
+  /** Bearer API key required on mutating/expensive routes. Unset ⇒ auth disabled (dev, warned). */
+  apiKey?: string;
+  /** Per-IP fixed-window (60s) request cap on the signing endpoints. Default 60. */
+  rateLimitPerMin?: number;
+}
+
+/** Bearer-auth + a minimal in-memory per-IP rate limiter for the signing/pay routes (review 038). */
+function makeGuards(opts: RestOptions) {
+  const limit = opts.rateLimitPerMin ?? 60;
+  const buckets = new Map<string, { count: number; resetAt: number }>();
+
+  async function auth(req: { headers: Record<string, unknown> }, reply: { code(n: number): { send(b: unknown): unknown } }) {
+    if (!opts.apiKey) return; // dev: auth disabled (startup warning emitted)
+    if (req.headers["authorization"] !== `Bearer ${opts.apiKey}`) {
+      return reply.code(401).send({ error: "UNAUTHORIZED" });
+    }
+  }
+
+  async function rateLimit(req: { ip: string }, reply: { code(n: number): { send(b: unknown): unknown } }) {
+    const now = Date.now();
+    const b = buckets.get(req.ip);
+    if (!b || now > b.resetAt) {
+      buckets.set(req.ip, { count: 1, resetAt: now + 60_000 });
+      return;
+    }
+    if (b.count >= limit) return reply.code(429).send({ error: "RATE_LIMITED" });
+    b.count += 1;
+  }
+
+  return { auth, rateLimit };
 }
 
 export function createRestServer(core: AgentCore, opts: RestOptions = {}): FastifyInstance {
@@ -56,17 +86,25 @@ export function createRestServer(core: AgentCore, opts: RestOptions = {}): Fasti
     return reply.code(500).send({ error: "INTERNAL", message: "Internal error" });
   });
 
+  const { auth, rateLimit } = makeGuards(opts);
+  if (!opts.apiKey) log.warn("AGENT_API_KEY unset — REST auth is DISABLED (dev only; review 038)");
+
   app.get("/health", async () => core.getHealth());
 
-  app.post("/quotes", { schema: { body: jobRequestSchema } }, async (req, reply) => {
-    const correlationId = (req.headers["x-correlation-id"] as string) ?? req.id;
-    const commitment = await core.requestQuote(req.body, correlationId);
-    return reply.code(201).send(commitment);
-  });
+  app.post(
+    "/quotes",
+    { preHandler: [auth, rateLimit], schema: { body: jobRequestSchema } },
+    async (req, reply) => {
+      const hdr = req.headers["x-correlation-id"];
+      const correlationId = (Array.isArray(hdr) ? hdr[0] : hdr) ?? req.id;
+      const commitment = await core.requestQuote(req.body, correlationId);
+      return reply.code(201).send(commitment);
+    },
+  );
 
   app.post(
     "/quotes/verify",
-    { schema: { body: z.object({ commitment: quoteCommitmentSchema, job: jobRequestSchema }) } },
+    { preHandler: [auth, rateLimit], schema: { body: z.object({ commitment: quoteCommitmentSchema, job: jobRequestSchema }) } },
     async (req) => core.verifyQuote(req.body.commitment, req.body.job),
   );
 
@@ -95,9 +133,12 @@ export function createRestServer(core: AgentCore, opts: RestOptions = {}): Fasti
   );
 
   if (opts.allowManualPay) {
+    if (!opts.apiKey) {
+      log.warn("manual-pay enabled WITHOUT AGENT_API_KEY — the /pay route is unauthenticated (review 038)");
+    }
     app.post(
       "/quotes/:quoteId/pay",
-      { schema: { params: z.object({ quoteId: z.string() }), body: z.object({ action: paymentActionSchema }) } },
+      { preHandler: [auth], schema: { params: z.object({ quoteId: z.string() }), body: z.object({ action: paymentActionSchema }) } },
       async (req) => core.executePayment(req.params.quoteId, req.body.action, req.id),
     );
   }

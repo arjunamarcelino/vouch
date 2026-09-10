@@ -35,6 +35,10 @@ const envSchema = z
     AGENT_DEST_ALLOWLIST: z.string().default(""), // comma-separated addresses
     // Interfaces.
     AGENT_HTTP_PORT: z.coerce.number().int().positive().default(3002),
+    // Auth + rate limit for the mutating/expensive REST endpoints (review 038). When AGENT_API_KEY is
+    // unset, auth is DISABLED (dev only) and the server warns at startup.
+    AGENT_API_KEY: z.string().optional(),
+    AGENT_RATE_LIMIT_PER_MIN: z.coerce.number().int().positive().default(60),
     AGENT_ALLOW_MANUAL_PAY: z
       .enum(["true", "false"])
       .default("false")

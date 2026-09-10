@@ -50,7 +50,11 @@ async function main(): Promise<void> {
 
   // REST is always started so /health is reachable even in a degraded config.
   if (core) {
-    const app = createRestServer(core.core, { allowManualPay: env.AGENT_ALLOW_MANUAL_PAY });
+    const app = createRestServer(core.core, {
+      allowManualPay: env.AGENT_ALLOW_MANUAL_PAY,
+      apiKey: env.AGENT_API_KEY,
+      rateLimitPerMin: env.AGENT_RATE_LIMIT_PER_MIN,
+    });
     await app.listen({ port: env.AGENT_HTTP_PORT, host: "0.0.0.0" });
     log.info({ port: env.AGENT_HTTP_PORT, allowManualPay: env.AGENT_ALLOW_MANUAL_PAY }, "REST server listening");
 
