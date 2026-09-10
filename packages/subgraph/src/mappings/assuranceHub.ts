@@ -457,28 +457,22 @@ export function handleClaimOpened(event: ClaimOpened): void {
 export function handleConfidentialEvaluationResolved(event: ConfidentialEvaluationResolved): void {
   let id = jobIdToBytes(event.params.jobId);
   let claim = Claim.load(id);
+  // A verdict always follows an opened claim; if the Claim is somehow absent there is no provider to
+  // attribute the record to, so skip rather than persist a dangling non-null provider edge (030).
+  if (claim == null) return;
 
   // resolvedByTimeout is authoritative on the mutable Claim and is set by handleClaimTimedOut, which
   // the contract emits BEFORE this event in the timeout tx (lines 424-425). Stamp it into the
   // immutable record at construction (plan §3.5.7).
-  let byTimeout = claim != null ? claim.resolvedByTimeout : false;
-
   let record = new ConfidentialEvaluation(eventId(event));
   record.job = id;
+  record.provider = claim.provider;
   record.covered = event.params.covered;
   record.serviceCredit = event.params.serviceCredit;
-  record.resolvedByTimeout = byTimeout;
+  record.resolvedByTimeout = claim.resolvedByTimeout;
   record.blockNumber = event.block.number;
   record.timestamp = event.block.timestamp;
   record.txHash = event.transaction.hash;
-
-  if (claim == null) {
-    // No claim entity (should not happen); still record the raw verdict for audit.
-    record.provider = Bytes.empty();
-    record.save();
-    return;
-  }
-  record.provider = claim.provider;
   record.save();
 
   // Idempotency guard: the job is CLAIM_PENDING only before its (single) resolution — a crash-safe,
@@ -492,7 +486,7 @@ export function handleConfidentialEvaluationResolved(event: ConfidentialEvaluati
   claim.resolvedAtTimestamp = event.block.timestamp;
   claim.save();
 
-  if (firstResolution && !byTimeout) {
+  if (firstResolution && !claim.resolvedByTimeout) {
     let provider = Provider.load(claim.provider);
     if (provider != null) {
       if (event.params.covered) {
