@@ -17,8 +17,8 @@ gas token**, and it is a supported network for The Graph.
 
 ## Decision
 
-**Arc owns all financial state.** A single `VouchCore` contract on Arc holds escrowed task fees,
-locked guarantee collateral, and executes capped + idempotent payouts. All application-level
+**Arc owns all financial state.** A single `AssuranceHub` contract on Arc holds escrowed task fees
+(and optional service fees), locked guarantee collateral, and executes capped + idempotent payouts. All application-level
 accounting uses the **6-decimal ERC-20** USDC interface (never the 18-decimal native/gas view of
 the same balance). The Graph indexes Arc events as the reputation source of truth (ADR-003). The
 MVP targets **Arc testnet** (`5042002`); Arc mainnet (`5042`) is a bonus tier only.

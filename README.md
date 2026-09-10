@@ -58,7 +58,7 @@ A `pnpm` + Turborepo monorepo. Internal packages are referenced with `workspace:
 | `apps/web` | `@vouch/web` | Next.js 16 + Tailwind v4 + shadcn/ui dashboard: jobs, guarantees, live USDC balances, provider reputation, tx links to arcscan. |
 | `apps/api` | `@vouch/api` | NestJS 11 REST API serving the dashboard. **Offchain operational data only.** |
 | `apps/agent` | `@vouch/agent` | Autonomous risk-quotation + job-monitoring agent. Quotes/monitors; **never settles funds.** |
-| `packages/contracts` | `@vouch/contracts` | Foundry contracts (`VouchCore`) deployed to Arc — authoritative financial state. |
+| `packages/contracts` | `@vouch/contracts` | Foundry contracts (`AssuranceHub`) deployed to Arc — authoritative financial state. |
 | `packages/subgraph` | `@vouch/subgraph` | The Graph subgraph (from scratch) — authoritative performance/reputation history. |
 | `packages/cre-workflow` | `@vouch/cre-workflow` | Chainlink CRE Confidential Workflow (TEE). The **only** place private tests/criteria/repo creds live. |
 | `packages/shared` | `@vouch/shared` | Zod schemas, types, chain constants, ABIs, logger, error types. |
