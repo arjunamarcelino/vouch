@@ -45,6 +45,8 @@ dataSources:
           handler: handleClaimOpened
         - event: ConfidentialEvaluationResolved(indexed uint256,bool,uint256)
           handler: handleConfidentialEvaluationResolved
+        - event: ClaimTimedOut(indexed uint256)
+          handler: handleClaimTimedOut
         - event: GuaranteePaid(indexed uint256,indexed address,uint256)
           handler: handleGuaranteePaid
         - event: CollateralReleased(indexed uint256,indexed address,uint256)

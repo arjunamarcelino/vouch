@@ -13,6 +13,7 @@ import {
   JobExpired,
   JobCancelled,
   ServiceFeePaid,
+  ClaimTimedOut,
 } from "../../generated/AssuranceHub/AssuranceHub";
 import { Provider, Job, Guarantee, Claim, Payout } from "../../generated/schema";
 
@@ -43,6 +44,7 @@ function getOrCreateProvider(address: Address, block: ethereum.Block): Provider 
     p.jobsCreated = BigInt.zero();
     p.jobsFunded = BigInt.zero();
     p.jobsCompleted = BigInt.zero();
+    p.contestedCompletions = BigInt.zero();
     p.guaranteesLocked = BigInt.zero();
     p.guaranteesActive = BigInt.zero();
     p.claimsOpened = BigInt.zero();
@@ -58,7 +60,9 @@ function getOrCreateProvider(address: Address, block: ethereum.Block): Provider 
 }
 
 // LOCKED -> RELEASED master transition. Decrements guaranteesActive exactly once. When
-// `countCompleted` and the Job is still INITIALLY_APPROVED, marks it COMPLETED + jobsCompleted++.
+// `countCompleted` and the Job is still INITIALLY_APPROVED, marks it COMPLETED and books the
+// window as CLEAN (no claim) or CONTESTED (a claim was opened but resolved not-covered/timeout)
+// so stonewalling the CRE can't read as a clean finish (finding 007).
 function releaseGuaranteeIfLocked(id: Bytes, block: ethereum.Block, countCompleted: boolean): void {
   let g = Guarantee.load(id);
   if (g == null || g.status != G_LOCKED) return;
@@ -75,7 +79,11 @@ function releaseGuaranteeIfLocked(id: Bytes, block: ethereum.Block, countComplet
     if (job != null && job.status == INITIALLY_APPROVED) {
       job.status = COMPLETED;
       job.save();
-      provider.jobsCompleted = provider.jobsCompleted.plus(ONE);
+      if (Claim.load(id) == null) {
+        provider.jobsCompleted = provider.jobsCompleted.plus(ONE); // clean window
+      } else {
+        provider.contestedCompletions = provider.contestedCompletions.plus(ONE); // contested window
+      }
     }
   }
   provider.lastUpdatedBlock = block.number;
@@ -212,6 +220,7 @@ export function handleClaimOpened(event: ClaimOpened): void {
     claim.client = event.params.client;
     claim.evidenceCommitment = event.params.evidenceCommitment;
     claim.covered = false; // meaningful only once resolvedAtTimestamp is set
+    claim.resolvedByTimeout = false;
     claim.serviceCredit = null;
     claim.openedAtBlock = event.block.number;
     claim.openedAtTimestamp = event.block.timestamp;
@@ -279,7 +288,8 @@ export function handleGuaranteePaid(event: GuaranteePaid): void {
     if (provider.guaranteesActive.gt(BigInt.zero())) {
       provider.guaranteesActive = provider.guaranteesActive.minus(ONE);
     }
-    provider.jobsCompleted = provider.jobsCompleted.plus(ONE);
+    // A paid (covered) window is counted via claimsPaid below, NOT jobsCompleted (finding 007):
+    // jobsCompleted is clean-only; the full denominator is jobsCompleted + contestedCompletions + claimsPaid.
   }
 
   let job = Job.load(id);
@@ -333,5 +343,15 @@ export function handleServiceFeePaid(event: ServiceFeePaid): void {
     }
     job.serviceFeeCounted = true;
     job.save();
+  }
+}
+
+// resolveClaimTimeout emits ClaimTimedOut (first) + ConfidentialEvaluationResolved(false,0).
+// Mark the claim as timeout-resolved so consumers can tell CRE-inactivity from a real verdict (007).
+export function handleClaimTimedOut(event: ClaimTimedOut): void {
+  let claim = Claim.load(jobIdToBytes(event.params.jobId));
+  if (claim != null) {
+    claim.resolvedByTimeout = true;
+    claim.save();
   }
 }

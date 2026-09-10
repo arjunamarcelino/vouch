@@ -33,8 +33,10 @@ type Provider @entity(immutable: false) {
   id: Bytes!
   jobsCreated: BigInt!
   jobsFunded: BigInt!
-  "Coverage windows that CLOSED (clean completion OR covered claim) — denominator for regressionRate."
+  "CLEAN coverage windows closed (no claim was ever opened). Full closed-window denominator for regressionRate = jobsCompleted + contestedCompletions + claimsPaid."
   jobsCompleted: BigInt!
+  "Coverage windows closed after a claim resolved NOT-covered or timed out (contested but not paid). Excluded from jobsCompleted so stonewalling the CRE can't read as a clean finish (finding 007)."
+  contestedCompletions: BigInt!
   guaranteesLocked: BigInt!
   guaranteesActive: BigInt!
   claimsOpened: BigInt!
@@ -96,6 +98,8 @@ type Claim @entity(immutable: false) {
   evidenceCommitment: Bytes!
   "Confidential verdict. Meaningful only once resolvedAtTimestamp is set; false until then."
   covered: Boolean!
+  "True if the claim was closed by resolveClaimTimeout (CRE inactivity) rather than a real verdict (finding 007)."
+  resolvedByTimeout: Boolean!
   serviceCredit: BigInt
   openedAtBlock: BigInt!
   openedAtTimestamp: BigInt!
