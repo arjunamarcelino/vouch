@@ -65,7 +65,6 @@ contract AssuranceHub is ReceiverBase, AccessControl, Pausable, ReentrancyGuard 
     struct AssuranceJob {
         address client;
         address provider;
-        address paymentToken; // validated == canonical usdc
         uint256 taskFee;
         uint256 guaranteeAmount; // provider locks exactly this as collateral (plan §19 D1/D4)
         uint256 serviceFee; // optional (may be 0)
@@ -73,7 +72,6 @@ contract AssuranceHub is ReceiverBase, AccessControl, Pausable, ReentrancyGuard 
         bytes32 privateCriteriaCommitment; // salted; preimage lives only in the CRE TEE
         bytes32 submissionCommitment; // set on submitDeliverable
         bytes32 claimEvidenceCommitment; // set on openClaim
-        uint64 createdAt;
         uint64 submissionDeadline;
         uint64 coverageDuration; // persisted at openJob, consumed to stamp coverageEnd at approval
         uint64 coverageEnd; // stamped atomically at approval; immutable thereafter
@@ -211,7 +209,6 @@ contract AssuranceHub is ReceiverBase, AccessControl, Pausable, ReentrancyGuard 
         _jobs[jobId] = AssuranceJob({
             client: msg.sender,
             provider: provider,
-            paymentToken: token,
             taskFee: taskFee,
             guaranteeAmount: guaranteeAmount,
             serviceFee: serviceFee,
@@ -219,7 +216,6 @@ contract AssuranceHub is ReceiverBase, AccessControl, Pausable, ReentrancyGuard 
             privateCriteriaCommitment: privateCriteriaCommitment,
             submissionCommitment: bytes32(0),
             claimEvidenceCommitment: bytes32(0),
-            createdAt: uint64(block.timestamp),
             submissionDeadline: submissionDeadline,
             coverageDuration: coverageDuration,
             coverageEnd: 0,
@@ -317,8 +313,9 @@ contract AssuranceHub is ReceiverBase, AccessControl, Pausable, ReentrancyGuard 
             emit InitialEvaluationResolved(jobId, msg.sender, false);
             emit JobCancelled(jobId, msg.sender, refund, collateral);
 
-            if (refund > 0) usdc.safeTransfer(job.client, refund);
-            if (collateral > 0) usdc.safeTransfer(job.provider, collateral);
+            // refund (>= taskFee >= 1) and collateral (== guaranteeAmount >= 1) are always nonzero.
+            usdc.safeTransfer(job.client, refund);
+            usdc.safeTransfer(job.provider, collateral);
         }
     }
 
@@ -364,21 +361,20 @@ contract AssuranceHub is ReceiverBase, AccessControl, Pausable, ReentrancyGuard 
         if (covered) {
             uint256 guarantee = job.guaranteeAmount;
             if (amount > guarantee) revert Errors.AmountAboveCap();
-            uint256 payout = amount; // already capped at the guarantee
-            if (payout == 0) revert Errors.ZeroPayout();
-            uint256 remainder = guarantee - payout;
+            if (amount == 0) revert Errors.ZeroPayout();
+            uint256 remainder = guarantee - amount;
 
             settled[jobId] = true;
             job.status = State.ClaimPaid;
             totalLiabilities -= guarantee;
 
             // Effects phase: emit all events before any interaction (CEI, finding 009).
-            emit ConfidentialEvaluationResolved(jobId, true, payout);
-            emit GuaranteePaid(jobId, job.client, payout);
+            emit ConfidentialEvaluationResolved(jobId, true, amount);
+            emit GuaranteePaid(jobId, job.client, amount);
             if (remainder > 0) emit CollateralReleased(jobId, job.provider, remainder);
 
-            // Interactions. Conservation: payout + remainder == guarantee.
-            usdc.safeTransfer(job.client, payout);
+            // Interactions. Conservation: amount + remainder == guarantee (remainder may be 0).
+            usdc.safeTransfer(job.client, amount);
             if (remainder > 0) usdc.safeTransfer(job.provider, remainder);
         } else {
             // Not covered: return to coverage. Claim latch stays set -> no re-claim. No funds move.
@@ -418,7 +414,7 @@ contract AssuranceHub is ReceiverBase, AccessControl, Pausable, ReentrancyGuard 
 
         emit CollateralReleased(jobId, job.provider, amount);
 
-        if (amount > 0) usdc.safeTransfer(job.provider, amount);
+        usdc.safeTransfer(job.provider, amount); // == guaranteeAmount >= 1
     }
 
     /// @notice Client cancels a Funded job the provider never accepted. Funded -> Cancelled.
@@ -433,7 +429,7 @@ contract AssuranceHub is ReceiverBase, AccessControl, Pausable, ReentrancyGuard 
 
         emit JobCancelled(jobId, msg.sender, refund, 0);
 
-        if (refund > 0) usdc.safeTransfer(job.client, refund);
+        usdc.safeTransfer(job.client, refund); // >= taskFee >= 1
     }
 
     /// @notice Anyone expires a stalled job. AcceptedByProvider | Submitted -> Expired.
@@ -459,8 +455,9 @@ contract AssuranceHub is ReceiverBase, AccessControl, Pausable, ReentrancyGuard 
 
         emit JobExpired(jobId, msg.sender, refund, collateral);
 
-        if (refund > 0) usdc.safeTransfer(job.client, refund);
-        if (collateral > 0) usdc.safeTransfer(job.provider, collateral);
+        // refund (>= taskFee >= 1) and collateral (== guaranteeAmount >= 1) are always nonzero.
+        usdc.safeTransfer(job.client, refund);
+        usdc.safeTransfer(job.provider, collateral);
     }
 
     // ------------------------------------------------------------------ //

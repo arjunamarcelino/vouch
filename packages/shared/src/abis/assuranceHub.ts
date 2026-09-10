@@ -282,11 +282,6 @@ export const assuranceHubAbi = [
             "internalType": "address"
           },
           {
-            "name": "paymentToken",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
             "name": "taskFee",
             "type": "uint256",
             "internalType": "uint256"
@@ -320,11 +315,6 @@ export const assuranceHubAbi = [
             "name": "claimEvidenceCommitment",
             "type": "bytes32",
             "internalType": "bytes32"
-          },
-          {
-            "name": "createdAt",
-            "type": "uint64",
-            "internalType": "uint64"
           },
           {
             "name": "submissionDeadline",
