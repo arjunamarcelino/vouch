@@ -42,6 +42,9 @@ contract AssuranceHub is ReceiverBase, AccessControl, Pausable, ReentrancyGuard 
     uint64 public constant RESOLUTION_GRACE = 3 days;
     /// @notice Grace after a claim is opened before `resolveClaimTimeout` is callable (CRE inactive, B1).
     uint64 public constant CLAIM_RESOLUTION_GRACE = 3 days;
+    /// @notice Delay before a queued forwarder/workflow config change can be applied (finding 004):
+    ///         stops a compromised admin from instantly repointing the settlement gate to force a payout.
+    uint64 public constant CONFIG_TIMELOCK = 2 days;
 
     // ------------------------------------------------------------------ //
     //                              Types                                  //
@@ -88,6 +91,22 @@ contract AssuranceHub is ReceiverBase, AccessControl, Pausable, ReentrancyGuard 
 
     /// @notice Recipient of the optional service fee at initial approval (config only, never principal).
     address public feeRecipient;
+
+    /// @notice Timelocked pending config changes (finding 004). `eta == 0` means none queued.
+    struct PendingForwarder {
+        address value;
+        uint64 eta;
+    }
+
+    struct PendingWorkflow {
+        bytes32 id;
+        bytes10 name;
+        address owner;
+        uint64 eta;
+    }
+
+    PendingForwarder public pendingForwarder;
+    PendingWorkflow public pendingWorkflow;
 
     /// @notice Auto-increment job id source (first assigned id is 1; 0 is reserved / None).
     uint256 public nextJobId = 1;
@@ -139,6 +158,10 @@ contract AssuranceHub is ReceiverBase, AccessControl, Pausable, ReentrancyGuard 
     event ServiceFeePaid(uint256 indexed jobId, address indexed feeRecipient, uint256 amount);
     event ClaimTimedOut(uint256 indexed jobId);
     event FeeRecipientUpdated(address indexed previous, address indexed current);
+    event ForwarderChangeQueued(address indexed value, uint64 eta);
+    event ExpectedWorkflowChangeQueued(
+        bytes32 indexed workflowId, bytes10 workflowName, address indexed workflowOwner, uint64 eta
+    );
 
     // ------------------------------------------------------------------ //
     //                            Constructor                             //
@@ -472,15 +495,42 @@ contract AssuranceHub is ReceiverBase, AccessControl, Pausable, ReentrancyGuard 
         _unpause();
     }
 
-    function setForwarder(address newForwarder) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _setForwarder(newForwarder);
+    /// @notice Queue a forwarder change; applied only after CONFIG_TIMELOCK (finding 004).
+    function queueForwarder(address newForwarder) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (newForwarder == address(0)) revert Errors.ZeroAddress();
+        uint64 eta = uint64(block.timestamp) + CONFIG_TIMELOCK;
+        pendingForwarder = PendingForwarder({value: newForwarder, eta: eta});
+        emit ForwarderChangeQueued(newForwarder, eta);
     }
 
-    function setExpectedWorkflow(bytes32 workflowId, bytes10 workflowName, address workflowOwner)
+    /// @notice Apply a previously queued forwarder change after the timelock elapses.
+    function applyForwarder() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        PendingForwarder memory p = pendingForwarder;
+        if (p.eta == 0) revert Errors.NoPendingChange();
+        if (block.timestamp < p.eta) revert Errors.TimelockNotElapsed();
+        delete pendingForwarder;
+        _setForwarder(p.value);
+    }
+
+    /// @notice Queue an expected-workflow change; applied only after CONFIG_TIMELOCK (finding 004).
+    function queueExpectedWorkflow(bytes32 workflowId, bytes10 workflowName, address workflowOwner)
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        _setExpectedWorkflow(workflowId, workflowName, workflowOwner);
+        if (workflowOwner == address(0)) revert Errors.ZeroAddress();
+        if (workflowId == bytes32(0) || workflowName == bytes10(0)) revert Errors.ZeroWorkflowIdentity();
+        uint64 eta = uint64(block.timestamp) + CONFIG_TIMELOCK;
+        pendingWorkflow = PendingWorkflow({id: workflowId, name: workflowName, owner: workflowOwner, eta: eta});
+        emit ExpectedWorkflowChangeQueued(workflowId, workflowName, workflowOwner, eta);
+    }
+
+    /// @notice Apply a previously queued expected-workflow change after the timelock elapses.
+    function applyExpectedWorkflow() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        PendingWorkflow memory p = pendingWorkflow;
+        if (p.eta == 0) revert Errors.NoPendingChange();
+        if (block.timestamp < p.eta) revert Errors.TimelockNotElapsed();
+        delete pendingWorkflow;
+        _setExpectedWorkflow(p.id, p.name, p.owner);
     }
 
     function setFeeRecipient(address newRecipient) external onlyRole(DEFAULT_ADMIN_ROLE) {

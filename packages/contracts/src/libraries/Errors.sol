@@ -11,6 +11,8 @@ library Errors {
     error NotForwarder();
     error UnauthorizedWorkflow();
     error ZeroWorkflowIdentity(); // workflowId or workflowName is zero (weakens the settlement gate)
+    error NoPendingChange(); // apply* called with nothing queued
+    error TimelockNotElapsed(); // apply* called before the timelock eta
 
     // --- State machine ---
     error BadState();

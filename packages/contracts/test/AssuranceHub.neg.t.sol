@@ -283,6 +283,27 @@ contract AssuranceHubNegativeTest is AssuranceHubBase {
         hub.unpause();
     }
 
+    // ---- config timelock (finding 004) ---- //
+
+    function test_Timelock_ForwarderChangeDelayed() public {
+        address nf = makeAddr("nf2");
+        vm.prank(admin);
+        hub.queueForwarder(nf);
+        vm.prank(admin);
+        vm.expectRevert(Errors.TimelockNotElapsed.selector);
+        hub.applyForwarder();
+        vm.warp(block.timestamp + hub.CONFIG_TIMELOCK() + 1);
+        vm.prank(admin);
+        hub.applyForwarder();
+        assertEq(hub.forwarder(), nf, "forwarder updated only after timelock");
+    }
+
+    function test_ApplyForwarder_NothingQueued_Reverts() public {
+        vm.prank(admin);
+        vm.expectRevert(Errors.NoPendingChange.selector);
+        hub.applyForwarder();
+    }
+
     // ---- §6.6 no admin can seize funds ---- //
 
     function test_NoAdminCanSeizeFunds() public {
@@ -291,13 +312,19 @@ contract AssuranceHubNegativeTest is AssuranceHubBase {
         uint256 admin0 = usdc.balanceOf(admin);
 
         vm.startPrank(admin);
-        hub.setForwarder(makeAddr("newForwarder"));
-        hub.setExpectedWorkflow(keccak256("wf2"), bytes10("wf2name000"), makeAddr("newOwner"));
+        hub.queueForwarder(makeAddr("newForwarder"));
+        hub.queueExpectedWorkflow(keccak256("wf2"), bytes10("wf2name000"), makeAddr("newOwner"));
         hub.setFeeRecipient(makeAddr("newFeeRecipient"));
         hub.grantRole(hub.EVALUATOR_ROLE(), attacker);
         hub.revokeRole(hub.EVALUATOR_ROLE(), attacker);
         hub.pause();
         hub.unpause();
+        vm.stopPrank();
+        // Applying the queued config after the timelock still moves no principal.
+        vm.warp(block.timestamp + hub.CONFIG_TIMELOCK() + 1);
+        vm.startPrank(admin);
+        hub.applyForwarder();
+        hub.applyExpectedWorkflow();
         vm.stopPrank();
 
         (uint256 c1, uint256 p1, uint256 f1, uint256 h1) = _bal();

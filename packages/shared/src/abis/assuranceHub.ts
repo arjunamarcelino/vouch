@@ -69,6 +69,19 @@ export const assuranceHubAbi = [
   },
   {
     "type": "function",
+    "name": "CONFIG_TIMELOCK",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "DEFAULT_ADMIN_ROLE",
     "inputs": [],
     "outputs": [
@@ -142,6 +155,20 @@ export const assuranceHubAbi = [
         "internalType": "uint256"
       }
     ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "applyExpectedWorkflow",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "applyForwarder",
+    "inputs": [],
     "outputs": [],
     "stateMutability": "nonpayable"
   },
@@ -537,6 +564,88 @@ export const assuranceHubAbi = [
   },
   {
     "type": "function",
+    "name": "pendingForwarder",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "value",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "eta",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "pendingWorkflow",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "id",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "name",
+        "type": "bytes10",
+        "internalType": "bytes10"
+      },
+      {
+        "name": "owner",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "eta",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "queueExpectedWorkflow",
+    "inputs": [
+      {
+        "name": "workflowId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "workflowName",
+        "type": "bytes10",
+        "internalType": "bytes10"
+      },
+      {
+        "name": "workflowOwner",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "queueForwarder",
+    "inputs": [
+      {
+        "name": "newForwarder",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "renounceRole",
     "inputs": [
       {
@@ -604,46 +713,10 @@ export const assuranceHubAbi = [
   },
   {
     "type": "function",
-    "name": "setExpectedWorkflow",
-    "inputs": [
-      {
-        "name": "workflowId",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      },
-      {
-        "name": "workflowName",
-        "type": "bytes10",
-        "internalType": "bytes10"
-      },
-      {
-        "name": "workflowOwner",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
     "name": "setFeeRecipient",
     "inputs": [
       {
         "name": "newRecipient",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "setForwarder",
-    "inputs": [
-      {
-        "name": "newForwarder",
         "type": "address",
         "internalType": "address"
       }
@@ -887,6 +960,37 @@ export const assuranceHubAbi = [
   },
   {
     "type": "event",
+    "name": "ExpectedWorkflowChangeQueued",
+    "inputs": [
+      {
+        "name": "workflowId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "workflowName",
+        "type": "bytes10",
+        "indexed": false,
+        "internalType": "bytes10"
+      },
+      {
+        "name": "workflowOwner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "eta",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "ExpectedWorkflowUpdated",
     "inputs": [
       {
@@ -925,6 +1029,25 @@ export const assuranceHubAbi = [
         "type": "address",
         "indexed": true,
         "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ForwarderChangeQueued",
+    "inputs": [
+      {
+        "name": "value",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "eta",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
       }
     ],
     "anonymous": false
@@ -1407,6 +1530,11 @@ export const assuranceHubAbi = [
   },
   {
     "type": "error",
+    "name": "NoPendingChange",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "NotClient",
     "inputs": []
   },
@@ -1449,6 +1577,11 @@ export const assuranceHubAbi = [
   {
     "type": "error",
     "name": "SubmissionExpired",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "TimelockNotElapsed",
     "inputs": []
   },
   {
