@@ -107,9 +107,10 @@ Everything is built and config-gated; a real tx is blocked only on credentials +
       guarantees and money-column domain checks are not enforced.
 - [ ] **🔴 B1:** Circle-side spending controls (per-tx/daily caps + allowlist) **active** — confirm field
       names — as the *primary* limit (app-side `policy.ts` is defense-in-depth only).
-- [ ] **🔴 B3:** `POST /quotes` fronted by auth + rate-limit before any funded run.
-- [ ] **H1:** redaction paths cover `CIRCLE_API_KEY`/`CIRCLE_ENTITY_SECRET`/`QUOTE_SIGNER_PK`; env-object
-      logging forbidden; redaction test passing. _(follow-up — see below)_
+- [x] **🔴 B3:** `POST /quotes` (+ `/verify`, `/pay`) fronted by Bearer auth + rate-limit — done (todo
+      `038`). Set `AGENT_API_KEY` before any funded run (unset = auth disabled, with a startup warning).
+- [x] **H1:** redaction paths cover `CIRCLE_API_KEY`/`CIRCLE_ENTITY_SECRET`/`QUOTE_SIGNER_PK` with a
+      redaction test — done (todo `039`).
 - [ ] `QUOTE_SIGNER_PK` (dedicated, ≠ payment wallet) set; `QUOTE_BOND_ESCROW_ADDRESS` = the **deployed
       QuoteBondEscrow contract** (the executor calls `postBond` via contract-execution; the pre-send
       guard refuses a non-contract / `0x…dEaD`).
@@ -124,13 +125,23 @@ Everything is built and config-gated; a real tx is blocked only on credentials +
       live docs; resolve via `chainForEnv`, never hard-code.
 - [ ] Real **DON-signature verification** on the payout path (ADR-004 B3 gap — not this agent, but the
       settlement contract) before mainnet money.
-- [ ] Wire `QuoteBondEscrow` via Circle DCW **contract-execution** (approve + `postBond`) for the
-      trust-minimized bond, replacing the custody-transfer fallback.
+- [x] Wire `QuoteBondEscrow` via Circle DCW **contract-execution** (`postBond`/`refundBond`), replacing
+      the bare-transfer path — done in review remediation (todo `032`); the wallet has no raw-transfer
+      method and a pre-send bytecode guard refuses non-contract destinations.
 - [ ] Key management: **KMS**, not `.env`, for `QUOTE_SIGNER_PK`; production Circle spending controls.
 - [ ] Mainnet USDC address + funded mainnet wallet; load/lag budgets tuned.
 
-## Remaining hardening follow-ups (from the multi-agent review, tracked)
+## Hardening from the multi-agent review (PR #3, todos 032–044)
 
-- Extend the pino redactor to the new secret env keys + a redaction test (security H1).
-- Auth + rate-limit on `POST /quotes` (security B3).
-- Wire escrow contract-execution for on-chain bond accounting + refund/release (trust-minimized bond).
+**Done:** escrow contract-execution wiring so the bond is recoverable, no raw-transfer method + a
+pre-send bytecode guard (`032`); rolling-24h spend cap (`033`); atomic nonce+reserve, `paramsHash`
+guard, lock-first idempotency (`034`); non-blocking submit + periodic reconcile (`035`); DB integrity
+constraints applied via `db:constraints` incl. append-only REVOKE (`036`); linearized trace append +
+best-effort-post-payment (`037`); auth + rate-limit on signing/pay routes (`038`); secret-env redaction
++ test (`039`); MCP transport + finality gate wired (`040`); shared-contract type cleanup (`041`); MCP
+`structuredContent` object-only (`042`); escrow conventions + slashing/release removed (`043`); P3
+cleanup batch (`044`). Learnings captured in `docs/solutions/`.
+
+**Still open (production, before mainnet):** real DON-signature verification on the payout path (ADR-004
+B3 — settlement contract, not this agent); KMS for `QUOTE_SIGNER_PK`; a shared-store rate limiter for
+multi-instance; DB-level concurrency integration tests against a live Postgres.
