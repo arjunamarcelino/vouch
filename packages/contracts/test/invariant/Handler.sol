@@ -138,15 +138,26 @@ contract Handler is Test {
         hub.openClaim(jobId, H);
     }
 
-    function report(uint256 seed, bool covered) public {
+    function report(uint256 seed, bool covered, uint256 amountSeed) public {
         uint256 jobId = _pick(seed);
         if (jobId == type(uint256).max || _st(jobId) != AssuranceHub.State.ClaimPending) return;
+        // Fuzz the covered credit across [1, GUARANTEE] so the partial-payout branch
+        // (payout to client + remainder to provider) is exercised (finding 006).
+        uint256 amount = covered ? bound(amountSeed, 1, GUARANTEE) : 0;
         vm.prank(forwarder);
-        hub.onReport(_meta(), abi.encode(block.chainid, address(hub), jobId, covered, GUARANTEE));
+        hub.onReport(_meta(), abi.encode(block.chainid, address(hub), jobId, covered, amount));
         if (covered) {
+            // Total out == payout + remainder == GUARANTEE regardless of the split.
             ghost_paidOut += GUARANTEE;
             ghost_liabilities -= GUARANTEE;
         }
+    }
+
+    function resolveTimeout(uint256 seed) public {
+        uint256 jobId = _pick(seed);
+        if (jobId == type(uint256).max || _st(jobId) != AssuranceHub.State.ClaimPending) return;
+        if (block.timestamp <= hub.getJob(jobId).claimResolutionDeadline) return;
+        hub.resolveClaimTimeout(jobId); // no funds move; returns to InitiallyApproved
     }
 
     function withdraw(uint256 seed) public {

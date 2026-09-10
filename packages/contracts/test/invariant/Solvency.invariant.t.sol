@@ -30,7 +30,7 @@ contract SolvencyInvariantTest is StdInvariant, Test {
         );
         handler = new Handler(hub, usdc, forwarder, evaluator, WORKFLOW_ID, WORKFLOW_NAME, workflowOwner);
 
-        bytes4[] memory sel = new bytes4[](10);
+        bytes4[] memory sel = new bytes4[](11);
         sel[0] = Handler.openJob.selector;
         sel[1] = Handler.accept.selector;
         sel[2] = Handler.submit.selector;
@@ -41,6 +41,7 @@ contract SolvencyInvariantTest is StdInvariant, Test {
         sel[7] = Handler.cancel.selector;
         sel[8] = Handler.expire.selector;
         sel[9] = Handler.warp.selector;
+        sel[10] = Handler.resolveTimeout.selector;
         targetSelector(FuzzSelector({addr: address(handler), selectors: sel}));
         targetContract(address(handler));
     }
