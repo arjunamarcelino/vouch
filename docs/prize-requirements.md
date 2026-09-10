@@ -55,9 +55,11 @@ with mainnet as a bonus tier only.
 | Uses **≥1 Circle Agent Stack component** | `apps/agent` (`src/wallet/agentWallet.ts`) | Circle **Agent Wallet** via `@circle-fin/developer-controlled-wallets` (primary) with `@circle-fin/cli` as the headline Agent Stack surface. Policy-bound wallet with per-tx/daily caps + destination allowlist. |
 | **USDC on Arc** | `packages/contracts` (`AssuranceHub` on Arc testnet) + `apps/agent` | The `AssuranceHub` settlement contract does all accounting in the **6-decimal ERC-20** USDC interface on Arc — escrowed task/service fees, provider-locked guarantee collateral, and capped service-credit payouts. Live balances shown in the UI; tx links to arcscan. |
 
-**Agent authority guardrail:** the agent **quotes and monitors** and holds only minimal USDC. It
-**never** settles guarantee payouts — settlement is the DON-signed path (see the Chainlink section
-and ADR-004). This is agent-as-transport, never agent-as-authority.
+**Agent authority guardrail:** the agent **quotes, monitors, and posts a refundable quote bond**
+(its own capital, via `QuoteBondEscrow` — ADR-008) from a policy-capped, minimal-balance wallet. It
+**never** moves guarantee principal / settles payouts — settlement is the DON-signed path (see the
+Chainlink section and ADR-004). This is agent-as-transport, never agent-as-authority. The real USDC
+action + wallet lifecycle are documented in `docs/arc-agent-stack.md`.
 
 ---
 

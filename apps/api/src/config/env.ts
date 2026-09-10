@@ -15,6 +15,9 @@ const envSchema = z
       .string()
       .regex(/^0x[a-fA-F0-9]{40}$/u)
       .optional(),
+    // Base URL of the agent's REST core (apps/agent). The dashboard reads quotes / decision traces
+    // via the agent, NOT by importing its DB repo (architecture P2 — no shared-DB coupling).
+    AGENT_URL: z.string().url().default("http://localhost:3002"),
   })
   .superRefine((e, ctx) => {
     // The block-lag freshness gate needs an RPC; no RPC ⇒ freshness unverifiable ⇒ must refuse.

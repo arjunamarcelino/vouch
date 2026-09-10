@@ -12,11 +12,14 @@
     "./abis": "./src/abis/index.ts",
     "./errors": "./src/errors.ts",
     "./logger": "./src/logger.ts",
-    "./graph": "./src/graph/client.ts"
+    "./graph": "./src/graph/client.ts",
+    "./reasonCodes": "./src/reasonCodes.ts",
+    "./bigint": "./src/bigint.ts"
   },
   "scripts": {
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test 'src/**/*.test.ts'"
   },
   "dependencies": {
     "pino": "^9.6.0",
@@ -24,6 +27,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@vouch/config": "workspace:*"
+    "@vouch/config": "workspace:*",
+    "tsx": "^4.19.2"
   }
 }

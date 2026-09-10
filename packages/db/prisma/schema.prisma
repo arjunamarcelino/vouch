@@ -64,3 +64,96 @@ model AgentRunLog {
   structuredLog Json
   at            DateTime    @default(now())
 }
+
+// =============================================================================
+// Agent risk-quotation & settlement operational store (plan §9.1)
+//
+// These are the agent's OWN advisory quote + payment-execution records — NOT
+// authoritative money/reputation state (that stays onchain + in The Graph).
+// Amounts are 6-dec USDC base-unit STRINGS; the daily-cap SUM casts with
+// `amount::numeric` under a per-wallet advisory lock (see quotesRepo; plan §0.5).
+// =============================================================================
+
+/// A signed, expiring quote the agent issued (plan §5). `quoteId == nonce`.
+model Quote {
+  quoteId                   String   @id // bytes32 hex; also the replay/escrow nonce
+  jobHash                   String // keccak256 of canonicalized job terms (anti-tamper)
+  provider                  String
+  scoringFnVersion          String
+  premiumBps                Int
+  recommendedGuaranteeLimit String
+  assuranceServiceFee       String
+  minProviderCollateral     String
+  confidenceLevel           String
+  reasonCodes               String[]
+  signature                 String
+  validAfter                BigInt
+  expiresAt                 BigInt
+  asOfBlock                 BigInt
+  /// Full signed QuoteCommitment (non-authoritative operational record) for exact reconstruction —
+  /// the flat columns above are for querying/indexing/the dashboard.
+  raw                       Json
+  createdAt                 DateTime @default(now())
+
+  intents   PaymentIntent[]
+  traces    DecisionTrace[]
+  usedNonce UsedNonce?
+}
+
+/// Crash-safe payment-execution intent (plan §6.4). `idempotencyKey` is a
+/// deterministic uuidv5; `paramsHash` guards against stale-amount reuse under a
+/// fixed key. OnDelete:Restrict — an audit/ledger row is never cascade-deleted.
+model PaymentIntent {
+  idempotencyKey String   @id
+  quote          Quote    @relation(fields: [quoteId], references: [quoteId], onDelete: Restrict)
+  quoteId        String
+  action         String // POST_BOND | REFUND_BOND
+  amount         String
+  token          String
+  destination    String // the escrow contract address
+  callData       String // viem-encoded contract call (postBond/refundBond) — replayed on reconcile
+  chainId        Int
+  paramsHash     String
+  status         String   @default("PLANNED") // PLANNED|SUBMITTING|SUBMITTED|CONFIRMED|FAILED|ABANDONED
+  providerRef    String?
+  txHash         String?
+  attempts       Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Rolling-24h cap SUM reads non-terminal intents (see quotesRepo.reserveIntent). A partial index
+  // `("createdAt") WHERE status NOT IN ('FAILED','ABANDONED')` backs it, added via raw migration SQL
+  // (Prisma can't express partial indexes — see manual/001-agent-constraints.sql).
+  @@index([status])
+  @@index([createdAt])
+}
+
+/// Append-only, per-quote hash-chained decision log (plan §9.1). The dual
+/// UNIQUE constraints DB-enforce chain linearization so concurrent writers can't
+/// fork the chain (data-integrity H1). Revoke UPDATE/DELETE at the DB role.
+model DecisionTrace {
+  id             String   @id @default(uuid())
+  quote          Quote    @relation(fields: [quoteId], references: [quoteId], onDelete: Restrict)
+  quoteId        String
+  seq            Int
+  correlationId  String
+  outcome        String // QUOTED | BOND_POSTED | BOND_REFUNDED | REJECTED
+  reasonCodes    String[]
+  scoreInputs    Json // allowlisted fields only — never raw request/config blobs
+  txHash         String?
+  prevRecordHash String
+  recordHash     String
+  createdAt      DateTime @default(now())
+
+  @@unique([quoteId, prevRecordHash])
+  @@unique([quoteId, seq])
+}
+
+/// Single consumption authority for a quote's nonce (plan §5). Consumed at
+/// ACTION time via INSERT ... ON CONFLICT DO NOTHING (atomic replay defense).
+model UsedNonce {
+  nonce   String   @id // == quoteId
+  quote   Quote    @relation(fields: [quoteId], references: [quoteId], onDelete: Restrict)
+  quoteId String   @unique
+  usedAt  DateTime @default(now())
+}

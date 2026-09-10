@@ -12,10 +12,17 @@ The Graph (live-data AI use-case) tracks.
 - Structured logging (pino) and a freshness guard that refuses to quote on stale/errored subgraph
   data.
 
+## Real financial action (ADR-008)
+- Posts and reclaims a **refundable quote bond** (its own capital) via `QuoteBondEscrow` from a
+  policy-capped, minimal-balance Circle wallet — the prize-qualifying real USDC action on Arc. See
+  `docs/arc-agent-stack.md`.
+
 ## Non-responsibilities
-- **Never settles guarantee payouts** and never holds settlement funds — that authority is the
-  DON-signed report path (see ADR-004). Agent-as-transport is allowed; agent-as-authority is
-  forbidden.
+- **Never moves guarantee principal / payout** — that authority is the DON-signed report path (see
+  ADR-004). Holding and refunding its **own** operational bond is permitted (ADR-008). Agent-as-
+  transport is allowed; agent-as-authority is forbidden.
+- Does **not** pay the assurance service fee (the client escrows it via `openJob`; ADR-005 §4). The
+  agent only *computes* it as an advisory quote field.
 - Not a source of truth for money or reputation.
 - Never fabricates transaction sends; unconfigured wallet/graph paths are guarded and explicit.
 - Does not run the confidential verification (that is `@vouch/cre-workflow`).

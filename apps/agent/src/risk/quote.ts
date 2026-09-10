@@ -6,6 +6,7 @@ import {
 } from "@vouch/shared/schemas";
 import { VouchError } from "@vouch/shared/errors";
 import type { ProviderRiskResult } from "../graph/client";
+import { NEW_PROVIDER_FACTOR_BPS, riskExposureFactorBps } from "./exposure";
 
 /**
  * Autonomous risk-quotation: turn LIVE indexed provider history into a recommended guarantee EXPOSURE
@@ -22,23 +23,7 @@ import type { ProviderRiskResult } from "../graph/client";
  * No `Number()`, `Math.*`, or `toFixed` — 6-dec USDC counters routinely exceed 2^53.
  */
 
-const FULL_FACTOR_BPS = 10_000n; // clean provider → full base cap
-const MIN_FACTOR_BPS = 3_000n; // riskiest provider floor → 30% of base (coverage never fully withdrawn)
-// Conservative exposure for a provider with no / insufficient trustworthy history (50% of base).
-const NEW_PROVIDER_FACTOR_BPS = 5_000n;
-// Risk weights (bps of risk signal → bps of exposure reduction).
-const UPHELD_WEIGHT = 2n;
-const RECENT_WEIGHT = 1n;
-
-function nonNeg(bps: bigint): bigint {
-  return bps < 0n ? 0n : bps; // -1 (undefined) contributes no risk
-}
-
-function clampFactor(bps: bigint): bigint {
-  if (bps < MIN_FACTOR_BPS) return MIN_FACTOR_BPS;
-  if (bps > FULL_FACTOR_BPS) return FULL_FACTOR_BPS;
-  return bps;
-}
+// Exposure-ceiling model is shared with score.ts in ./exposure (review 044 — single source of truth).
 
 function buildQuote(
   provider: string,
@@ -112,10 +97,10 @@ export function quoteGuarantee(
   }
 
   // Higher observed risk → LOWER exposure factor (exposure ceiling). Undefined rates reduce nothing.
-  const upheldBps = BigInt(features.upheldClaimRateBps);
-  const recentBps = BigInt(features.recentFailureRateBps);
-  const riskBps = nonNeg(upheldBps) * UPHELD_WEIGHT + nonNeg(recentBps) * RECENT_WEIGHT;
-  const exposureFactorBps = clampFactor(FULL_FACTOR_BPS - riskBps);
+  const exposureFactorBps = riskExposureFactorBps(
+    BigInt(features.upheldClaimRateBps),
+    BigInt(features.recentFailureRateBps),
+  );
   const cap = (baseCapBaseUnits * exposureFactorBps) / 10_000n;
 
   return buildQuote(

@@ -19,6 +19,10 @@ const STATUS = {
   CONFIG_INVALID: HttpStatus.INTERNAL_SERVER_ERROR,
   CHAIN_NOT_CONFIGURED: HttpStatus.INTERNAL_SERVER_ERROR,
   NOT_IMPLEMENTED: HttpStatus.NOT_IMPLEMENTED,
+  // agent quotation & settlement (plan §9.2 / §0.6)
+  QUOTE_INVALID: HttpStatus.BAD_REQUEST, // caller presented an expired/tampered quote
+  SPEND_POLICY_VIOLATION: HttpStatus.FORBIDDEN,
+  WRONG_CONTRACT: HttpStatus.INTERNAL_SERVER_ERROR, // chain/contract misconfig — treat as internal
 } satisfies Record<VouchErrorCode, HttpStatus>;
 
 @Catch(VouchError)
@@ -28,7 +32,10 @@ export class VouchErrorFilter implements ExceptionFilter {
     const status = STATUS[exception.code];
     // Don't leak internal config detail on 5xx-that-are-our-fault (031). SUBGRAPH_* are 503 with
     // useful operational messages ("N blocks behind") — those are safe to surface.
-    const internal = exception.code === "CONFIG_INVALID" || exception.code === "CHAIN_NOT_CONFIGURED";
+    const internal =
+      exception.code === "CONFIG_INVALID" ||
+      exception.code === "CHAIN_NOT_CONFIGURED" ||
+      exception.code === "WRONG_CONTRACT";
     res.status(status).json({
       error: exception.code,
       message: internal ? "Service temporarily unavailable" : exception.message,

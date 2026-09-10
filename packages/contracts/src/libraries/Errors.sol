@@ -41,4 +41,9 @@ library Errors {
     error BadMetadata(); // packed CRE metadata shorter than 62 bytes
     error SelfDealing(); // provider == client
     error AmountAboveCap(); // reported service credit exceeds the guarantee
+
+    // --- Quote bond escrow ---
+    error BondExists(); // a live bond already occupies this quoteId slot (replay backstop)
+    error BondNotFound(); // no live bond for this quoteId
+    error InvalidExpiry(); // bond expiry not in the future
 }

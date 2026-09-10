@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
+    "start:mcp": "AGENT_TRANSPORT=mcp tsx src/index.ts",
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test 'src/**/*.test.ts'",
@@ -13,7 +14,11 @@
   },
   "dependencies": {
     "@circle-fin/developer-controlled-wallets": "^10.8.0",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@vouch/db": "workspace:*",
     "@vouch/shared": "workspace:*",
+    "fastify": "^5.12.3",
+    "fastify-type-provider-zod": "^7.0.0",
     "viem": "catalog:",
     "zod": "catalog:"
   },

@@ -5,9 +5,10 @@ packages:
 # Single-version pins shared across the workspace. Reference with "catalog:" in
 # each package.json so zod/typescript never resolve to two conflicting copies
 # (see plan §17.7 — SDKs that pin zod can otherwise split the version).
+# zod bumped to ^4.6.1 alongside fastify-type-provider-zod@7 (agent REST adapter).
 catalog:
   typescript: "^5.9.2"
-  zod: "^4.0.5"
+  zod: "^4.6.1"
   viem: "^2.55.0"
 
 # pnpm 10 blocks dependency build scripts by default. Allowlist the ones we need
