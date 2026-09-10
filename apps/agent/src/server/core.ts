@@ -1,6 +1,6 @@
 import type { Address, LocalAccount } from "viem";
 import { VouchError, QuoteInvalidError } from "@vouch/shared/errors";
-import type { JobRequest, QuoteCommitment, PaymentAction } from "@vouch/shared/schemas";
+import type { JobRequest, QuoteCommitment, PaymentAction, PaymentStatus } from "@vouch/shared/schemas";
 import type { VerifyReasonCode } from "@vouch/shared/reasonCodes";
 import type { ProviderRiskResult } from "../graph/client";
 import { scoreQuote, type ScoreParams } from "../risk/score";
@@ -10,7 +10,6 @@ import {
   verifyCommitmentIntegrity,
   type CommitmentConfig,
 } from "../quote/commitment";
-import { idempotencyKey } from "../pay/idempotency";
 import { nextRecord, GENESIS_HASH, type TraceOutcome } from "../trace/log";
 import type { StoredIntent } from "../pay/executor";
 
@@ -44,7 +43,6 @@ export interface CoreStore {
     recordHash: string;
   }): Promise<void>;
   traceTip(quoteId: string): Promise<TraceTip | null>;
-  consumeNonce(nonce: string, quoteId: string): Promise<boolean>;
   getIntent(key: string): Promise<StoredIntent | null>;
   listTraces(quoteId: string): Promise<unknown[]>;
 }
@@ -130,7 +128,7 @@ export class AgentCore {
     quoteId: string,
     action: PaymentAction,
     correlationId: string,
-  ): Promise<{ idempotencyKey: string; status: string }> {
+  ): Promise<{ idempotencyKey: string; status: PaymentStatus }> {
     const commitment = await this.deps.store.getQuoteCommitment(quoteId);
     if (!commitment) throw new VouchError("VALIDATION_FAILED", `Unknown quoteId ${quoteId}`);
 
@@ -144,14 +142,11 @@ export class AgentCore {
         nowSeconds: this.deps.now(),
       });
       if (!v.valid) throw new QuoteInvalidError(v.reasonCodes);
-      // Consume the nonce atomically; a replayed post is a no-op.
-      const fresh = await this.deps.store.consumeNonce(commitment.nonce, quoteId);
-      if (!fresh) {
-        const existing = await this.deps.store.getIntent(idempotencyKey(quoteId, action));
-        return { idempotencyKey: idempotencyKey(quoteId, action), status: existing?.status ?? "ALREADY_POSTED" };
-      }
     }
 
+    // The executor consumes the quote nonce ATOMICALLY inside its reserve transaction (review 034), and
+    // is idempotent on the deterministic key — a replayed POST_BOND returns the existing intent, never
+    // a second on-chain call.
     const intent = await this.deps.payments.execute({
       quoteId,
       action,

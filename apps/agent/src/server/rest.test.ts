@@ -50,7 +50,6 @@ const RISK = {
 class MemStore implements CoreStore {
   q = new Map<string, QuoteCommitment>();
   traces: { quoteId: string; seq: number; recordHash: string }[] = [];
-  nonces = new Set<string>();
   async insertQuoteCommitment(c: QuoteCommitment) {
     this.q.set(c.quoteId, c);
   }
@@ -64,11 +63,6 @@ class MemStore implements CoreStore {
     const rows = this.traces.filter((t) => t.quoteId === id);
     const tip = rows[rows.length - 1];
     return tip ? { seq: tip.seq, recordHash: tip.recordHash } : null;
-  }
-  async consumeNonce(n: string) {
-    if (this.nonces.has(n)) return false;
-    this.nonces.add(n);
-    return true;
   }
   async getIntent() {
     return null as StoredIntent | null;

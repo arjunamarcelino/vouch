@@ -43,6 +43,8 @@ export interface ReserveArgs {
   callData: string;
   chainId: number;
   paramsHash: string;
+  /** Quote nonce (== quoteId) consumed atomically with the insert; set for POST_BOND (review 034). */
+  nonce?: string;
 }
 
 export type ReserveResult =
@@ -151,6 +153,8 @@ export class PaymentExecutor {
         token: this.deps.usdcToken,
         chainId: this.deps.chainId,
       }),
+      // POST_BOND consumes the quote's single-use nonce (== quoteId) atomically with the reserve.
+      nonce: req.action === "POST_BOND" ? req.quoteId : undefined,
     });
     if (!reserved.ok) throw new SpendPolicyViolationError(reserved.reasonCodes);
 

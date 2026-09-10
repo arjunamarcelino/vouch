@@ -53,7 +53,6 @@ const RISK: ProviderRiskResult = {
 class FakeStore implements CoreStore {
   quotes = new Map<string, QuoteCommitment>();
   traces: { quoteId: string; seq: number; outcome: string; recordHash: string }[] = [];
-  nonces = new Set<string>();
   intents = new Map<string, StoredIntent>();
   async insertQuoteCommitment(c: QuoteCommitment) {
     this.quotes.set(c.quoteId, c);
@@ -69,11 +68,6 @@ class FakeStore implements CoreStore {
     const tip = rows[rows.length - 1];
     return tip ? { seq: tip.seq, recordHash: tip.recordHash } : null;
   }
-  async consumeNonce(nonce: string) {
-    if (this.nonces.has(nonce)) return false;
-    this.nonces.add(nonce);
-    return true;
-  }
   async getIntent(key: string) {
     return this.intents.get(key) ?? null;
   }
@@ -82,12 +76,18 @@ class FakeStore implements CoreStore {
   }
 }
 
+// Models the real executor's idempotency: a repeated (quoteId, action) returns the prior intent
+// without a second on-chain call (dedup lives in the executor's reserve tx — review 034).
 class FakePayments implements PaymentDriver {
   calls = 0;
+  private byKey = new Map<string, StoredIntent>();
   async execute(req: { quoteId: string; action: "POST_BOND" | "REFUND_BOND"; amountBaseUnits: bigint; bondExpiresAt?: bigint }) {
+    const key = `key-${req.quoteId}-${req.action}`;
+    const seen = this.byKey.get(key);
+    if (seen) return seen;
     this.calls += 1;
     const intent: StoredIntent = {
-      idempotencyKey: `key-${req.quoteId}-${req.action}`,
+      idempotencyKey: key,
       quoteId: req.quoteId,
       action: req.action,
       amount: req.amountBaseUnits.toString(),
@@ -98,6 +98,7 @@ class FakePayments implements PaymentDriver {
       txHash: "tx-1",
       attempts: 1,
     };
+    this.byKey.set(key, intent);
     return intent;
   }
 }
@@ -148,11 +149,10 @@ test("executePayment POST_BOND consumes the nonce, moves the bond, and traces BO
   const res = await ag.executePayment(c.quoteId, "POST_BOND", "corr-1");
   assert.equal(res.status, "CONFIRMED");
   assert.equal(payments.calls, 1);
-  assert.ok(store.nonces.has(c.nonce));
   assert.ok(store.traces.some((t) => t.outcome === "BOND_POSTED"));
 });
 
-test("executePayment POST_BOND is a no-op on replay (nonce already consumed)", async () => {
+test("executePayment POST_BOND is a no-op on replay (executor idempotency)", async () => {
   const store = new FakeStore();
   const payments = new FakePayments();
   const ag = core(store, payments);

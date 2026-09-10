@@ -5,7 +5,6 @@ import {
   updateIntentStatus as repoUpdate,
   getIntent as repoGetIntent,
   findInFlightIntents as repoFindInFlight,
-  consumeNonce as repoConsumeNonce,
   appendTrace as repoAppendTrace,
   traceTip as repoTraceTip,
   listTraces as repoListTraces,
@@ -78,10 +77,6 @@ export class PrismaAgentStore implements CoreStore, IntentStore {
   async traceTip(quoteId: string): Promise<TraceTip | null> {
     const tip = await repoTraceTip(quoteId);
     return tip ? { seq: tip.seq, recordHash: tip.recordHash } : null;
-  }
-
-  async consumeNonce(nonce: string, quoteId: string): Promise<boolean> {
-    return repoConsumeNonce(nonce, quoteId);
   }
 
   async listTraces(quoteId: string): Promise<unknown[]> {

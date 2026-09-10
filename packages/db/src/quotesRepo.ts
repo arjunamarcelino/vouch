@@ -44,6 +44,8 @@ export interface NewIntent {
   callData: string; // viem-encoded contract call, replayed on reconcile
   chainId: number;
   paramsHash: string;
+  /** Quote nonce (== quoteId) to consume atomically with the intent insert; POST_BOND only. */
+  nonce?: string;
 }
 
 export interface SpendCaps {
@@ -75,22 +77,29 @@ export async function getQuoteRaw(quoteId: string): Promise<unknown | null> {
 export async function reserveIntent(intent: NewIntent, caps: SpendCaps): Promise<ReserveResult> {
   const amount = BigInt(intent.amount);
   if (amount > caps.perTxCap) return { ok: false, reasonCodes: ["PER_TX_CAP_EXCEEDED"] };
+  const { nonce, ...intentData } = intent;
 
   return prisma.$transaction(async (tx) => {
-    // Idempotent replay: existing intent → return it, do not re-reserve.
+    // Lock FIRST so the existing-check + create are serialized: concurrent identical keys can't both
+    // read null and then race on the PK insert (P2002) — review 034 M1.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${caps.walletLockKey})`;
+
     const existing = await tx.paymentIntent.findUnique({
       where: { idempotencyKey: intent.idempotencyKey },
     });
-    if (existing) return { ok: true, idempotencyKey: existing.idempotencyKey };
-
-    // Serialize concurrent reservations for this wallet.
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${caps.walletLockKey})`;
+    if (existing) {
+      // paramsHash drift guard: a retry under the same key with changed material params is refused,
+      // never silently deduped to a stale amount/destination — review 034 C2.
+      if (existing.paramsHash !== intent.paramsHash) {
+        return { ok: false, reasonCodes: ["PARAMS_MISMATCH"] };
+      }
+      return { ok: true, idempotencyKey: existing.idempotencyKey };
+    }
 
     // ROLLING 24h SUM over all NON-TERMINAL intents (PLANNED/SUBMITTING/SUBMITTED/CONFIRMED) — counts
-    // in-flight so ambiguous retries can't breach the cap, and windowed so the cap RESETS (without the
-    // `createdAt` filter this was a permanent lifetime cap that froze all payments — review 033).
-    // NOTE: scoped to a single agent wallet (per-wallet advisory lock above); add a wallet/token filter
-    // here if multi-wallet is ever supported.
+    // in-flight so ambiguous retries can't breach the cap, and windowed so the cap RESETS (review 033).
+    // Scoped to a single agent wallet (per-wallet advisory lock); add a wallet/token filter if
+    // multi-wallet is ever supported.
     const rows = await tx.$queryRaw<{ spent: string }[]>`
       SELECT COALESCE(SUM(amount::numeric), 0)::text AS spent
       FROM "PaymentIntent"
@@ -101,18 +110,18 @@ export async function reserveIntent(intent: NewIntent, caps: SpendCaps): Promise
       return { ok: false, reasonCodes: ["DAILY_CAP_EXCEEDED"] };
     }
 
-    await tx.paymentIntent.create({ data: { ...intent, status: "PLANNED", attempts: 0 } });
+    // Consume the quote nonce ATOMICALLY with the intent insert (POST_BOND): closes the crash window
+    // where the nonce was burned in a separate tx before the intent existed — review 034 M3.
+    if (nonce) {
+      await tx.$executeRaw`
+        INSERT INTO "UsedNonce" (nonce, "quoteId", "usedAt")
+        VALUES (${nonce}, ${intent.quoteId}, now())
+        ON CONFLICT (nonce) DO NOTHING`;
+    }
+
+    await tx.paymentIntent.create({ data: { ...intentData, status: "PLANNED", attempts: 0 } });
     return { ok: true, idempotencyKey: intent.idempotencyKey };
   });
-}
-
-/** Consume a quote's nonce atomically. Returns true if consumed, false if already used (replay). */
-export async function consumeNonce(nonce: string, quoteId: string): Promise<boolean> {
-  const inserted = await prisma.$executeRaw`
-    INSERT INTO "UsedNonce" (nonce, "quoteId", "usedAt")
-    VALUES (${nonce}, ${quoteId}, now())
-    ON CONFLICT (nonce) DO NOTHING`;
-  return inserted === 1;
 }
 
 export async function updateIntentStatus(
