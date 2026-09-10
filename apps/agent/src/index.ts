@@ -1,7 +1,8 @@
 import { createLogger } from "@vouch/shared/logger";
 import { NotImplementedError, VouchError } from "@vouch/shared/errors";
+import type { FreshnessConfig } from "@vouch/shared/graph";
 import { loadEnv } from "./config/env";
-import { assertSubgraphFresh, getProviderReputation } from "./graph/client";
+import { getProviderRisk } from "./graph/client";
 import { quoteGuarantee } from "./risk/quote";
 import { createArcClient, watchCoverageWindows } from "./monitor/watch";
 import { createAgentWallet } from "./wallet/agentWallet";
@@ -19,19 +20,17 @@ async function main(): Promise<void> {
 
   // --- The Graph: live reputation → risk quote (demo of the AI use-case) ---
   if (env.SUBGRAPH_URL) {
-    try {
-      await assertSubgraphFresh(env.SUBGRAPH_URL);
-      const sample = "0x0000000000000000000000000000000000000000";
-      const reputation = await getProviderReputation(env.SUBGRAPH_URL, sample);
-      if (reputation) {
-        const quote = quoteGuarantee(reputation, 100_000_000n); // 100 USDC base (6-dec)
-        log.info({ quote }, "risk quote produced from live subgraph data");
-      } else {
-        log.info({ sample }, "no reputation yet for sample provider");
-      }
-    } catch (err) {
-      logError("subgraph risk-quote", err);
-    }
+    const freshness: FreshnessConfig = {
+      rpcUrl: env.ARC_RPC_URL,
+      maxLagBlocks: env.SUBGRAPH_MAX_LAG_BLOCKS,
+      maxStalenessSeconds: env.SUBGRAPH_MAX_STALENESS_SECONDS,
+      deploymentId: env.SUBGRAPH_DEPLOYMENT_ID,
+    };
+    const sample = "0x1111111111111111111111111111111111111111";
+    // FAIL CLOSED: a subgraph error aborts THIS quote — never fall back to fabricated history.
+    const result = await getProviderRisk(env.SUBGRAPH_URL, sample, freshness);
+    const quote = quoteGuarantee(result, sample, 100_000_000n); // 100 USDC base (6-dec)
+    log.info({ quote }, "risk quote produced from live subgraph data");
   } else {
     log.warn("SUBGRAPH_URL not set — skipping risk quotation");
   }
