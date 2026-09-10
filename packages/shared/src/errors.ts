@@ -13,7 +13,16 @@ export type VouchErrorCode =
   | "SUBGRAPH_STALE"
   | "SUBGRAPH_LAGGING"
   | "VALIDATION_FAILED"
-  | "NOT_IMPLEMENTED";
+  | "NOT_IMPLEMENTED"
+  // --- agent quotation & settlement (plan §9.2) ---
+  // Thrown when a quote is used at ACTION time and fails verification. The returned verify-time
+  // reason codes (QUOTE_EXPIRED / QUOTE_REPLAY / JOB_PARAMS_ALTERED / …) are carried in `cause`;
+  // verifyQuote itself returns them as data and does NOT throw (see ./reasonCodes).
+  | "QUOTE_INVALID"
+  // Payment executor guards (plan §6).
+  | "SPEND_POLICY_VIOLATION"
+  | "WRONG_CONTRACT"
+  | "DUPLICATE_SUBMISSION";
 
 export class VouchError extends Error {
   readonly code: VouchErrorCode;
@@ -37,5 +46,31 @@ export class ConfigInvalidError extends VouchError {
   constructor(message: string, cause?: unknown) {
     super("CONFIG_INVALID", message, cause);
     this.name = "ConfigInvalidError";
+  }
+}
+
+/**
+ * Thrown when a quote is CONSUMED at action time but fails verification. `reasonCodes` carries the
+ * pure-verifier verdict (expired / replay / altered / bad-signer / chain-mismatch). verifyQuote
+ * itself returns these as data; only the action path (executor) throws.
+ */
+export class QuoteInvalidError extends VouchError {
+  readonly reasonCodes: readonly string[];
+
+  constructor(reasonCodes: readonly string[], message?: string) {
+    super("QUOTE_INVALID", message ?? `Quote invalid: ${reasonCodes.join(", ")}`, reasonCodes);
+    this.name = "QuoteInvalidError";
+    this.reasonCodes = reasonCodes;
+  }
+}
+
+/** Thrown by the spend-policy gate before a transfer is constructed (plan §6.2). */
+export class SpendPolicyViolationError extends VouchError {
+  readonly reasonCodes: readonly string[];
+
+  constructor(reasonCodes: readonly string[]) {
+    super("SPEND_POLICY_VIOLATION", `Spend policy violation: ${reasonCodes.join(", ")}`, reasonCodes);
+    this.name = "SpendPolicyViolationError";
+    this.reasonCodes = reasonCodes;
   }
 }

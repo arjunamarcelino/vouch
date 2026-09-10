@@ -12,7 +12,9 @@
     "./abis": "./src/abis/index.ts",
     "./errors": "./src/errors.ts",
     "./logger": "./src/logger.ts",
-    "./graph": "./src/graph/client.ts"
+    "./graph": "./src/graph/client.ts",
+    "./reasonCodes": "./src/reasonCodes.ts",
+    "./bigint": "./src/bigint.ts"
   },
   "scripts": {
     "lint": "eslint .",

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { VouchError } from "../errors";
+import { reasonCodeSchema, confidenceLevelSchema } from "../reasonCodes";
 
 /**
  * Runtime boundary schemas shared across web / api / agent.
@@ -90,3 +91,168 @@ export const riskQuoteSchema = z.object({
   rationale: z.string(),
 });
 export type RiskQuote = z.infer<typeof riskQuoteSchema>;
+
+// ============================================================================
+// v2 — full transparent pricing model + signed expiring commitment (plan §4/§5)
+// ============================================================================
+
+/** bytes32 hex (quoteId / jobHash / nonce). */
+const hex32 = z.string().regex(/^0x[a-fA-F0-9]{64}$/u, "must be a 0x-prefixed 32-byte hex string");
+/** 65-byte ECDSA signature hex (r‖s‖v). */
+const hexSignature = z
+  .string()
+  .regex(/^0x[a-fA-F0-9]{130}$/u, "must be a 0x-prefixed 65-byte signature");
+
+/** v2 scoring function version — new output shape (do NOT reuse the v1 literal — TS review §1). */
+export const SCORING_FN_VERSION_V2 = "2.0.0" as const;
+
+/** Task category — a documented closed set feeding the deterministic model (plan §4.1). */
+export const taskCategorySchema = z.enum([
+  "CODE_FIX",
+  "FEATURE",
+  "REFACTOR",
+  "AUDIT",
+  "OTHER",
+]);
+export type TaskCategory = z.infer<typeof taskCategorySchema>;
+
+/** How a covered failure is verified — affects confidence, not price directly (plan §4.1). */
+export const verificationMethodSchema = z.enum([
+  "PUBLIC_TESTS",
+  "PRIVATE_REGRESSION",
+  "MANUAL_REVIEW",
+  "HYBRID",
+]);
+export type VerificationMethod = z.infer<typeof verificationMethodSchema>;
+
+/**
+ * A quote REQUEST for a specific provider + proposed job (plan §4.1). Every field the deterministic
+ * score reads; the exact terms are canonicalized + hashed into the quote's `jobHash` (anti-tamper §5).
+ */
+export const jobRequestSchema = z.object({
+  provider: hexAddress,
+  payer: hexAddress,
+  payee: hexAddress,
+  token: hexAddress,
+  taskFee: baseUnits,
+  requestedGuarantee: baseUnits,
+  providerCollateral: baseUnits,
+  coverageDurationSeconds: uintString,
+  taskCategory: taskCategorySchema,
+  verificationMethod: verificationMethodSchema,
+});
+export type JobRequest = z.infer<typeof jobRequestSchema>;
+
+/**
+ * Output of the deterministic pricing model (plan §4). PURE integer bps / base units — every field
+ * capped, stamped with `asOfBlock` + `scoringFnVersion` for reproducibility, plus machine-readable
+ * reason codes. The LLM may only fill `rationale`; it never sets an amount (§4.4).
+ */
+export const riskScoreSchema = z.object({
+  provider: hexAddress,
+  recommendedGuaranteeLimit: baseUnits,
+  assuranceServiceFee: baseUnits,
+  minProviderCollateral: baseUnits,
+  premiumBps: uintString,
+  exposureFactorBps: uintString,
+  upheldClaimRateBps: ratioBpsString,
+  recentFailureRateBps: ratioBpsString,
+  confidenceLevel: confidenceLevelSchema,
+  dataConfidence: dataConfidenceSchema,
+  asOfBlock: uintString,
+  scoringFnVersion: z.literal(SCORING_FN_VERSION_V2),
+  reasonCodes: z.array(reasonCodeSchema),
+  rationale: z.string(),
+});
+export type RiskScore = z.infer<typeof riskScoreSchema>;
+
+/**
+ * A signed, expiring quote commitment (plan §5). Wraps the score with EIP-712 commitment fields.
+ * `nonce == quoteId` (single canonical replay/escrow key — security M2). `jobHash` binds the exact
+ * job terms (altered-param protection). `signature` is over the EIP-712 typed data.
+ */
+export const quoteCommitmentSchema = z.object({
+  quoteId: hex32,
+  jobHash: hex32,
+  nonce: hex32,
+  score: riskScoreSchema,
+  validAfter: uintString,
+  expiresAt: uintString,
+  signature: hexSignature,
+});
+export type QuoteCommitment = z.infer<typeof quoteCommitmentSchema>;
+
+/**
+ * Read-side union across scoring-function versions so a stored v1 quote still parses after the v2
+ * bump (TS review §1). Producers pin their own literal; readers accept the union.
+ */
+export const anyRiskQuoteSchema = z.discriminatedUnion("scoringFnVersion", [
+  riskQuoteSchema,
+  riskScoreSchema,
+]);
+export type AnyRiskQuote = z.infer<typeof anyRiskQuoteSchema>;
+
+// ---- payment intent (crash-safe executor state machine, plan §6.4) ----
+
+export const paymentActionSchema = z.enum(["POST_BOND", "REFUND_BOND", "CONSUME_BOND"]);
+export type PaymentAction = z.infer<typeof paymentActionSchema>;
+
+export const paymentStatusSchema = z.enum([
+  "PLANNED",
+  "SUBMITTING",
+  "SUBMITTED",
+  "CONFIRMED",
+  "FAILED",
+  "ABANDONED",
+]);
+export type PaymentStatus = z.infer<typeof paymentStatusSchema>;
+
+export const paymentIntentSchema = z.object({
+  idempotencyKey: z.string().uuid(),
+  quoteId: hex32,
+  action: paymentActionSchema,
+  amount: baseUnits,
+  token: hexAddress,
+  destination: hexAddress,
+  chainId: z.number().int().positive(),
+  paramsHash: hex32,
+  status: paymentStatusSchema,
+  providerRef: z.string().nullable(),
+  txHash: z.string().nullable(),
+  attempts: z.number().int().nonnegative(),
+});
+export type PaymentIntent = z.infer<typeof paymentIntentSchema>;
+
+/** Circle developer-controlled-wallets transaction lifecycle (verified via Context7). */
+export const transactionStatusSchema = z.enum([
+  "INITIATED",
+  "CLEARED",
+  "QUEUED",
+  "SENT",
+  "CONFIRMED",
+  "COMPLETE",
+  "FAILED",
+  "DENIED",
+  "CANCELLED",
+]);
+export type TransactionStatus = z.infer<typeof transactionStatusSchema>;
+
+/**
+ * A hash-chained decision record (plan §9.1). `scoreInputs` lets an auditor recompute the
+ * deterministic score; `reasonCodes` are enums; `recordHash`/`prevRecordHash` make the per-quote
+ * chain tamper-evident. Only allowlisted fields are persisted — never raw request/config blobs
+ * (security M5).
+ */
+export const decisionTraceSchema = z.object({
+  id: z.string().uuid(),
+  quoteId: hex32,
+  seq: z.number().int().nonnegative(),
+  correlationId: z.string(),
+  outcome: z.enum(["QUOTED", "BOND_POSTED", "BOND_REFUNDED", "REJECTED"]),
+  reasonCodes: z.array(reasonCodeSchema),
+  scoreInputs: z.record(z.string(), z.string()),
+  txHash: z.string().nullable(),
+  prevRecordHash: hex32,
+  recordHash: hex32,
+});
+export type DecisionTrace = z.infer<typeof decisionTraceSchema>;
