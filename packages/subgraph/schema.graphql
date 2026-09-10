@@ -53,10 +53,11 @@ type Protocol @entity(immutable: false) {
 }
 
 """
-Provider reputation aggregate (MUTABLE, id = address). Holds raw BigInt counters (the single source
-of truth for "current" reputation) plus the last-materialized bps (internal diff source so
-ProviderRiskSnapshot appends only on change — plan §3.5.2). Consumers read the bps from the latest
-ProviderRiskSnapshot, not from here.
+Provider reputation aggregate (MUTABLE, id = address). Holds raw BigInt counters plus the CURRENT
+denormalized risk view (`last*` fields). Consumers read current risk features straight off Provider
+for an O(1) lookup (no snapshot-partition sort — 023); `ProviderRiskSnapshot` is the immutable
+HISTORICAL series (time-travel / charts). The `last*` fields double as the on-change diff source so
+the snapshot appends only when a value changes (plan §3.5.2).
 """
 type Provider @entity(immutable: false) {
   id: Bytes!
@@ -86,13 +87,19 @@ type Provider @entity(immutable: false) {
   firstSeenBlock: BigInt!
   lastUpdatedBlock: BigInt!
 
-  # ---- internal diff source for on-change snapshotting (plan §3.5.2) ----
+  # ---- CURRENT denormalized risk view (consumers read these; also the on-change diff source) ----
   lastUpheldClaimRateBps: BigInt!
   lastClaimFrequencyBps: BigInt!
   lastAverageCoverageRatioBps: BigInt!
   lastPayoutToCoveredValueBps: BigInt!
-  "Closed coverage windows at the last snapshot (jobsCompleted + contestedCompletions + claimsUpheld) — a completion changes it so completions materialize a snapshot (029)."
+  "Resolved-claim sample size behind the current rates."
+  lastSampleSize: BigInt!
+  "Whether the current rates are backed by enough closed-window history (011)."
+  lastHasEnoughHistory: Boolean!
+  "Closed coverage windows (jobsCompleted + contestedCompletions + claimsUpheld) — a completion changes it so completions materialize a snapshot (029)."
   lastClosedWindows: BigInt!
+  "Whether at least one ProviderRiskSnapshot has been materialized (forces the first snapshot even when all ratios are the -1 sentinel)."
+  snapshotInitialized: Boolean!
 
   jobs: [Job!]! @derivedFrom(field: "provider")
   claims: [Claim!]! @derivedFrom(field: "provider")

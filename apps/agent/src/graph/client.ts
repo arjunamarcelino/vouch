@@ -3,7 +3,14 @@ import {
   providerRiskFeaturesSchema,
   type ProviderRiskEnvelope,
 } from "@vouch/shared/schemas";
-import { assertFresh, querySubgraph, type FreshnessConfig } from "@vouch/shared/graph";
+import {
+  checkFreshness,
+  getChainHead,
+  querySubgraph,
+  META_SELECTION,
+  type FreshnessConfig,
+  type Meta,
+} from "@vouch/shared/graph";
 import { VouchError } from "@vouch/shared/errors";
 
 /**
@@ -19,19 +26,21 @@ export type ProviderRiskResult =
 const TRAILING_DAYS = 30;
 const SECONDS_PER_DAY = 86_400;
 
+// Single request: _meta rides with the data so freshness + data share ONE block (015). Reads the
+// CURRENT denormalized risk view off Provider (no snapshot-partition sort — 023). No @derivedFrom
+// list selections; every list is bounded.
 const RISK_QUERY = `
   query ProviderRisk($id: ID!, $since: BigInt!) {
+    ${META_SELECTION}
     provider(id: $id) {
       id
       jobsCompleted
       totalCoveredAmount
       claimsUpheld
-      snapshots(orderBy: blockNumber, orderDirection: desc, first: 1) {
-        upheldClaimRateBps
-        averageCoverageRatioBps
-        sampleSize
-        hasEnoughHistory
-      }
+      lastUpheldClaimRateBps
+      lastAverageCoverageRatioBps
+      lastSampleSize
+      lastHasEnoughHistory
       dailyMetrics(where: { dayStartTimestamp_gte: $since }, orderBy: dayStartTimestamp, orderDirection: desc, first: 31) {
         upheldFailures
         closedWindows
@@ -40,12 +49,6 @@ const RISK_QUERY = `
   }
 `;
 
-interface RawSnapshot {
-  upheldClaimRateBps: string;
-  averageCoverageRatioBps: string;
-  sampleSize: string;
-  hasEnoughHistory: boolean;
-}
 interface RawDaily {
   upheldFailures: string;
   closedWindows: string;
@@ -55,7 +58,10 @@ interface RawProvider {
   jobsCompleted: string;
   totalCoveredAmount: string;
   claimsUpheld: string;
-  snapshots: RawSnapshot[];
+  lastUpheldClaimRateBps: string;
+  lastAverageCoverageRatioBps: string;
+  lastSampleSize: string;
+  lastHasEnoughHistory: boolean;
   dailyMetrics: RawDaily[];
 }
 
@@ -88,39 +94,45 @@ export async function getProviderRisk(
   provider: string,
   freshness: FreshnessConfig,
 ): Promise<ProviderRiskResult> {
-  // Fail closed FIRST — throws if the index is unavailable/lagging/stale (plan §6).
-  const fresh = await assertFresh(url, freshness);
-  const latestIndexedBlock = fresh.latestIndexedBlock.toString();
-
+  if (!freshness.rpcUrl) {
+    // No RPC ⇒ lag unverifiable ⇒ blind ⇒ refuse (security F1), same as assertFresh.
+    throw new VouchError("SUBGRAPH_LAGGING", "Cannot verify freshness: RPC URL not configured");
+  }
   const nowSeconds = freshness.nowSeconds ?? Math.floor(Date.now() / 1000);
   const since = (nowSeconds - TRAILING_DAYS * SECONDS_PER_DAY).toString();
 
-  const data = await querySubgraph<{ provider: RawProvider | null }>(
-    url,
-    RISK_QUERY,
-    { id: provider.toLowerCase(), since },
-    freshness.timeoutMs,
-  );
+  // One subgraph request (data + _meta) and the chain head fetched CONCURRENTLY (015 / 023).
+  const [data, chainHead] = await Promise.all([
+    querySubgraph<{ _meta: Meta | null; provider: RawProvider | null }>(
+      url,
+      RISK_QUERY,
+      { id: provider.toLowerCase(), since },
+      freshness.timeoutMs,
+    ),
+    getChainHead(freshness.rpcUrl, freshness.timeoutMs ?? 10_000),
+  ]);
 
-  // Genuinely absent AND the index is fresh (asserted above) ⇒ new provider. Never "blind".
+  // Fail closed on the _meta that came back WITH the data (same block) — throws if stale/lagging.
+  const fresh = checkFreshness(data._meta, chainHead, freshness);
+  const latestIndexedBlock = fresh.latestIndexedBlock.toString();
+
+  // Genuinely absent AND the index is fresh ⇒ new provider. Never "blind".
   if (data.provider === null || data.provider === undefined) {
     return { kind: "new-provider", latestIndexedBlock };
   }
 
   const p = data.provider;
-  const snap = p.snapshots.length > 0 ? p.snapshots[0] : null;
-
   const features = parseOrThrow(
     providerRiskFeaturesSchema,
     {
       completedJobs: p.jobsCompleted,
-      upheldClaimRateBps: snap ? snap.upheldClaimRateBps : "-1",
+      upheldClaimRateBps: p.lastUpheldClaimRateBps,
       recentFailureRateBps: recentFailureRateBps(p.dailyMetrics).toString(),
-      averageCoverageRatioBps: snap ? snap.averageCoverageRatioBps : "-1",
+      averageCoverageRatioBps: p.lastAverageCoverageRatioBps,
       totalCoveredAmount: p.totalCoveredAmount,
       totalPaidClaims: p.claimsUpheld,
-      sampleSize: snap ? snap.sampleSize : "0",
-      hasEnoughHistory: snap ? snap.hasEnoughHistory : false,
+      sampleSize: p.lastSampleSize,
+      hasEnoughHistory: p.lastHasEnoughHistory,
     },
     "provider risk features",
   );

@@ -34,9 +34,6 @@ const ONE = BigInt.fromI32(1);
 const ZERO = BigInt.zero();
 const BPS = BigInt.fromI32(10000);
 const BPS_UNDEFINED = BigInt.fromI32(-1);
-// Distinct "never materialized" marker for the diff source so a provider's FIRST snapshot is always
-// written even when every ratio is still undefined (-1). Never appears in a stored snapshot.
-const BPS_NEVER = BigInt.fromI32(-2);
 const SECONDS_PER_DAY = BigInt.fromI32(86400);
 // Minimum closed coverage windows before a provider's claim-rate features are treated as meaningful (011).
 const MIN_CLOSED_WINDOWS = BigInt.fromI32(3);
@@ -116,11 +113,14 @@ function getOrCreateProvider(address: Address, event: ethereum.Event): Provider 
     p.totalFeesEarned = ZERO;
     p.totalServiceFees = ZERO;
     p.firstSeenBlock = event.block.number;
-    p.lastUpheldClaimRateBps = BPS_NEVER;
-    p.lastClaimFrequencyBps = BPS_NEVER;
-    p.lastAverageCoverageRatioBps = BPS_NEVER;
-    p.lastPayoutToCoveredValueBps = BPS_NEVER;
+    p.lastUpheldClaimRateBps = BPS_UNDEFINED;
+    p.lastClaimFrequencyBps = BPS_UNDEFINED;
+    p.lastAverageCoverageRatioBps = BPS_UNDEFINED;
+    p.lastPayoutToCoveredValueBps = BPS_UNDEFINED;
+    p.lastSampleSize = ZERO;
+    p.lastHasEnoughHistory = false;
     p.lastClosedWindows = ZERO;
+    p.snapshotInitialized = false;
 
     let protocol = getOrCreateProtocol(event);
     protocol.totalProviders = protocol.totalProviders.plus(ONE);
@@ -208,12 +208,17 @@ function materializeRiskSnapshot(provider: Provider, event: ethereum.Event): voi
   let payoutToCoveredValueBps = toBps(provider.totalPayoutAmount, provider.totalCoveredAmount);
 
   let changed =
+    !provider.snapshotInitialized ||
     upheldClaimRateBps != provider.lastUpheldClaimRateBps ||
     claimFrequencyBps != provider.lastClaimFrequencyBps ||
     averageCoverageRatioBps != provider.lastAverageCoverageRatioBps ||
     payoutToCoveredValueBps != provider.lastPayoutToCoveredValueBps ||
     closedWindows != provider.lastClosedWindows;
   if (!changed) return;
+
+  // Enough history = at least MIN_CLOSED_WINDOWS closed coverage windows (real outcomes), NOT a single
+  // approval — so a provider with no track record isn't scored as maximally trustworthy (011).
+  let hasEnoughHistory = closedWindows.ge(MIN_CLOSED_WINDOWS);
 
   let snapshot = new ProviderRiskSnapshot(
     provider.id.concat(event.transaction.hash).concatI32(event.logIndex.toI32()),
@@ -227,19 +232,21 @@ function materializeRiskSnapshot(provider: Provider, event: ethereum.Event): voi
   snapshot.totalCoveredAmount = provider.totalCoveredAmount;
   snapshot.totalPayoutAmount = provider.totalPayoutAmount;
   snapshot.sampleSize = claimsResolved;
-  // Enough history = at least MIN_CLOSED_WINDOWS closed coverage windows (real outcomes), NOT a single
-  // approval — so a provider with no track record isn't scored as maximally trustworthy (011).
-  snapshot.hasEnoughHistory = closedWindows.ge(MIN_CLOSED_WINDOWS);
+  snapshot.hasEnoughHistory = hasEnoughHistory;
   snapshot.blockNumber = event.block.number;
   snapshot.timestamp = event.block.timestamp;
   snapshot.txHash = event.transaction.hash;
   snapshot.save();
 
+  // Denormalize the CURRENT risk view onto Provider so the agent reads it O(1) (no snapshot sort — 023).
   provider.lastUpheldClaimRateBps = upheldClaimRateBps;
   provider.lastClaimFrequencyBps = claimFrequencyBps;
   provider.lastAverageCoverageRatioBps = averageCoverageRatioBps;
   provider.lastPayoutToCoveredValueBps = payoutToCoveredValueBps;
+  provider.lastSampleSize = claimsResolved;
+  provider.lastHasEnoughHistory = hasEnoughHistory;
   provider.lastClosedWindows = closedWindows;
+  provider.snapshotInitialized = true;
   provider.save();
 }
 

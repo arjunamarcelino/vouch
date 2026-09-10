@@ -33,11 +33,14 @@ export interface Freshness {
   lagBlocks: bigint;
 }
 
-interface Meta {
+export interface Meta {
   block: { number: number; timestamp: number | null };
   deployment: string;
   hasIndexingErrors: boolean;
 }
+
+/** GraphQL selection for `_meta`, folded into load-bearing reads so data + freshness share a block. */
+export const META_SELECTION = `_meta { block { number timestamp } deployment hasIndexingErrors }`;
 
 /**
  * Redact to ORIGIN only. The Graph's decentralized gateway carries the API key in the URL *path*
@@ -90,8 +93,21 @@ export async function querySubgraph<T>(
   return body.data;
 }
 
-/** Read the chain head via JSON-RPC. Throws SUBGRAPH_LAGGING when the head is unknowable. */
-async function getChainHead(rpcUrl: string, timeoutMs: number): Promise<bigint> {
+// Short-TTL chain-head cache (023): the head moves at block cadence, so re-fetching eth_blockNumber
+// on every quote is wasted RPC load. TTL is far below the staleness budget, so freshness is intact.
+const CHAIN_HEAD_TTL_MS = 1500;
+const chainHeadCache = new Map<string, { value: bigint; expiresAt: number }>();
+
+/** Read the chain head via JSON-RPC (short-TTL cached). Throws SUBGRAPH_LAGGING when unknowable. */
+export async function getChainHead(rpcUrl: string, timeoutMs: number): Promise<bigint> {
+  const cached = chainHeadCache.get(rpcUrl);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+  const value = await fetchChainHead(rpcUrl, timeoutMs);
+  chainHeadCache.set(rpcUrl, { value, expiresAt: Date.now() + CHAIN_HEAD_TTL_MS });
+  return value;
+}
+
+async function fetchChainHead(rpcUrl: string, timeoutMs: number): Promise<bigint> {
   let res: Response;
   try {
     res = await fetch(rpcUrl, {
@@ -118,7 +134,7 @@ async function getChainHead(rpcUrl: string, timeoutMs: number): Promise<bigint> 
   }
 }
 
-const META_QUERY = `{ _meta { block { number timestamp } deployment hasIndexingErrors } }`;
+const META_QUERY = `{ ${META_SELECTION} }`;
 
 /** Convert a subgraph numeric field to bigint, keeping malformed values inside the typed taxonomy. */
 function toBlockBigInt(value: unknown, what: string): bigint {
@@ -133,32 +149,26 @@ function toBlockBigInt(value: unknown, what: string): bigint {
 }
 
 /**
- * Assert the subgraph is fresh enough to trust for a money-moving quote. Throws (fail-closed) on any
- * failure; returns FRESH freshness on success. Distinguishes "subgraph behind" (sync lag) from
- * "chain quiet" — a stale chain head alone does not refuse (architecture review HIGH).
+ * PURE freshness decision over an already-fetched `_meta` + chain head. Throws (fail-closed) on any
+ * failure; returns FRESH on success. Distinguishes "subgraph behind" (sync lag) from "chain quiet" —
+ * a stale chain head alone does not refuse (architecture review HIGH). Reusable by consumers that fold
+ * `_meta` into their data query (so data + freshness share one block — 015).
  */
-export async function assertFresh(url: string, cfg: FreshnessConfig): Promise<Freshness> {
-  if (!cfg.rpcUrl) {
-    // No RPC ⇒ lag is unverifiable ⇒ blind ⇒ refuse (security F1).
-    throw new VouchError("SUBGRAPH_LAGGING", "Cannot verify freshness: RPC URL not configured");
-  }
-  const timeoutMs = cfg.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-  const { _meta } = await querySubgraph<{ _meta: Meta | null }>(url, META_QUERY, {}, timeoutMs);
-  if (_meta === null || _meta === undefined) {
+export function checkFreshness(meta: Meta | null, chainHead: bigint, cfg: FreshnessConfig): Freshness {
+  if (meta === null || meta === undefined) {
     throw new VouchError("SUBGRAPH_UNAVAILABLE", "Subgraph returned no _meta");
   }
-  if (_meta.hasIndexingErrors) {
+  if (meta.hasIndexingErrors) {
     throw new VouchError("SUBGRAPH_STALE", "Subgraph reports indexing errors");
   }
-  if (cfg.deploymentId && _meta.deployment !== cfg.deploymentId) {
+  if (cfg.deploymentId && meta.deployment !== cfg.deploymentId) {
     throw new VouchError(
       "SUBGRAPH_UNAVAILABLE",
       `Subgraph deployment mismatch (expected ${cfg.deploymentId})`,
     );
   }
 
-  const latestIndexedBlock = toBlockBigInt(_meta.block.number, "_meta.block.number");
-  const chainHead = await getChainHead(cfg.rpcUrl, timeoutMs);
+  const latestIndexedBlock = toBlockBigInt(meta.block.number, "_meta.block.number");
   const lagBlocks = chainHead - latestIndexedBlock;
   if (lagBlocks < 0n) {
     // RPC behind the indexer — inconsistent view; refuse rather than clamp (security F11).
@@ -174,7 +184,7 @@ export async function assertFresh(url: string, cfg: FreshnessConfig): Promise<Fr
   // Wall-clock staleness is a secondary signal RELATIVE to sync lag: only meaningful when the
   // subgraph is also block-behind. A quiet chain (old head, zero lag) must NOT refuse.
   const nowSeconds = cfg.nowSeconds ?? Math.floor(Date.now() / 1000);
-  const metaTs = _meta.block.timestamp;
+  const metaTs = meta.block.timestamp;
   if (metaTs !== null && lagBlocks > 0n) {
     const staleness = nowSeconds - metaTs;
     if (staleness > cfg.maxStalenessSeconds) {
@@ -186,4 +196,22 @@ export async function assertFresh(url: string, cfg: FreshnessConfig): Promise<Fr
   }
 
   return { dataConfidence: "FRESH", latestIndexedBlock, chainHead, lagBlocks };
+}
+
+/**
+ * Fetch `_meta` + chain head and assert freshness. For callers (e.g. the API health probe) that don't
+ * fold `_meta` into a data query. Consumers on the hot path should fold `META_SELECTION` into their
+ * query and call `checkFreshness` directly to keep data + freshness on one block (015).
+ */
+export async function assertFresh(url: string, cfg: FreshnessConfig): Promise<Freshness> {
+  if (!cfg.rpcUrl) {
+    // No RPC ⇒ lag is unverifiable ⇒ blind ⇒ refuse (security F1).
+    throw new VouchError("SUBGRAPH_LAGGING", "Cannot verify freshness: RPC URL not configured");
+  }
+  const timeoutMs = cfg.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const [{ _meta }, chainHead] = await Promise.all([
+    querySubgraph<{ _meta: Meta | null }>(url, META_QUERY, {}, timeoutMs),
+    getChainHead(cfg.rpcUrl, timeoutMs),
+  ]);
+  return checkFreshness(_meta, chainHead, cfg);
 }

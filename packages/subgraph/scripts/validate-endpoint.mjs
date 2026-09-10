@@ -48,6 +48,8 @@ async function main() {
   if (!SUBGRAPH_URL) fail("SUBGRAPH_URL not set");
   if (!HEX_ADDRESS.test(providerArg)) fail(`bad provider address: ${providerArg}`);
 
+  // Validate the SHAPE the agent actually reads (denormalized current risk view on Provider + _meta
+  // + bounded dailyMetrics) — the same fields as queries/risk-agent-input.graphql (015).
   const query = `
     query Validate($id: ID!) {
       _meta { block { number timestamp } deployment hasIndexingErrors }
@@ -56,10 +58,10 @@ async function main() {
         jobsCompleted
         totalCoveredAmount
         claimsUpheld
-        snapshots(orderBy: blockNumber, orderDirection: desc, first: 1) {
-          upheldClaimRateBps averageCoverageRatioBps payoutToCoveredValueBps claimFrequencyBps
-          sampleSize hasEnoughHistory blockNumber
-        }
+        lastUpheldClaimRateBps
+        lastAverageCoverageRatioBps
+        lastSampleSize
+        lastHasEnoughHistory
         dailyMetrics(orderBy: dayStartTimestamp, orderDirection: desc, first: 5) {
           upheldFailures closedWindows dayStartTimestamp
         }
@@ -95,23 +97,17 @@ async function main() {
     process.exit(0);
   }
   if (!HEX_ADDRESS.test(p.id)) fail(`provider.id not an address: ${p.id}`);
-  assertInt(p, "jobsCompleted", "provider");
-  assertInt(p, "totalCoveredAmount", "provider");
-  assertInt(p, "claimsUpheld", "provider");
-  if (p.snapshots.length > 0) {
-    const s = p.snapshots[0];
-    for (const f of [
-      "upheldClaimRateBps",
-      "averageCoverageRatioBps",
-      "payoutToCoveredValueBps",
-      "claimFrequencyBps",
-      "sampleSize",
-      "blockNumber",
-    ]) {
-      assertInt(s, f, "snapshot");
-    }
-    if (typeof s.hasEnoughHistory !== "boolean") fail("snapshot.hasEnoughHistory is not boolean");
+  for (const f of [
+    "jobsCompleted",
+    "totalCoveredAmount",
+    "claimsUpheld",
+    "lastUpheldClaimRateBps",
+    "lastAverageCoverageRatioBps",
+    "lastSampleSize",
+  ]) {
+    assertInt(p, f, "provider");
   }
+  if (typeof p.lastHasEnoughHistory !== "boolean") fail("provider.lastHasEnoughHistory is not boolean");
   for (const d of p.dailyMetrics) {
     assertInt(d, "upheldFailures", "dailyMetric");
     assertInt(d, "closedWindows", "dailyMetric");
@@ -119,8 +115,7 @@ async function main() {
 
   console.log(
     `✓ VALID  endpoint=${redact(SUBGRAPH_URL)} deployment=${m.deployment} ` +
-      `provider=${p.id} snapshots=${p.snapshots.length} dailyMetrics=${p.dailyMetrics.length} ` +
-      `latestIndexedBlock=${latestIndexed}`,
+      `provider=${p.id} dailyMetrics=${p.dailyMetrics.length} latestIndexedBlock=${latestIndexed}`,
   );
   process.exit(0);
 }
