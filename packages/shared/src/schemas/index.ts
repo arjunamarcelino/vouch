@@ -183,16 +183,6 @@ export const quoteCommitmentSchema = z.object({
 });
 export type QuoteCommitment = z.infer<typeof quoteCommitmentSchema>;
 
-/**
- * Read-side union across scoring-function versions so a stored v1 quote still parses after the v2
- * bump (TS review §1). Producers pin their own literal; readers accept the union.
- */
-export const anyRiskQuoteSchema = z.discriminatedUnion("scoringFnVersion", [
-  riskQuoteSchema,
-  riskScoreSchema,
-]);
-export type AnyRiskQuote = z.infer<typeof anyRiskQuoteSchema>;
-
 // ---- payment intent (crash-safe executor state machine, plan §6.4) ----
 
 export const paymentActionSchema = z.enum(["POST_BOND", "REFUND_BOND"]);

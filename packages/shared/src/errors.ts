@@ -5,6 +5,7 @@
  * `apps/api` maps these via a global exception filter; the agent surfaces them
  * in structured logs. No `neverthrow` result-plumbing.
  */
+import type { VerifyReasonCode } from "./reasonCodes";
 
 export type VouchErrorCode =
   | "CONFIG_INVALID"
@@ -55,9 +56,9 @@ export class ConfigInvalidError extends VouchError {
  * itself returns these as data; only the action path (executor) throws.
  */
 export class QuoteInvalidError extends VouchError {
-  readonly reasonCodes: readonly string[];
+  readonly reasonCodes: readonly VerifyReasonCode[];
 
-  constructor(reasonCodes: readonly string[], message?: string) {
+  constructor(reasonCodes: readonly VerifyReasonCode[], message?: string) {
     super("QUOTE_INVALID", message ?? `Quote invalid: ${reasonCodes.join(", ")}`, reasonCodes);
     this.name = "QuoteInvalidError";
     this.reasonCodes = reasonCodes;
