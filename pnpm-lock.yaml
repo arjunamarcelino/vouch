@@ -13,7 +13,7 @@ catalogs:
       specifier: ^2.55.0
       version: 2.56.3
     zod:
-      specifier: ^4.0.5
+      specifier: ^4.6.1
       version: 4.6.1
 
 importers:
@@ -130,6 +130,9 @@ importers:
       viem:
         specifier: 'catalog:'
         version: 2.56.3(typescript@5.9.3)(zod@4.6.1)
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.1
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4.0.0
