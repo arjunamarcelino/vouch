@@ -12,9 +12,17 @@
  * The Foundry build ABI is authoritative; both outputs are regenerated, never edited by hand.
  * Run: `pnpm --filter @vouch/contracts abi:sync`.
  */
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, renameSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
+/** Write atomically: write to a temp sibling then rename, so a mid-run failure can't leave a
+ *  half-written (drifted) artifact (finding 013). */
+function writeAtomic(path, contents) {
+  const tmp = `${path}.tmp`;
+  writeFileSync(tmp, contents, "utf8");
+  renameSync(tmp, path);
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const contractsRoot = resolve(__dirname, "..");
@@ -33,7 +41,16 @@ function main() {
     process.exit(1);
   }
 
-  const artifact = JSON.parse(raw);
+  let artifact;
+  try {
+    artifact = JSON.parse(raw);
+  } catch (e) {
+    console.error(
+      `[sync-abis] ${ARTIFACT} is not valid JSON (truncated/interrupted build?).\n` +
+        `Re-run \`forge build\` in packages/contracts. (${e.message})`,
+    );
+    process.exit(1);
+  }
   const abi = artifact.abi ?? artifact;
   if (!Array.isArray(abi)) {
     console.error("[sync-abis] Artifact has no `abi` array.");
@@ -48,16 +65,16 @@ function main() {
     " * Regenerate: `pnpm --filter @vouch/contracts abi:sync`\n" +
     " *\n" +
     " * Emitted as `.ts as const` so viem keeps full function/arg type inference.\n" +
-    " * The CRE report is `abi.decode(report, (uint256 jobId, bool covered, uint256 amount))`.\n" +
+    " * The CRE report is `abi.decode(report, (uint256 chainId, address hub, uint256 jobId, bool covered, uint256 amount))`.\n" +
     " */\n";
   const tsBody = `export const assuranceHubAbi = ${JSON.stringify(abi, null, 2)} as const;\n`;
 
   mkdirSync(dirname(TS_OUT), { recursive: true });
-  writeFileSync(TS_OUT, banner + tsBody, "utf8");
+  writeAtomic(TS_OUT, banner + tsBody);
   console.log(`[sync-abis] Wrote ${TS_OUT} (${abi.length} ABI entries).`);
 
   mkdirSync(dirname(JSON_OUT), { recursive: true });
-  writeFileSync(JSON_OUT, `${JSON.stringify(abi, null, 2)}\n`, "utf8");
+  writeAtomic(JSON_OUT, `${JSON.stringify(abi, null, 2)}\n`);
   console.log(`[sync-abis] Wrote ${JSON_OUT} (${abi.length} ABI entries).`);
 }
 

@@ -5,7 +5,7 @@
  * Regenerate: `pnpm --filter @vouch/contracts abi:sync`
  *
  * Emitted as `.ts as const` so viem keeps full function/arg type inference.
- * The CRE report is `abi.decode(report, (uint256 jobId, bool covered, uint256 amount))`.
+ * The CRE report is `abi.decode(report, (uint256 chainId, address hub, uint256 jobId, bool covered, uint256 amount))`.
  */
 export const assuranceHubAbi = [
   {
