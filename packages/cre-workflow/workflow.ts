@@ -73,8 +73,10 @@ export const VerdictParams = [
  *
  * @param jobId     the coverage/job identifier
  * @param regressed true if the private regression test detected a regression
- * @param amount    payout amount (the contract caps this; pass 0n to defer to
- *                  the contract cap, per §17.2)
+ * @param amount    the service credit to pay the client. The CRE MUST pass a value in
+ *                  (0, guaranteeAmount]: onReport REVERTS on `0` (ZeroPayout) and on
+ *                  `amount > guaranteeAmount` (AmountAboveCap) — it does NOT clamp.
+ *                  Compute `min(decidedCredit, guaranteeAmount)`, never 0. (finding 005)
  * @returns ABI-encoded `0x`-prefixed hex payload
  */
 export function buildVerdictPayload(
@@ -144,7 +146,9 @@ export function createCreRuntime(_config: Config): CreRuntime {
 //     const regressed = passRate < threshold;
 //     if (!regressed) return "clean"; // no payout report; provider reclaims later
 //
-//     const payload = buildVerdictPayload(BigInt(jobId), true, 0n /* contract caps */);
+//     // amount MUST be nonzero and <= guaranteeAmount — the contract reverts, never clamps (005).
+//     const credit = min(decidedCredit, guaranteeAmount); // > 0
+//     const payload = buildVerdictPayload(BigInt(jobId), true, credit);
 //     const report = runtime
 //       .report(prepareReportRequest(hexToBase64(payload)))
 //       .result();
