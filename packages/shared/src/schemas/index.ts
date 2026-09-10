@@ -73,11 +73,15 @@ export type ProviderRiskEnvelope = z.infer<typeof providerRiskEnvelopeSchema>;
 /**
  * Output of the agent's autonomous risk-quotation. All-integer (bps + base units); NO floats.
  * Stamped with asOfBlock + scoringFnVersion so any quote is reproducible from chain history.
+ *
+ * `recommendedGuaranteeCap` is an EXPOSURE CEILING: the max coverage the protocol will take on this
+ * provider. `exposureFactorBps` scales the base cap DOWN with observed risk (10000 = full base for a
+ * clean provider; lower for riskier). cap = baseCap * exposureFactorBps / 10000 (027).
  */
 export const riskQuoteSchema = z.object({
   provider: hexAddress,
   recommendedGuaranteeCap: baseUnits,
-  premiumBps: uintString,
+  exposureFactorBps: uintString,
   upheldClaimRateBps: ratioBpsString,
   recentFailureRateBps: ratioBpsString,
   dataConfidence: dataConfidenceSchema,
