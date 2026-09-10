@@ -74,7 +74,13 @@ export async function querySubgraph<T>(
   if (!res.ok) {
     throw new VouchError("SUBGRAPH_UNAVAILABLE", `Subgraph HTTP ${res.status} (${redactUrl(url)})`);
   }
-  const body = (await res.json()) as { data?: T; errors?: unknown };
+  let body: { data?: T; errors?: unknown };
+  try {
+    body = (await res.json()) as { data?: T; errors?: unknown };
+  } catch (cause) {
+    // A 200 with a non-JSON body is still "unavailable/degraded" — keep it in the typed taxonomy.
+    throw new VouchError("SUBGRAPH_UNAVAILABLE", `Subgraph returned a non-JSON body (${redactUrl(url)})`, cause);
+  }
   if (body.errors) {
     throw new VouchError("SUBGRAPH_UNAVAILABLE", `Subgraph GraphQL errors (${redactUrl(url)})`, body.errors);
   }
@@ -98,7 +104,12 @@ async function getChainHead(rpcUrl: string, timeoutMs: number): Promise<bigint> 
     throw new VouchError("SUBGRAPH_LAGGING", "Chain head unreadable (RPC unreachable)", cause);
   }
   if (!res.ok) throw new VouchError("SUBGRAPH_LAGGING", `Chain head RPC HTTP ${res.status}`);
-  const body = (await res.json()) as { result?: string };
+  let body: { result?: string };
+  try {
+    body = (await res.json()) as { result?: string };
+  } catch (cause) {
+    throw new VouchError("SUBGRAPH_LAGGING", "Chain head RPC returned a non-JSON body", cause);
+  }
   if (!body.result) throw new VouchError("SUBGRAPH_LAGGING", "Chain head RPC returned no result");
   try {
     return BigInt(body.result);
@@ -108,6 +119,18 @@ async function getChainHead(rpcUrl: string, timeoutMs: number): Promise<bigint> 
 }
 
 const META_QUERY = `{ _meta { block { number timestamp } deployment hasIndexingErrors } }`;
+
+/** Convert a subgraph numeric field to bigint, keeping malformed values inside the typed taxonomy. */
+function toBlockBigInt(value: unknown, what: string): bigint {
+  if (value === null || value === undefined) {
+    throw new VouchError("SUBGRAPH_UNAVAILABLE", `Subgraph ${what} is missing`);
+  }
+  try {
+    return BigInt(value as string | number);
+  } catch (cause) {
+    throw new VouchError("SUBGRAPH_UNAVAILABLE", `Subgraph ${what} is not numeric`, cause);
+  }
+}
 
 /**
  * Assert the subgraph is fresh enough to trust for a money-moving quote. Throws (fail-closed) on any
@@ -134,7 +157,7 @@ export async function assertFresh(url: string, cfg: FreshnessConfig): Promise<Fr
     );
   }
 
-  const latestIndexedBlock = BigInt(_meta.block.number);
+  const latestIndexedBlock = toBlockBigInt(_meta.block.number, "_meta.block.number");
   const chainHead = await getChainHead(cfg.rpcUrl, timeoutMs);
   const lagBlocks = chainHead - latestIndexedBlock;
   if (lagBlocks < 0n) {

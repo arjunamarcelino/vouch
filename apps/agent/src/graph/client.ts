@@ -4,6 +4,7 @@ import {
   type ProviderRiskEnvelope,
 } from "@vouch/shared/schemas";
 import { assertFresh, querySubgraph, type FreshnessConfig } from "@vouch/shared/graph";
+import { VouchError } from "@vouch/shared/errors";
 
 /**
  * Live-data access for the risk agent. Fail-closed: freshness is asserted (throws SUBGRAPH_STALE /
@@ -58,13 +59,22 @@ interface RawProvider {
   dailyMetrics: RawDaily[];
 }
 
+/** Convert a subgraph numeric string to bigint, mapping malformed values to the typed taxonomy. */
+function toBigIntOrThrow(value: string, what: string): bigint {
+  try {
+    return BigInt(value);
+  } catch (cause) {
+    throw new VouchError("SUBGRAPH_UNAVAILABLE", `Subgraph ${what} is not numeric`, cause);
+  }
+}
+
 /** Trailing-window recent-failure rate in bps, computed as BigInt (num*10000/den; -1 undefined). */
 function recentFailureRateBps(daily: RawDaily[]): bigint {
   let upheld = 0n;
   let resolved = 0n;
   for (const d of daily) {
-    upheld += BigInt(d.upheldFailures);
-    resolved += BigInt(d.resolvedClaims);
+    upheld += toBigIntOrThrow(d.upheldFailures, "dailyMetric.upheldFailures");
+    resolved += toBigIntOrThrow(d.resolvedClaims, "dailyMetric.resolvedClaims");
   }
   if (resolved === 0n) return -1n;
   return (upheld * 10_000n) / resolved;
