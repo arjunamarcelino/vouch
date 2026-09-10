@@ -1,0 +1,19 @@
+{
+  "name": "@vouch/config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./tsconfig": "./tsconfig.base.json",
+    "./tsconfig-node": "./tsconfig.node.json",
+    "./tsconfig-nextjs": "./tsconfig.nextjs.json",
+    "./eslint": "./eslint.base.js",
+    "./prettier": "./prettier.config.js"
+  },
+  "dependencies": {
+    "@eslint/js": "^9.17.0",
+    "eslint-config-prettier": "^9.1.0",
+    "globals": "^16.0.0",
+    "typescript-eslint": "^8.19.0"
+  }
+}

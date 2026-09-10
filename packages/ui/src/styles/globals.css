@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+/*
+ * Tailwind v4 CSS-first configuration for @vouch/ui.
+ *
+ * ⚠️ §17.7-11 @source FOOTGUN — READ THIS:
+ * Tailwind v4's automatic content detection does NOT traverse the pnpm
+ * `node_modules` symlink into this package. Because @vouch/ui is source-
+ * exported (consumed via `transpilePackages`), the consuming app MUST
+ * explicitly register this package's sources in ITS OWN globals.css, e.g.
+ * apps/web/app/globals.css must contain (written here with the glob's inner
+ * slash-star escaped as "\/" only so it does not terminate this CSS comment —
+ * use a plain forward slash in real code):
+ *
+ *     @source "../../../packages/ui/src/**\/*.{ts,tsx}";
+ *
+ * Without that line the shadcn primitives compile but render UNSTYLED in
+ * prod (their utility classes are never seen by the Tailwind scanner).
+ */
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --color-background: oklch(1 0 0);
+  --color-foreground: oklch(0.145 0 0);
+
+  --color-card: oklch(1 0 0);
+  --color-card-foreground: oklch(0.145 0 0);
+
+  --color-primary: oklch(0.205 0 0);
+  --color-primary-foreground: oklch(0.985 0 0);
+
+  --color-accent: oklch(0.97 0 0);
+  --color-accent-foreground: oklch(0.205 0 0);
+
+  --color-destructive: oklch(0.577 0.245 27.325);
+  --color-destructive-foreground: oklch(0.985 0 0);
+
+  --color-success: oklch(0.723 0.19 149.579);
+  --color-success-foreground: oklch(0.985 0 0);
+
+  --color-warning: oklch(0.795 0.184 86.047);
+  --color-warning-foreground: oklch(0.145 0 0);
+
+  --color-border: oklch(0.922 0 0);
+  --color-input: oklch(0.922 0 0);
+  --color-ring: oklch(0.708 0 0);
+
+  --radius-lg: 0.5rem;
+  --radius-md: calc(0.5rem - 2px);
+  --radius-sm: calc(0.5rem - 4px);
+}

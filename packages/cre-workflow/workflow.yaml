@@ -1,0 +1,12 @@
+# Chainlink CRE — workflow manifest (plan §17.2)
+
+workflow-name: vouch-outcome-assurance
+
+workflow-artifacts:
+  # Entry point compiled/run by the CRE runtime.
+  workflow-path: ./workflow.ts
+  # Non-secret runtime config validated by configSchema in workflow.ts.
+  config-path: ./config.staging.json
+  # Secret NAME -> env var mapping (values live in the Vault DON, never here).
+  # Copy secrets.yaml.example -> secrets.yaml (git-ignored) before provisioning.
+  secrets-path: ./secrets.yaml

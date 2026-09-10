@@ -1,0 +1,35 @@
+# --- dependencies ---
+node_modules/
+.pnpm-store/
+
+# --- build / generated output ---
+dist/
+build/
+out/
+.next/
+.turbo/
+coverage/
+*.tsbuildinfo
+packages/db/src/generated/
+packages/subgraph/generated/
+packages/subgraph/build/
+packages/contracts/out/
+packages/contracts/cache/
+packages/contracts/broadcast/
+
+# --- env & secrets (keep the *.example templates tracked — see negations below) ---
+.env
+.env.*
+!.env.example
+!.env.*.example
+!*.env.example
+# Chainlink CRE secret map references real secret env-var names — never commit it
+packages/cre-workflow/secrets.yaml
+
+# --- plan docs are git-ignored per project instruction ---
+docs/plans/
+
+# --- misc ---
+.DS_Store
+*.log
+.claude/settings.local.json

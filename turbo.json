@@ -1,0 +1,54 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "ui": "tui",
+  "globalDependencies": ["tsconfig.json", ".env"],
+  "globalEnv": ["NODE_ENV", "CI", "CHAIN_ENV"],
+  "tasks": {
+    "codegen": {
+      "cache": true,
+      "inputs": [
+        "prisma/schema.prisma",
+        "prisma/migrations/**",
+        "subgraph.yaml",
+        "schema.graphql",
+        "abis/**"
+      ],
+      "outputs": ["src/generated/**", "generated/**"]
+    },
+    "build": {
+      "dependsOn": ["^build", "codegen"],
+      "outputs": [".next/**", "!.next/cache/**", "dist/**", "build/**", "out/**"],
+      "env": ["NODE_ENV"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {
+      "outputs": []
+    },
+    "typecheck": {
+      "dependsOn": ["codegen", "^codegen"],
+      "outputs": []
+    },
+    "test": {
+      "dependsOn": ["codegen"],
+      "outputs": ["coverage/**"]
+    },
+    "test:contracts": {
+      "inputs": [
+        "src/**/*.sol",
+        "test/**/*.sol",
+        "script/**/*.sol",
+        "foundry.toml",
+        "remappings.txt",
+        "lib/**"
+      ],
+      "outputs": ["out/**", "cache/**"]
+    },
+    "test:e2e": {
+      "cache": false,
+      "env": ["DATABASE_URL", "PLAYWRIGHT_BASE_URL"]
+    }
+  }
+}

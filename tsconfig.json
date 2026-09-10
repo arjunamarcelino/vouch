@@ -1,0 +1,9 @@
+{
+  "//": "Root solution tsconfig for editor tooling. Each package/app has its own tsconfig extending @vouch/config.",
+  "extends": "./packages/config/tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": [],
+  "exclude": ["node_modules", "**/dist", "**/.next", "**/out", "**/generated"]
+}

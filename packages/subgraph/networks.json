@@ -1,0 +1,14 @@
+{
+  "arc-testnet": {
+    "VouchCore": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "startBlock": 0
+    }
+  },
+  "arc": {
+    "VouchCore": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "startBlock": 0
+    }
+  }
+}

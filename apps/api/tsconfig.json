@@ -1,0 +1,15 @@
+{
+  "extends": "@vouch/config/tsconfig-node",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "verbatimModuleSyntax": false,
+    "isolatedModules": false,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "useDefineForClassFields": false,
+    "types": ["node"],
+    "noEmit": true
+  },
+  "include": ["src"]
+}

@@ -1,0 +1,22 @@
+{
+  "name": "@vouch/cre-workflow",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Chainlink CRE Confidential Workflow — runs the private regression verdict inside the enclave and writes a DON-signed report to VouchCore on Arc. See README for the @chainlink/cre-sdk wiring (intentionally NOT installed yet — see below).",
+  "//peerDependencies": "OPTIONAL peer (NOT installed to avoid version/type risk — plan §17.2, §17.11): '@chainlink/cre-sdk' provides ConfidentialHTTPClient, handler, Runner, EVMClient, prepareReportRequest, getNetwork. Pin the exact version once confirmed (npm view @chainlink/cre-sdk version), then wire workflow.ts per §17.2 and drop the local CreRuntime adapter.",
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test '*.test.ts'",
+    "simulate": "echo 'Run: cre workflow simulate — install the CRE CLI first (see README)'"
+  },
+  "dependencies": {
+    "viem": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@vouch/config": "workspace:*",
+    "tsx": "^4.19.2"
+  }
+}

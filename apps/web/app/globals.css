@@ -1,0 +1,9 @@
+@import "tailwindcss";
+@import "@vouch/ui/globals.css";
+
+/*
+ * Tailwind v4 auto-content-detection skips the node_modules symlink, so classes
+ * used inside the shared @vouch/ui package are purged unless we point @source at
+ * its real on-disk path (plan §17.7-11). Path is relative to this CSS file.
+ */
+@source "../../../packages/ui/src/**/*.{ts,tsx}";

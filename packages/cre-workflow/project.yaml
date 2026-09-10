@@ -1,0 +1,16 @@
+# Chainlink CRE — project settings (plan §17.2)
+# Non-secret project-level config. Secrets are provisioned separately via
+# `cre secrets create secrets.yaml` and released by the Vault DON at runtime.
+
+staging-settings:
+  # RPCs the CRE build/simulate uses. Arc testnet is the settlement chain.
+  # NOTE: confirm the Arc testnet RPC URL and chain id (plan §8.1: Arc 5042002).
+  rpcs:
+    - chain-name: arc-testnet
+      url: ${ARC_TESTNET_RPC_URL} # placeholder — set in your shell / .env for sim
+    # Sepolia fallback for tooling that requires a well-known network.
+    - chain-name: ethereum-sepolia
+      url: ${SEPOLIA_RPC_URL} # placeholder
+
+  # The workflow owner (deployer) address. Placeholder — set before deploy.
+  workflow-owner-address: "0x0000000000000000000000000000000000000000"

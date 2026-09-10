@@ -1,0 +1,7 @@
+{
+  "extends": "@vouch/config/tsconfig-node",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": ["src"]
+}

@@ -1,0 +1,13 @@
+{
+  "name": "@vouch/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Foundry package for VouchCore — onchain financial settlement on Circle Arc.",
+  "scripts": {
+    "build": "forge build",
+    "test:contracts": "forge test -vvv",
+    "fmt": "forge fmt",
+    "fmt:check": "forge fmt --check",
+    "abi:sync": "node script/sync-abis.mjs"
+  }
+}

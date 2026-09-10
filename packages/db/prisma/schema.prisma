@@ -1,0 +1,66 @@
+// Vouch offchain OPERATIONAL data store.
+//
+// Authoritative financial/reputation state lives ONCHAIN (Arc) + in The Graph.
+// This Postgres schema is a rebuildable operational/UX layer only. It MUST NOT
+// contain money-authoritative fields, reputation, private tests, evaluation
+// criteria, repo credentials, or any secret material (plan §2.4 / §11 / §17.9).
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  runtime      = "nodejs"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// Non-authoritative UI/orchestration metadata for a job. `cachedStatus` mirrors
+/// onchain state ONE-DIRECTIONALLY (written only by the chain/subgraph poller,
+/// never read to make money/reputation/authorization decisions — plan §17.9-F1).
+model JobMetadata {
+  /// Authoritative onchain job id (once JobCreated is indexed). Provisional rows
+  /// before confirmation are keyed by clientRequestId and reconciled later.
+  jobId           String?  @unique
+  clientRequestId String   @id @default(uuid())
+  uiTitle         String
+  description     String   @default("")
+  /// Opaque internal handle. NEVER a URL, credential, or token — the real repo
+  /// location + creds are resolved only inside the CRE enclave (plan §17.9-F3).
+  repoRef         String?
+  /// Nullable cache of onchain status. Display-only, best-effort.
+  cachedStatus    String?
+  lastSyncedBlock BigInt?
+  lastSyncedAt    DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  notifications NotificationState[]
+  agentRuns     AgentRunLog[]
+}
+
+/// Offchain-origin notification bookkeeping (NOT rebuildable from chain).
+model NotificationState {
+  id            String      @id @default(uuid())
+  job           JobMetadata @relation(fields: [jobRequestId], references: [clientRequestId], onDelete: Cascade)
+  jobRequestId  String
+  channel       String
+  statusTrigger String
+  sent          Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+
+  // A reorg-induced status flap must not double-send.
+  @@unique([jobRequestId, channel, statusTrigger])
+}
+
+/// Offchain-origin structured log of autonomous agent actions (NOT rebuildable).
+/// `structuredLog` must be redacted of any secret-shaped content before persist.
+model AgentRunLog {
+  id            String      @id @default(uuid())
+  job           JobMetadata @relation(fields: [jobRequestId], references: [clientRequestId], onDelete: Cascade)
+  jobRequestId  String
+  action        String // "quote" | "monitor"
+  structuredLog Json
+  at            DateTime    @default(now())
+}

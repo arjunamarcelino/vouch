@@ -1,0 +1,10 @@
+{
+  "//": "Non-secret CRE workflow config — validated by configSchema in workflow.ts. NO secrets here (no tokens, no test criteria, no thresholds — those come from the Vault DON at runtime; plan §17.6-H3).",
+  "schedule": "0 0 * * *",
+  "//chainSelectorName": "CRE chain-selector NAME for Arc — MUST be confirmed. Resolve via getNetwork() at build; Arc testnet chain id is 5042002 (plan §8.1) but the CRE selector string is unresolved (plan §17.2 Unresolved).",
+  "chainSelectorName": "arc-testnet",
+  "consumerAddress": "0x0000000000000000000000000000000000000000",
+  "gasLimit": "500000",
+  "repoOwner": "your-github-org",
+  "testArtifactUrl": "https://example.invalid/private-test-artifact"
+}
