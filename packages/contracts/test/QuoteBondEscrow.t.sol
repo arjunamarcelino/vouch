@@ -76,7 +76,7 @@ contract QuoteBondEscrowTest is Test {
         vm.prank(attacker); // permissionless caller...
         escrow.refundBond(QID);
         assertEq(usdc.balanceOf(agent), before + BOND); // ...but funds go to the recorded poster
-        (, , uint256 amount) = escrow.bonds(QID);
+        (,, uint256 amount) = escrow.bonds(QID);
         assertEq(amount, 0); // cleared
     }
 
