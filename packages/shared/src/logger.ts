@@ -7,7 +7,7 @@ import { pino, type Logger, type LoggerOptions } from "pino";
  * secrets (plan §11 / §17.6). The redaction paths below are a safety net, not a
  * license to pass secrets through logs.
  */
-const REDACT_PATHS = [
+export const REDACT_PATHS = [
   "*.apiKey",
   "*.entitySecret",
   "*.privateKey",
@@ -15,6 +15,14 @@ const REDACT_PATHS = [
   "*.authorization",
   "*.password",
   "req.headers.authorization",
+  // Agent secret env keys (review 039): the parsed env object uses these exact names, which none of the
+  // suffix patterns above match. Cover both top-level and one-level-nested (e.g. { env: {...} }) shapes.
+  "CIRCLE_API_KEY",
+  "CIRCLE_ENTITY_SECRET",
+  "QUOTE_SIGNER_PK",
+  "*.CIRCLE_API_KEY",
+  "*.CIRCLE_ENTITY_SECRET",
+  "*.QUOTE_SIGNER_PK",
 ];
 
 export function createLogger(name: string, options: LoggerOptions = {}): Logger {
