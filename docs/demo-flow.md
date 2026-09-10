@@ -39,12 +39,15 @@ Suggested narration arc (≈3 min): 0:00 problem framing → 0:30 steps 1–3 (f
   only minimal funds — it never settles the guarantee.
 
 ### The Graph — live data feeding an AI decision
-- A **live GraphQL query** against the deployed subgraph endpoint (Studio URL or local
-  `graph-node`) returning real indexed provider reputation.
-- The **agent's risk quote** being computed from that live data (`regressionRate`,
-  `payoutToGuaranteeRatio`) — show the query result flowing into the quoted guarantee size.
+- A **live GraphQL query** (`queries/risk-agent-input.graphql`) against the deployed subgraph endpoint
+  (Studio for `arc`, or local `graph-node`) returning real indexed provider reputation + risk bps.
+- The **agent's risk quote** computed from that live data — show `upheldClaimRateBps` /
+  `recentFailureRateBps` flowing into `premiumBps` and the quoted guarantee cap, stamped with
+  `asOfBlock` + `scoringFnVersion`.
+- The quote **changing after an upheld claim** (before/after), and the agent **refusing** (503 /
+  `SUBGRAPH_STALE`) when pointed at a lagging index — no fabricated history.
 - Callout: the data is **live, non-mocked**, and the quote is **impossible without** the subgraph
-  (load-bearing). Show the `_meta` freshness guard.
+  (load-bearing). Full runbook: `docs/the-graph-demo.md`.
 
 ### Chainlink — confidential workflow, secret never leaks
 - The `cre workflow simulate` command running the confidential regression test.
@@ -72,12 +75,14 @@ others running.
    the faucet).
 
 ### The Graph standalone
-1. Deploy `packages/subgraph` (Studio for Arc mainnet, or local `graph-node` for `arc-testnet`).
-2. Run a GraphQL ranking query directly against the endpoint (e.g. providers ordered by
-   `regressions`).
-3. Run `apps/agent`'s risk-quote path and show it consuming that live query result.
-   *Requires only:* a deployed subgraph endpoint + the agent's GraphQL client. No Circle or CRE
-   dependency.
+1. Deploy `packages/subgraph` (Studio for Arc mainnet, or local `graph-node` for `arc-testnet`);
+   `pnpm --filter @vouch/subgraph health-check` shows it synced.
+2. Run a GraphQL query directly against the endpoint (e.g. `queries/provider-history.graphql`, or
+   `validate-endpoint.mjs` to prove the risk-agent-input contract).
+3. Run `apps/agent`'s risk-quote path and show it consuming that live query result (and failing closed
+   when the index lags).
+   *Requires only:* a deployed subgraph endpoint + an Arc RPC (lag gate) + the agent's GraphQL client.
+   No Circle or CRE dependency.
 
 ### Chainlink standalone
 1. In `packages/cre-workflow`, provide local-sim secrets via `.env` (repo token, private test ref,

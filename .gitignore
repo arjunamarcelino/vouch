@@ -13,6 +13,8 @@ coverage/
 packages/db/src/generated/
 packages/subgraph/generated/
 packages/subgraph/build/
+packages/subgraph/tests/.bin/
+packages/subgraph/tests/.latest.json
 packages/contracts/out/
 packages/contracts/cache/
 packages/contracts/broadcast/
@@ -28,6 +30,9 @@ packages/cre-workflow/secrets.yaml
 
 # --- plan docs are git-ignored per project instruction ---
 docs/plans/
+
+# --- local deployment runbooks (living working docs, not committed) ---
+docs/runbooks/
 
 # --- code-review findings are git-ignored (local working docs) ---
 todos/

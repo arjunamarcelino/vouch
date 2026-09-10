@@ -20,11 +20,19 @@ dataSources:
       language: wasm/assemblyscript
       file: ./src/mappings/assuranceHub.ts
       entities:
+        - Protocol
         - Provider
+        - Client
         - Job
-        - Guarantee
+        - Coverage
         - Claim
-        - Payout
+        - Submission
+        - InitialEvaluation
+        - ConfidentialEvaluation
+        - GuaranteePayout
+        - CollateralMovement
+        - ProviderRiskSnapshot
+        - ProviderDailyMetric
       abis:
         - name: AssuranceHub
           file: ./abis/AssuranceHub.json

@@ -1,0 +1,41 @@
+# The EXACT query the risk agent runs to size a guarantee (plan §3.5.6 / §9; kept in sync with
+# apps/agent/src/graph/client.ts RISK_QUERY — 015). `_meta` rides in the SAME request as the data so
+# freshness and data come from one block. The current risk view is read DENORMALIZED off Provider
+# (no snapshot-partition sort — 023); only bounded lists, no @derivedFrom list selections.
+# validate-endpoint.mjs asserts this shape.
+#
+# $id    = provider address (lowercased)
+# $since = trailing-window cutoff = (nowSeconds - 30*86400), in SECONDS (day-buckets use BigInt seconds)
+query RiskAgentInput($id: ID!, $since: BigInt!) {
+  _meta {
+    block {
+      number
+      timestamp
+    }
+    deployment
+    hasIndexingErrors
+  }
+  # Data-presence guard: a fresh index with totalJobs == 0 is empty/wrong-contract → agent refuses (013).
+  protocols(first: 1) {
+    totalJobs
+  }
+  provider(id: $id) {
+    id
+    jobsCompleted
+    totalCoveredAmount
+    claimsUpheld
+    lastUpheldClaimRateBps
+    lastAverageCoverageRatioBps
+    lastSampleSize
+    lastHasEnoughHistory
+    dailyMetrics(
+      where: { dayStartTimestamp_gte: $since }
+      orderBy: dayStartTimestamp
+      orderDirection: desc
+      first: 31
+    ) {
+      upheldFailures
+      closedWindows
+    }
+  }
+}

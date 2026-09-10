@@ -3,12 +3,16 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
   "exports": {
     "./schemas": "./src/schemas/index.ts",
     "./chains": "./src/constants/chains.ts",
     "./abis": "./src/abis/index.ts",
     "./errors": "./src/errors.ts",
-    "./logger": "./src/logger.ts"
+    "./logger": "./src/logger.ts",
+    "./graph": "./src/graph/client.ts"
   },
   "scripts": {
     "lint": "eslint .",

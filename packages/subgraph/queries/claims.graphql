@@ -1,0 +1,38 @@
+# Claims and their confidential verdicts. Filter by provider, most-recent first.
+# $provider = provider address (lowercased).
+query Claims($provider: Bytes!, $first: Int = 50) {
+  claims(where: { provider: $provider }, orderBy: openedAtTimestamp, orderDirection: desc, first: $first) {
+    id
+    covered
+    resolvedByTimeout
+    serviceCredit
+    evidenceCommitment
+    openedAtTimestamp
+    resolvedAtTimestamp
+    client {
+      id
+    }
+    job {
+      jobId
+      guaranteeAmount
+      status
+    }
+    provider {
+      id
+    }
+  }
+  # Immutable confidential-evaluation records (audit trail; excludes timeout closes from real verdicts).
+  confidentialEvaluations(
+    where: { provider: $provider }
+    orderBy: timestamp
+    orderDirection: desc
+    first: $first
+  ) {
+    id
+    covered
+    serviceCredit
+    resolvedByTimeout
+    timestamp
+    txHash
+  }
+}

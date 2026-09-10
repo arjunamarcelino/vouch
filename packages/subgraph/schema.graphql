@@ -1,12 +1,21 @@
-# Vouch AssuranceHub subgraph. The Graph is AUTHORITATIVE for provider performance history.
+# Vouch AssuranceHub subgraph — The Graph is AUTHORITATIVE for provider performance history.
 #
-# Entity id strategy: Provider = address; Job/Guarantee/Claim/Payout = jobId (Bytes-encoded uint256).
-# jobId-as-id makes reprocessing an UPSERT, matching onchain idempotency. Only commitments (bytes32
-# hashes) are stored — never preimages (plan §6.5).
+# ID strategy (plan §3.1 / §3.5):
+#   • Mutable lifecycle aggregates keyed by a NATURAL id (upsert semantics, matches on-chain
+#     idempotency): Protocol = hub address; Provider/Client = address; Job/Coverage/Claim = jobId
+#     (Bytes-encoded uint256); ProviderDailyMetric = provider ++ dayId.
+#   • Immutable append-only event records keyed by txHash ++ logIndex (unique per log, so multiple
+#     events in one transaction never collide): Submission, InitialEvaluation, ConfidentialEvaluation,
+#     GuaranteePayout, CollateralMovement, ProviderRiskSnapshot.
 #
-# Counter ownership (plan §18.5): each Provider counter is owned by exactly ONE event so the
-# same-tx pairs (JobCreated+JobFunded, InitialEvaluationResolved+CoverageStarted+ServiceFeePaid,
-# ConfidentialEvaluationResolved+GuaranteePaid) never double-count.
+# Risk math is integer BASIS POINTS computed in the mapping with BigInt (multiply-before-divide,
+# isZero() guard → -1 sentinel). NEVER floating point. All timestamps are BigInt SECONDS (native
+# Timestamp is avoided — Matchstick 0.6.0 crashes on it, issue #433; plan §3.5.5).
+#
+# AssemblyScript safety (docs/solutions/graph-cli-assemblyscript-compiler-crash-nullable-fields.md):
+# no nullable value-type fields (Boolean/Int) — use `Boolean!` with a default set in the mapping and
+# gate meaning on a reference-type field's presence (e.g. resolvedAtTimestamp). Only commitments
+# (bytes32 hashes) are stored — never preimages (plan §6.5).
 
 enum JobStatus {
   FUNDED
@@ -20,45 +29,100 @@ enum JobStatus {
   EXPIRED
 }
 
-enum GuaranteeStatus {
+enum CoverageStatus {
   LOCKED
   PAID
   RELEASED
 }
 
+"""How a CollateralMovement moved provider collateral (plan §3.5.7)."""
+enum CollateralMovementKind {
+  LOCK
+  RELEASE_CLEAN
+  RELEASE_REMAINDER
+}
+
+"""Protocol-level singleton anchor (id = AssuranceHub address). Thin — headline totals only."""
+type Protocol @entity(immutable: false) {
+  id: Bytes!
+  totalProviders: BigInt!
+  totalClients: BigInt!
+  totalJobs: BigInt!
+  totalGuaranteePaidOut: BigInt!
+  lastUpdatedBlock: BigInt!
+}
+
 """
-Provider reputation aggregate (mutable). regressionRate = claimsPaid / jobsCompleted (computed by consumers).
+Provider reputation aggregate (MUTABLE, id = address). Holds raw BigInt counters plus the CURRENT
+denormalized risk view (`last*` fields). Consumers read current risk features straight off Provider
+for an O(1) lookup (no snapshot-partition sort — 023); `ProviderRiskSnapshot` is the immutable
+HISTORICAL series (time-travel / charts). The `last*` fields double as the on-change diff source so
+the snapshot appends only when a value changes (plan §3.5.2).
 """
 type Provider @entity(immutable: false) {
   id: Bytes!
-  jobsCreated: BigInt!
-  "CLEAN coverage windows closed (no claim was ever opened). Full closed-window denominator for regressionRate = jobsCompleted + contestedCompletions + claimsPaid."
+
+  # ---- raw counters (the 12 tracked metrics) ----
+  jobsAccepted: BigInt!
+  jobsInitiallyApproved: BigInt!
+  "CLEAN coverage windows closed (no claim, or all claims resolved not-covered by a REAL verdict)."
   jobsCompleted: BigInt!
-  "Coverage windows closed after a claim resolved NOT-covered or timed out (contested but not paid). Excluded from jobsCompleted so stonewalling the CRE can't read as a clean finish (finding 007)."
+  "Windows closed after a claim resolved not-covered/timeout (contested). Kept separate so stonewalling the CRE can't read as a clean finish (finding 007). Full closed denominator = jobsCompleted + contestedCompletions + claimsUpheld."
   contestedCompletions: BigInt!
-  guaranteesLocked: BigInt!
-  guaranteesActive: BigInt!
   claimsOpened: BigInt!
-  "Proven covered failures that paid a service credit (= regressions) — numerator for regressionRate."
-  claimsPaid: BigInt!
-  totalPaidOut: BigInt!
+  "Proven covered failures that paid a service credit (= regressions)."
+  claimsUpheld: BigInt!
+  "Claims resolved not-covered by a REAL verdict (excludes CRE-inactivity timeouts, finding 007)."
+  claimsRejected: BigInt!
+  "USDC currently exposed as locked collateral (sum of LOCKED coverage amounts)."
+  activeGuaranteeAmount: BigInt!
+  "Sum of taskFee over initially-approved jobs (covered value denominator)."
+  totalCoveredAmount: BigInt!
+  "Sum of guaranteeAmount over accepted coverage (coverage-ratio numerator)."
   totalGuaranteedValue: BigInt!
+  totalPayoutAmount: BigInt!
   totalFeesEarned: BigInt!
   totalServiceFees: BigInt!
+  lastActivityTimestamp: BigInt!
   firstSeenBlock: BigInt!
   lastUpdatedBlock: BigInt!
 
+  # ---- CURRENT denormalized risk view (consumers read these; also the on-change diff source) ----
+  lastUpheldClaimRateBps: BigInt!
+  lastClaimFrequencyBps: BigInt!
+  lastAverageCoverageRatioBps: BigInt!
+  lastPayoutToCoveredValueBps: BigInt!
+  "Resolved-claim sample size behind the current rates."
+  lastSampleSize: BigInt!
+  "Whether the current rates are backed by enough closed-window history (011)."
+  lastHasEnoughHistory: Boolean!
+  "Closed coverage windows (jobsCompleted + contestedCompletions + claimsUpheld) — a completion changes it so completions materialize a snapshot (029)."
+  lastClosedWindows: BigInt!
+  "Whether at least one ProviderRiskSnapshot has been materialized (forces the first snapshot even when all ratios are the -1 sentinel)."
+  snapshotInitialized: Boolean!
+
   jobs: [Job!]! @derivedFrom(field: "provider")
-  guarantees: [Guarantee!]! @derivedFrom(field: "provider")
   claims: [Claim!]! @derivedFrom(field: "provider")
-  payouts: [Payout!]! @derivedFrom(field: "provider")
+  snapshots: [ProviderRiskSnapshot!]! @derivedFrom(field: "provider")
+  dailyMetrics: [ProviderDailyMetric!]! @derivedFrom(field: "provider")
+}
+
+"""A client that commissions jobs (MUTABLE, id = address)."""
+type Client @entity(immutable: false) {
+  id: Bytes!
+  jobsCommissioned: BigInt!
+  claimsOpened: BigInt!
+  totalTaskFeesPaid: BigInt!
+  lastActivityTimestamp: BigInt!
+  firstSeenBlock: BigInt!
+  jobs: [Job!]! @derivedFrom(field: "client")
 }
 
 """An assurance job (MUTABLE — status advances). id = jobId."""
 type Job @entity(immutable: false) {
   id: Bytes!
   jobId: BigInt!
-  client: Bytes!
+  client: Client!
   provider: Provider!
   status: JobStatus!
   taskFee: BigInt!
@@ -69,20 +133,32 @@ type Job @entity(immutable: false) {
   publicCriteriaHash: Bytes!
   privateCriteriaCommitment: Bytes!
   submissionCommitment: Bytes
+  "Idempotency latch: taskFee counted into provider.totalFeesEarned exactly once."
   feeCounted: Boolean!
+  "Idempotency latch: serviceFee counted exactly once."
   serviceFeeCounted: Boolean!
+  "Idempotency latch: payout counted into totalPayoutAmount / totalGuaranteePaidOut exactly once (020)."
+  payoutCounted: Boolean!
   createdAtBlock: BigInt!
   createdAtTimestamp: BigInt!
   txHash: Bytes!
+
+  coverage: Coverage @derivedFrom(field: "job")
+  claim: Claim @derivedFrom(field: "job")
+  submissions: [Submission!]! @derivedFrom(field: "job")
+  initialEvaluations: [InitialEvaluation!]! @derivedFrom(field: "job")
+  confidentialEvaluations: [ConfidentialEvaluation!]! @derivedFrom(field: "job")
+  payouts: [GuaranteePayout!]! @derivedFrom(field: "job")
+  collateralMovements: [CollateralMovement!]! @derivedFrom(field: "job")
 }
 
-"""A provider-funded performance guarantee (MUTABLE — LOCKED → PAID | RELEASED). id = jobId."""
-type Guarantee @entity(immutable: false) {
+"""A provider-funded coverage window / performance guarantee (MUTABLE — LOCKED → PAID | RELEASED). id = jobId."""
+type Coverage @entity(immutable: false) {
   id: Bytes!
   job: Job!
   provider: Provider!
   amount: BigInt!
-  status: GuaranteeStatus!
+  status: CoverageStatus!
   coverageDeadline: BigInt
   lockedAtBlock: BigInt!
   lockedAtTimestamp: BigInt!
@@ -93,11 +169,11 @@ type Claim @entity(immutable: false) {
   id: Bytes!
   job: Job!
   provider: Provider!
-  client: Bytes!
+  client: Client!
   evidenceCommitment: Bytes!
   "Confidential verdict. Meaningful only once resolvedAtTimestamp is set; false until then."
   covered: Boolean!
-  "True if the claim was closed by resolveClaimTimeout (CRE inactivity) rather than a real verdict (finding 007)."
+  "True if closed by resolveClaimTimeout (CRE inactivity) rather than a real verdict (finding 007)."
   resolvedByTimeout: Boolean!
   serviceCredit: BigInt
   openedAtBlock: BigInt!
@@ -106,14 +182,117 @@ type Claim @entity(immutable: false) {
   resolvedAtTimestamp: BigInt
 }
 
-"""A terminal service-credit payout to a client (IMMUTABLE). id = jobId (one payout per job)."""
-type Payout @entity(immutable: true) {
+# ------------------------------------------------------------------ #
+#          Immutable append-only event records (txHash ++ logIndex)  #
+# ------------------------------------------------------------------ #
+
+"""A provider deliverable submission (IMMUTABLE). id = txHash ++ logIndex."""
+type Submission @entity(immutable: true) {
+  id: Bytes!
+  job: Job!
+  provider: Provider!
+  submissionCommitment: Bytes!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  txHash: Bytes!
+}
+
+"""A public initial-evaluation verdict (IMMUTABLE). id = txHash ++ logIndex."""
+type InitialEvaluation @entity(immutable: true) {
+  id: Bytes!
+  job: Job!
+  provider: Provider!
+  evaluator: Bytes!
+  approved: Boolean!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  txHash: Bytes!
+}
+
+"""A confidential (CRE) claim verdict (IMMUTABLE). id = txHash ++ logIndex. resolvedByTimeout is stamped at construction from the mutable Claim (finding 007)."""
+type ConfidentialEvaluation @entity(immutable: true) {
+  id: Bytes!
+  job: Job!
+  provider: Provider!
+  covered: Boolean!
+  serviceCredit: BigInt!
+  resolvedByTimeout: Boolean!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  txHash: Bytes!
+}
+
+"""A terminal service-credit payout to a client (IMMUTABLE). id = txHash ++ logIndex."""
+type GuaranteePayout @entity(immutable: true) {
   id: Bytes!
   job: Job!
   provider: Provider!
   amount: BigInt!
   toClient: Bytes!
-  atBlock: BigInt!
-  atTimestamp: BigInt!
+  blockNumber: BigInt!
+  timestamp: BigInt!
   txHash: Bytes!
+}
+
+"""A movement of provider collateral (IMMUTABLE). id = txHash ++ logIndex."""
+type CollateralMovement @entity(immutable: true) {
+  id: Bytes!
+  job: Job!
+  provider: Provider!
+  kind: CollateralMovementKind!
+  amount: BigInt!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  txHash: Bytes!
+}
+
+# ------------------------------------------------------------------ #
+#                    Risk snapshot + daily metrics                   #
+# ------------------------------------------------------------------ #
+
+"""
+Point-in-time computed risk features (IMMUTABLE history series). id = provider ++ txHash ++ logIndex
+(constant-length operands; collision-free on same-tx bursts — plan §3.5.2). Appended only when a bps
+value changes. Consumers read the latest via orderBy: blockNumber desc, first: 1.
+All ratios are integer bps; -1 means undefined (denominator was zero) — never read -1 as a real ratio.
+"""
+type ProviderRiskSnapshot @entity(immutable: true) {
+  id: Bytes!
+  provider: Provider!
+  completedJobs: BigInt!
+  upheldClaimRateBps: BigInt!
+  claimFrequencyBps: BigInt!
+  averageCoverageRatioBps: BigInt!
+  payoutToCoveredValueBps: BigInt!
+  totalCoveredAmount: BigInt!
+  totalPayoutAmount: BigInt!
+  "Number of resolved claims (real verdicts) — sample size for rate confidence."
+  sampleSize: BigInt!
+  "False when the provider has too little history for the rates to be meaningful."
+  hasEnoughHistory: Boolean!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  txHash: Bytes!
+}
+
+"""
+Per-provider, per-day rollup (MANUAL day-bucket — plan §3.5.5; native @aggregation avoided for
+Matchstick #433). id = provider ++ dayId, dayId = timestamp / 86400 (seconds). Updated only on claim
+resolutions so the agent can compute a trailing-window recentFailureRate = sum(upheldFailures) /
+sum(closedWindows) over the last N days (both a numerator AND a denominator series are required).
+"""
+type ProviderDailyMetric @entity(immutable: false) {
+  id: Bytes!
+  provider: Provider!
+  "Days since Unix epoch (block.timestamp / 86400)."
+  dayId: BigInt!
+  "Bucket start timestamp (dayId * 86400), seconds."
+  dayStartTimestamp: BigInt!
+  "Covered failures that closed a window that day (paid a service credit) — the recent-failure numerator."
+  upheldFailures: BigInt!
+  "Coverage windows that CLOSED that day (covered payout + clean/contested completion) — the recent-failure denominator, i.e. recent volume (028)."
+  closedWindows: BigInt!
+  "Service credit paid out that day."
+  payoutAmount: BigInt!
+  lastUpdatedBlock: BigInt!
 }
