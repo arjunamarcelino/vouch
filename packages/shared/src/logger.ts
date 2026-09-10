@@ -1,4 +1,4 @@
-import { pino, type Logger, type LoggerOptions } from "pino";
+import { pino, destination, type Logger, type LoggerOptions } from "pino";
 
 /**
  * Structured JSON logger factory with secret redaction.
@@ -26,12 +26,15 @@ export const REDACT_PATHS = [
 ];
 
 export function createLogger(name: string, options: LoggerOptions = {}): Logger {
-  return pino({
+  const base = {
     name,
     level: process.env.LOG_LEVEL ?? "info",
     redact: { paths: REDACT_PATHS, censor: "[REDACTED]" },
     ...options,
-  });
+  };
+  // In MCP stdio mode, stdout carries the JSON-RPC framing — logs must go to stderr (fd 2) or they
+  // corrupt the protocol (review 040). Read at logger-creation time (env is set before import).
+  return process.env.AGENT_TRANSPORT === "mcp" ? pino(base, destination(2)) : pino(base);
 }
 
 export type { Logger };

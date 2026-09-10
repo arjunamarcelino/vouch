@@ -39,6 +39,11 @@ const envSchema = z
     // unset, auth is DISABLED (dev only) and the server warns at startup.
     AGENT_API_KEY: z.string().optional(),
     AGENT_RATE_LIMIT_PER_MIN: z.coerce.number().int().positive().default(60),
+    // Transport: "rest" (HTTP, default) or "mcp" (stdio). In mcp mode logs go to stderr so stdout stays
+    // clean for the JSON-RPC framing (review 040).
+    AGENT_TRANSPORT: z.enum(["rest", "mcp"]).default("rest"),
+    // Confirmations to wait before the orchestrator acts on a job event (Arc finality is sub-second).
+    AGENT_MIN_CONFIRMATIONS: z.coerce.bigint().nonnegative().default(0n),
     AGENT_ALLOW_MANUAL_PAY: z
       .enum(["true", "false"])
       .default("false")

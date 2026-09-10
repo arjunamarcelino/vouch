@@ -12,6 +12,7 @@ import { PaymentExecutor } from "./pay/executor";
 import { PrismaAgentStore } from "./store/prismaStore";
 import { AgentCore } from "./server/core";
 import { createRestServer } from "./server/rest";
+import { startMcpStdio } from "./server/mcp";
 import { createArcClient, watchJobEvents } from "./monitor/watch";
 import { Orchestrator } from "./orchestrator";
 
@@ -48,8 +49,43 @@ async function main(): Promise<void> {
     log.warn("agent core not fully configured — starting /health only (see docs/arc-agent-stack.md)");
   }
 
-  // REST is always started so /health is reachable even in a degraded config.
-  if (core) {
+  if (!core) return; // degraded: nothing to serve (buildCore logged why)
+
+  // Periodic reconcile: finalize intents whose background drive didn't complete (crash/restart backstop
+  // for the non-blocking executor — review 035). Runs under both transports.
+  const reconcileTimer = setInterval(() => {
+    void core.executor.reconcile().catch((err: unknown) => logError("reconcile", err));
+  }, RECONCILE_INTERVAL_MS);
+  reconcileTimer.unref?.();
+
+  // Autonomous monitor: startup reconcile, then react to job openings (finality-gated). Runs under both
+  // transports.
+  if (env.VOUCH_CORE_ADDRESS && env.ARC_RPC_URL) {
+    const client = createArcClient(env.CHAIN_ENV, env.ARC_RPC_URL);
+    const orchestrator = new Orchestrator({
+      reconcile: () => core.executor.reconcile(),
+      onJobOpened: async (jobId) => {
+        // The on-chain JobCreated does not carry our quoteId (documented limitation); this build records
+        // the observation. Early release-on-honored-quote needs the escrow release path (removed in 043).
+        log.info({ jobId: jobId.toString() }, "observed job open on a quoted provider");
+      },
+      minConfirmations: env.AGENT_MIN_CONFIRMATIONS,
+      chainHead: () => client.getBlockNumber(),
+    });
+    await orchestrator.start();
+    watchJobEvents(client, env.VOUCH_CORE_ADDRESS as Address, (e) => {
+      void orchestrator.handleJobEvent(e).catch((err: unknown) => logError("orchestrator", err));
+    });
+    log.info({ minConfirmations: env.AGENT_MIN_CONFIRMATIONS.toString() }, "autonomous monitor active");
+  } else {
+    log.warn("VOUCH_CORE_ADDRESS / ARC_RPC_URL unset — autonomous monitoring disabled");
+  }
+
+  // Transport: MCP over stdio, or REST (default). Both share the core + monitor above.
+  if (env.AGENT_TRANSPORT === "mcp") {
+    await startMcpStdio(core.core, { allowManualPay: env.AGENT_ALLOW_MANUAL_PAY });
+    log.info("MCP stdio transport connected"); // logs on stderr in mcp mode (see logger)
+  } else {
     const app = createRestServer(core.core, {
       allowManualPay: env.AGENT_ALLOW_MANUAL_PAY,
       apiKey: env.AGENT_API_KEY,
@@ -57,33 +93,6 @@ async function main(): Promise<void> {
     });
     await app.listen({ port: env.AGENT_HTTP_PORT, host: "0.0.0.0" });
     log.info({ port: env.AGENT_HTTP_PORT, allowManualPay: env.AGENT_ALLOW_MANUAL_PAY }, "REST server listening");
-
-    // Periodic reconcile: finalize intents whose background drive didn't complete (crash/restart
-    // backstop for the non-blocking executor — review 035). Startup reconcile runs in the orchestrator.
-    const reconcileTimer = setInterval(() => {
-      void core.executor.reconcile().catch((err: unknown) => logError("reconcile", err));
-    }, RECONCILE_INTERVAL_MS);
-    reconcileTimer.unref?.();
-
-    // Autonomous monitor: reconcile in-flight intents, then react to job openings.
-    if (env.VOUCH_CORE_ADDRESS && env.ARC_RPC_URL) {
-      const orchestrator = new Orchestrator({
-        reconcile: () => core.executor.reconcile(),
-        onJobOpened: async (jobId) => {
-          // The on-chain JobCreated does not carry our quoteId (documented limitation); this build
-          // records the observation. Wiring releaseBond requires the escrow contract-execution path.
-          log.info({ jobId: jobId.toString() }, "observed job open on a quoted provider");
-        },
-      });
-      await orchestrator.start();
-      const client = createArcClient(env.CHAIN_ENV, env.ARC_RPC_URL);
-      watchJobEvents(client, env.VOUCH_CORE_ADDRESS as Address, (e) => {
-        void orchestrator.handleJobEvent(e).catch((err: unknown) => logError("orchestrator", err));
-      });
-      log.info("autonomous monitor active");
-    } else {
-      log.warn("VOUCH_CORE_ADDRESS / ARC_RPC_URL unset — autonomous monitoring disabled");
-    }
   }
 }
 

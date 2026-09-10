@@ -71,8 +71,11 @@ QuoteBondEscrow ──consumeBond (slash)──────▶ slashSink        
 `src/orchestrator.ts` + `src/monitor/watch.ts`: on startup the executor **reconciles** in-flight
 intents; the agent then **watches** `JobCreated`/`JobFunded`/`CoverageStarted` and initiates the next
 allowed action (finality-gated, deduped per job) **without manual transaction construction**. Quotes
-are requested/verified/paid via **REST** (`src/server/rest.ts`) and **MCP** (`src/server/mcp.ts`) over a
-shared core (`src/server/core.ts`).
+are requested/verified/paid via **REST** (`src/server/rest.ts`, default) and **MCP**
+(`src/server/mcp.ts`) over a shared core (`src/server/core.ts`). Select the transport with
+`AGENT_TRANSPORT` (`rest` | `mcp`); `pnpm --filter @vouch/agent start:mcp` runs the stdio MCP server (in
+that mode logs go to **stderr** so stdout stays clean for the JSON-RPC framing). A chain-safety +
+escrow-deployed preflight runs before any real USDC action.
 
 > **Known limitation:** the on-chain `JobCreated` event does not carry the agent's `quoteId`, so a
 > precise quote↔job link needs an off-chain jobHash match or a future event field. This build records
