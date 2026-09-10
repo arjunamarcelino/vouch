@@ -32,7 +32,6 @@ Provider reputation aggregate (mutable). regressionRate = claimsPaid / jobsCompl
 type Provider @entity(immutable: false) {
   id: Bytes!
   jobsCreated: BigInt!
-  jobsFunded: BigInt!
   "CLEAN coverage windows closed (no claim was ever opened). Full closed-window denominator for regressionRate = jobsCompleted + contestedCompletions + claimsPaid."
   jobsCompleted: BigInt!
   "Coverage windows closed after a claim resolved NOT-covered or timed out (contested but not paid). Excluded from jobsCompleted so stonewalling the CRE can't read as a clean finish (finding 007)."

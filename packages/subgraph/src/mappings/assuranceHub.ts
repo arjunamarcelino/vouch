@@ -1,7 +1,6 @@
 import { Address, BigInt, Bytes, ethereum } from "@graphprotocol/graph-ts";
 import {
   JobCreated,
-  JobFunded,
   ProviderAccepted,
   DeliverableSubmitted,
   InitialEvaluationResolved,
@@ -33,6 +32,9 @@ const G_LOCKED = "LOCKED";
 const G_PAID = "PAID";
 const G_RELEASED = "RELEASED";
 
+// NOTE (014): Bytes.fromBigInt yields a minimal LITTLE-ENDIAN, variable-length id. It is injective
+// for positive jobIds and every entity routes through this helper, so ids are internally consistent
+// and collision-free — raw ids just aren't the big-endian hex of the jobId.
 function jobIdToBytes(jobId: BigInt): Bytes {
   return Bytes.fromByteArray(Bytes.fromBigInt(jobId));
 }
@@ -42,7 +44,6 @@ function getOrCreateProvider(address: Address, block: ethereum.Block): Provider 
   if (p == null) {
     p = new Provider(address);
     p.jobsCreated = BigInt.zero();
-    p.jobsFunded = BigInt.zero();
     p.jobsCompleted = BigInt.zero();
     p.contestedCompletions = BigInt.zero();
     p.guaranteesLocked = BigInt.zero();
@@ -120,17 +121,8 @@ export function handleJobCreated(event: JobCreated): void {
   }
   provider.save();
 }
-
-export function handleJobFunded(event: JobFunded): void {
-  let id = jobIdToBytes(event.params.jobId);
-  let job = Job.load(id);
-  if (job == null) return;
-  let provider = Provider.load(job.provider);
-  if (provider == null) return;
-  provider.jobsFunded = provider.jobsFunded.plus(ONE);
-  provider.lastUpdatedBlock = event.block.number;
-  provider.save();
-}
+// NOTE: JobFunded is emitted on-chain but intentionally NOT indexed — it carries no info beyond
+// JobCreated (openJob merges create+fund, so funded-count would always equal jobsCreated) (finding 014).
 
 export function handleProviderAccepted(event: ProviderAccepted): void {
   let provider = getOrCreateProvider(event.params.provider, event.block);
