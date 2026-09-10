@@ -43,9 +43,10 @@ drops `Ownable2Step`):
   it can reject all jobs or approve garbage, but it can never pay itself.
 - **CRE receiver** (`ReceiverBase`: forwarder + workflow identity) is the *only* path that finalizes
   the *confidential* claim (`onReport`) and can trigger a guarantee payout.
-- **`DEFAULT_ADMIN_ROLE`** holds config and role management only (`setForwarder`,
-  `setExpectedWorkflow`, `setFeeRecipient`, `pause` / `unpause`). No admin function moves principal;
-  this is machine-checked by `test_NoAdminCanSeizeFunds`.
+- **`DEFAULT_ADMIN_ROLE`** holds config and role management only (`queueForwarder`/`applyForwarder`,
+  `queueExpectedWorkflow`/`applyExpectedWorkflow` — both behind a 2-day timelock, see hardening §
+  below — plus `setFeeRecipient`, `pause` / `unpause`). No admin function moves principal; this is
+  machine-checked by `test_NoAdminCanSeizeFunds`.
 
 `Pausable` **pauses entries, never exits**: liability-growing entries (`openJob`, `acceptJob`,
 `submitDeliverable`, `resolveInitialEvaluation`) are `whenNotPaused`, while every fund exit
@@ -108,6 +109,30 @@ client colluding with the relay operator can extract a provider's collateral. Th
 signatures, or in-contract signature verification inside `onReport`** (see ADR-004). This trust
 boundary is documented, not hidden, and is exercised by
 `test_ForwarderIsEOA_CanForceCoveredPayout`.
+
+## Post-review hardening (2026-09-10)
+
+The multi-agent code review of PR #1 produced follow-up fixes that tighten this design (findings
+tracked in `todos/`):
+
+- **Config timelock (004).** `setForwarder`/`setExpectedWorkflow` were replaced by
+  `queueForwarder`+`applyForwarder` and `queueExpectedWorkflow`+`applyExpectedWorkflow`, gated by a
+  2-day `CONFIG_TIMELOCK`. A compromised admin can no longer *instantly* repoint the settlement gate
+  to force a payout — the change is visible and delayed. (EOA-relay forwarders remain allowed for the
+  hackathon per the B3 caveat above; the timelock is defense-in-depth, not a replacement for real
+  DON-signature verification.)
+- **Report domain binding (003).** The CRE report is now
+  `abi.encode(uint256 chainId, address hub, uint256 jobId, bool covered, uint256 amount)`, and
+  `onReport` reverts `ReportDomainMismatch` unless `chainId == block.chainid` and `hub == address(this)`.
+  This blocks replay of a valid report across chains/deployments that share a workflow identity.
+- **openClaim is non-pausable (001).** Opening a claim accesses already-earned coverage (no new
+  liability) and is time-bounded by `coverageEnd`, so it joins the non-pausable exit set — a pause can
+  no longer run out a client's window while the provider later withdraws.
+- **Reputation honesty (007).** The subgraph now separates contested/timed-out windows
+  (`Provider.contestedCompletions`, `Claim.resolvedByTimeout`, indexed `ClaimTimedOut`) from clean
+  completions, so stonewalling the CRE until the timeout cannot read as a clean finish.
+- **ABI single source enforced (002).** CI (`contracts.yml`) regenerates the shared + subgraph ABIs
+  from the build and fails on drift.
 
 ## Consequences
 
