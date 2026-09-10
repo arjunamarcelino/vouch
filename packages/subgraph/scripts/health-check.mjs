@@ -11,9 +11,9 @@ const MAX_LAG = BigInt(process.env.SUBGRAPH_MAX_LAG_BLOCKS ?? "25");
 const TIMEOUT_MS = Number(process.env.SUBGRAPH_TIMEOUT_MS ?? "10000");
 
 function redact(url) {
+  // Origin only — gateway API keys live in the path, so never print it (012).
   try {
-    const u = new URL(url);
-    return `${u.origin}${u.pathname}`;
+    return `${new URL(url).origin}/…`;
   } catch {
     return "<invalid-url>";
   }

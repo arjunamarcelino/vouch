@@ -15,9 +15,9 @@ const INT_STRING = /^-?\d+$/;
 const providerArg = process.argv[2] ?? "0x1111111111111111111111111111111111111111";
 
 function redact(url) {
+  // Origin only — gateway API keys live in the path, so never print it (012).
   try {
-    const u = new URL(url);
-    return `${u.origin}${u.pathname}`;
+    return `${new URL(url).origin}/…`;
   } catch {
     return "<invalid-url>";
   }

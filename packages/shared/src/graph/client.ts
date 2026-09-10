@@ -39,11 +39,15 @@ interface Meta {
   hasIndexingErrors: boolean;
 }
 
-/** origin + path only — strips any query key embedded in the URL (security F6). */
+/**
+ * Redact to ORIGIN only. The Graph's decentralized gateway carries the API key in the URL *path*
+ * (`https://gateway.thegraph.com/api/<KEY>/subgraphs/id/<id>`), so the path — not just the query —
+ * must be dropped or the key leaks into every log/error line (security 012). Returns `origin/…`.
+ */
 export function redactUrl(url: string): string {
   try {
     const u = new URL(url);
-    return `${u.origin}${u.pathname}`;
+    return `${u.origin}/…`;
   } catch {
     return "<invalid-url>";
   }
