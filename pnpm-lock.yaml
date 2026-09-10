@@ -220,6 +220,9 @@ importers:
       '@graphprotocol/graph-ts':
         specifier: ^0.38.2
         version: 0.38.2
+      matchstick-as:
+        specifier: ^0.6.0
+        version: 0.6.0
 
   packages/ui:
     dependencies:
@@ -3262,6 +3265,9 @@ packages:
     resolution: {integrity: sha512-2w31R7SJtieJJnQtGc7RVL2StM2vGYVfqUOvUDxH6bC6aJTxPxTF0GnIgCyu7tjockiUWAYQRbxa7vKn34s5sQ==}
     engines: {node: '>=4'}
 
+  matchstick-as@0.6.0:
+    resolution: {integrity: sha512-E36fWsC1AbCkBFt05VsDDRoFvGSdcZg6oZJrtIe/YDBbuFh8SKbR5FcoqDhNWqSN+F7bN/iS2u8Md0SM+4pUpw==}
+
   math-intrinsics@1.1.0:
     resolution: {integrity: sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==}
     engines: {node: '>= 0.4'}
@@ -4335,6 +4341,10 @@ packages:
     peerDependenciesMeta:
       typescript:
         optional: true
+
+  wabt@1.0.24:
+    resolution: {integrity: sha512-8l7sIOd3i5GWfTWciPL0+ff/FK/deVK2Q6FN+MPz4vfUcD78i2M/49XJTwF6aml91uIiuXJEsLKWMB2cw/mtKg==}
+    hasBin: true
 
   watchpack@2.5.2:
     resolution: {integrity: sha512-6i/00NBjP4yGPs+caKSyRfpTF/8Torsu0MOW3mMzIbhgISFder8i7xbqgHlLMwJrdiN8ndBV3UA1/AfzPSr+jg==}
@@ -7652,6 +7662,10 @@ snapshots:
     dependencies:
       pify: 3.0.0
 
+  matchstick-as@0.6.0:
+    dependencies:
+      wabt: 1.0.24
+
   math-intrinsics@1.1.0: {}
 
   media-typer@0.3.0: {}
@@ -8703,6 +8717,8 @@ snapshots:
       - bufferutil
       - utf-8-validate
       - zod
+
+  wabt@1.0.24: {}
 
   watchpack@2.5.2:
     dependencies:

@@ -7,12 +7,17 @@
   "scripts": {
     "codegen": "graph codegen",
     "build": "graph build",
+    "test": "graph test",
+    "test:coverage": "graph test -- -c",
     "deploy:studio": "graph deploy",
     "create:local": "graph create --node http://localhost:8020/ vouch/vouch-subgraph",
-    "deploy:local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 vouch/vouch-subgraph"
+    "deploy:local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 vouch/vouch-subgraph",
+    "health-check": "node scripts/health-check.mjs",
+    "validate-endpoint": "node scripts/validate-endpoint.mjs"
   },
   "devDependencies": {
     "@graphprotocol/graph-cli": "^0.98.1",
-    "@graphprotocol/graph-ts": "^0.38.2"
+    "@graphprotocol/graph-ts": "^0.38.2",
+    "matchstick-as": "^0.6.0"
   }
 }
