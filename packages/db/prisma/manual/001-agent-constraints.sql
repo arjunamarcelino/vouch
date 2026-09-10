@@ -12,9 +12,10 @@ ALTER TABLE "Quote" ADD CONSTRAINT quote_amounts_uint
      AND "assuranceServiceFee" ~ '^[0-9]+$'
      AND "minProviderCollateral" ~ '^[0-9]+$');
 
--- Partial index backing the rolling daily-cap SUM over in-flight + settled intents.
+-- Partial index backing the ROLLING 24h daily-cap SUM (WHERE status NOT IN (...) AND createdAt >= ...).
+-- Indexed on createdAt so the windowed scan stays bounded as lifetime intent count grows.
 CREATE INDEX IF NOT EXISTS payment_intent_active_idx
-  ON "PaymentIntent" (status)
+  ON "PaymentIntent" ("createdAt")
   WHERE status NOT IN ('FAILED', 'ABANDONED');
 
 -- Tamper-evidence: the decision log is append-only. Revoke mutation at the app DB role

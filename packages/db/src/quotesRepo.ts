@@ -86,12 +86,16 @@ export async function reserveIntent(intent: NewIntent, caps: SpendCaps): Promise
     // Serialize concurrent reservations for this wallet.
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(${caps.walletLockKey})`;
 
-    // SUM over all NON-TERMINAL intents (PLANNED/SUBMITTING/SUBMITTED/CONFIRMED) — counts
-    // in-flight so ambiguous retries can't breach the cap.
+    // ROLLING 24h SUM over all NON-TERMINAL intents (PLANNED/SUBMITTING/SUBMITTED/CONFIRMED) — counts
+    // in-flight so ambiguous retries can't breach the cap, and windowed so the cap RESETS (without the
+    // `createdAt` filter this was a permanent lifetime cap that froze all payments — review 033).
+    // NOTE: scoped to a single agent wallet (per-wallet advisory lock above); add a wallet/token filter
+    // here if multi-wallet is ever supported.
     const rows = await tx.$queryRaw<{ spent: string }[]>`
       SELECT COALESCE(SUM(amount::numeric), 0)::text AS spent
       FROM "PaymentIntent"
-      WHERE status NOT IN ('FAILED', 'ABANDONED')`;
+      WHERE status NOT IN ('FAILED', 'ABANDONED')
+        AND "createdAt" >= now() - interval '24 hours'`;
     const spentToday = BigInt(rows[0]?.spent ?? "0");
     if (spentToday + amount > caps.dailyCap) {
       return { ok: false, reasonCodes: ["DAILY_CAP_EXCEEDED"] };

@@ -121,10 +121,11 @@ model PaymentIntent {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  // Cap SUM reads non-terminal intents per wallet; a partial index
-  // `(destination,status) WHERE status NOT IN ('FAILED','ABANDONED')` is added
-  // via raw migration SQL (Prisma can't express partial indexes).
+  // Rolling-24h cap SUM reads non-terminal intents (see quotesRepo.reserveIntent). A partial index
+  // `("createdAt") WHERE status NOT IN ('FAILED','ABANDONED')` backs it, added via raw migration SQL
+  // (Prisma can't express partial indexes — see manual/001-agent-constraints.sql).
   @@index([status])
+  @@index([createdAt])
 }
 
 /// Append-only, per-quote hash-chained decision log (plan §9.1). The dual
