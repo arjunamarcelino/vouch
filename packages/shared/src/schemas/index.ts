@@ -175,6 +175,7 @@ export const quoteCommitmentSchema = z.object({
   quoteId: hex32,
   jobHash: hex32,
   nonce: hex32,
+  token: hexAddress, // denomination; part of the signed struct, persisted for action-time verify
   score: riskScoreSchema,
   validAfter: uintString,
   expiresAt: uintString,

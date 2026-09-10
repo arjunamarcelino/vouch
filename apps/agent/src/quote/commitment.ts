@@ -152,6 +152,7 @@ export async function buildQuoteCommitment(args: BuildQuoteArgs): Promise<QuoteC
       quoteId,
       jobHash: jHash,
       nonce: quoteId,
+      token: job.token,
       score,
       validAfter: validAfter.toString(),
       expiresAt: expiresAt.toString(),
@@ -159,6 +160,55 @@ export async function buildQuoteCommitment(args: BuildQuoteArgs): Promise<QuoteC
     },
     "quote commitment",
   );
+}
+
+/** Signature + validity-window check over a commitment (uses the commitment's own signed token). */
+async function checkSigAndExpiry(
+  commitment: QuoteCommitment,
+  expectedSigner: Address,
+  cfg: CommitmentConfig,
+  nowSeconds: bigint,
+): Promise<VerifyReasonCode[]> {
+  const reasonCodes: VerifyReasonCode[] = [];
+  const validAfter = BigInt(commitment.validAfter);
+  const expiresAt = BigInt(commitment.expiresAt);
+  if (nowSeconds < validAfter) reasonCodes.push("QUOTE_NOT_YET_VALID");
+  if (nowSeconds >= expiresAt) reasonCodes.push("QUOTE_EXPIRED");
+
+  const message = toTypedMessage(
+    commitment.score,
+    commitment.token as Address,
+    commitment.quoteId as Hex,
+    commitment.jobHash as Hex,
+    validAfter,
+    expiresAt,
+  );
+  const sigOk = await verifyTypedData({
+    address: expectedSigner,
+    domain: domain(cfg),
+    types: QUOTE_TYPES,
+    primaryType: "Quote",
+    message,
+    signature: commitment.signature as Hex,
+  });
+  if (!sigOk) reasonCodes.push("BAD_SIGNER");
+  return reasonCodes;
+}
+
+/**
+ * Action-time integrity check (agent's own stored quote): signature + expiry only, NO jobHash — the
+ * agent doesn't hold the original job terms at bond time and trusts its own signed commitment; the
+ * nonce store handles replay (§0.6).
+ */
+export async function verifyCommitmentIntegrity(args: {
+  commitment: QuoteCommitment;
+  expectedSigner: Address;
+  cfg: CommitmentConfig;
+  nowSeconds: bigint;
+}): Promise<{ valid: boolean; reasonCodes: VerifyReasonCode[] }> {
+  const { commitment, expectedSigner, cfg, nowSeconds } = args;
+  const reasonCodes = await checkSigAndExpiry(commitment, expectedSigner, cfg, nowSeconds);
+  return { valid: reasonCodes.length === 0, reasonCodes };
 }
 
 export interface VerifyArgs {
@@ -174,35 +224,9 @@ export async function verifyQuote(
   args: VerifyArgs,
 ): Promise<{ valid: boolean; reasonCodes: VerifyReasonCode[] }> {
   const { commitment, job, expectedSigner, cfg, nowSeconds } = args;
-  const reasonCodes: VerifyReasonCode[] = [];
-
-  const validAfter = BigInt(commitment.validAfter);
-  const expiresAt = BigInt(commitment.expiresAt);
-  if (nowSeconds < validAfter) reasonCodes.push("QUOTE_NOT_YET_VALID");
-  if (nowSeconds >= expiresAt) reasonCodes.push("QUOTE_EXPIRED");
-
-  // Altered job parameters: recompute the opaque jobHash and compare.
+  // Signature + expiry (domain mismatch surfaces as BAD_SIGNER — domain is part of the signature).
+  const reasonCodes = await checkSigAndExpiry(commitment, expectedSigner, cfg, nowSeconds);
+  // Altered job parameters: recompute the opaque jobHash and compare against the signed one.
   if (computeJobHash(job) !== commitment.jobHash) reasonCodes.push("JOB_PARAMS_ALTERED");
-
-  // Signature: recover over the SAME typed data. A mismatched domain (chainId/verifyingContract)
-  // recovers a different signer, so chain-mismatch surfaces as BAD_SIGNER unless we check explicitly.
-  const message = toTypedMessage(
-    commitment.score,
-    job.token as Address,
-    commitment.quoteId as Hex,
-    commitment.jobHash as Hex,
-    validAfter,
-    expiresAt,
-  );
-  const sigOk = await verifyTypedData({
-    address: expectedSigner,
-    domain: domain(cfg),
-    types: QUOTE_TYPES,
-    primaryType: "Quote",
-    message,
-    signature: commitment.signature as Hex,
-  });
-  if (!sigOk) reasonCodes.push("BAD_SIGNER");
-
   return { valid: reasonCodes.length === 0, reasonCodes };
 }
