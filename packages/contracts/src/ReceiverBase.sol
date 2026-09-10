@@ -6,30 +6,31 @@ import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {Errors} from "./libraries/Errors.sol";
 
 /// @title ReceiverBase
-/// @notice Abstract base implementing CRE report authorization + ERC-165 discovery.
-/// @dev Intentionally NOT `Ownable`: the concrete contract (VouchCore) owns the single
-///      `Ownable2Step` lineage and exposes the owner-gated setters. This avoids the
-///      double-`Ownable` diamond called out in the plan (§17.6).
+/// @notice Abstract base implementing Chainlink CRE report authorization + ERC-165 discovery.
+/// @dev Intentionally NOT AccessControl/Ownable: the concrete contract (AssuranceHub) owns the
+///      authorities and gates these setters with `onlyRole(DEFAULT_ADMIN_ROLE)`. Settlement binds
+///      to BOTH the transport (`forwarder`) AND the full workflow identity carried in the report
+///      metadata, so a different workflow relayed by the same forwarder cannot settle jobs.
 ///
-///      Trust model (plan §17.3): the receiver binds settlement to BOTH the transport
-///      (`forwarder`) AND the workflow identity (`expectedWorkflowId`/`expectedWorkflowOwner`)
-///      carried in the report `metadata`. A different workflow relayed by the same
-///      forwarder therefore cannot settle Vouch jobs (edge case E8b).
+///      Metadata layout (Keystone, PACKED — plan §4.2): the report `metadata` is
+///      `abi.encodePacked(bytes32 workflowId, bytes10 workflowName, address workflowOwner)` = 62
+///      bytes; production forwarders append a 2-byte `reportId` (64 total). It MUST be slice-decoded
+///      by byte offset — never `abi.decode` (that was the original bug).
 abstract contract ReceiverBase is IReceiver {
     /// @notice Authorized transport for DON-signed reports (KeystoneForwarder or relay).
     address public forwarder;
 
-    /// @notice Workflow id (CRE workflow identifier) permitted to settle jobs.
+    /// @notice Workflow id permitted to settle jobs.
     bytes32 public expectedWorkflowId;
 
-    /// @notice Workflow owner address permitted to settle jobs.
+    /// @notice Workflow name (bytes10) permitted to settle jobs.
+    bytes10 public expectedWorkflowName;
+
+    /// @notice Workflow owner permitted to settle jobs.
     address public expectedWorkflowOwner;
 
-    /// @notice Emitted when the authorized forwarder changes.
     event ForwarderUpdated(address indexed previous, address indexed current);
-
-    /// @notice Emitted when the expected workflow identity changes.
-    event ExpectedWorkflowUpdated(bytes32 indexed workflowId, address indexed workflowOwner);
+    event ExpectedWorkflowUpdated(bytes32 indexed workflowId, bytes10 workflowName, address indexed workflowOwner);
 
     /// @dev Sets the authorized forwarder. Concrete contract must gate the caller.
     function _setForwarder(address newForwarder) internal {
@@ -39,29 +40,34 @@ abstract contract ReceiverBase is IReceiver {
     }
 
     /// @dev Sets the expected workflow identity. Concrete contract must gate the caller.
-    function _setExpectedWorkflow(bytes32 workflowId, address workflowOwner) internal {
+    function _setExpectedWorkflow(bytes32 workflowId, bytes10 workflowName, address workflowOwner) internal {
         if (workflowOwner == address(0)) revert Errors.ZeroAddress();
         expectedWorkflowId = workflowId;
+        expectedWorkflowName = workflowName;
         expectedWorkflowOwner = workflowOwner;
-        emit ExpectedWorkflowUpdated(workflowId, workflowOwner);
+        emit ExpectedWorkflowUpdated(workflowId, workflowName, workflowOwner);
     }
 
-    /// @dev Decodes the workflow identity from Keystone report metadata.
-    ///      Vouch expects metadata as `abi.encode(bytes32 workflowId, address workflowOwner)`.
-    function _decodeMetadata(bytes calldata metadata)
+    /// @dev Decodes PACKED Keystone metadata by byte offset (first 62 bytes; extra suffix ignored).
+    function _decodeMetadata(bytes calldata m)
         internal
         pure
-        returns (bytes32 workflowId, address workflowOwner)
+        returns (bytes32 workflowId, bytes10 workflowName, address workflowOwner)
     {
-        (workflowId, workflowOwner) = abi.decode(metadata, (bytes32, address));
+        if (m.length < 62) revert Errors.BadMetadata();
+        workflowId = bytes32(m[0:32]);
+        workflowName = bytes10(m[32:42]);
+        workflowOwner = address(bytes20(m[42:62]));
     }
 
-    /// @dev Authorizes an incoming report: correct transport AND correct workflow identity.
-    ///      Reverts with {Errors.NotForwarder} or {Errors.UnauthorizedWorkflow}.
+    /// @dev Authorizes an incoming report: correct transport AND full workflow identity (id+name+owner).
     function _authorizeReport(bytes calldata metadata) internal view {
         if (msg.sender != forwarder) revert Errors.NotForwarder();
-        (bytes32 workflowId, address workflowOwner) = _decodeMetadata(metadata);
-        if (workflowId != expectedWorkflowId || workflowOwner != expectedWorkflowOwner) {
+        (bytes32 workflowId, bytes10 workflowName, address workflowOwner) = _decodeMetadata(metadata);
+        if (
+            workflowId != expectedWorkflowId || workflowName != expectedWorkflowName
+                || workflowOwner != expectedWorkflowOwner
+        ) {
             revert Errors.UnauthorizedWorkflow();
         }
     }
