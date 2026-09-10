@@ -32,6 +32,7 @@ const SECONDS_PER_DAY = 86_400;
 const RISK_QUERY = `
   query ProviderRisk($id: ID!, $since: BigInt!) {
     ${META_SELECTION}
+    protocols(first: 1) { totalJobs }
     provider(id: $id) {
       id
       jobsCompleted
@@ -103,18 +104,25 @@ export async function getProviderRisk(
 
   // One subgraph request (data + _meta) and the chain head fetched CONCURRENTLY (015 / 023).
   const [data, chainHead] = await Promise.all([
-    querySubgraph<{ _meta: Meta | null; provider: RawProvider | null }>(
-      url,
-      RISK_QUERY,
-      { id: provider.toLowerCase(), since },
-      freshness.timeoutMs,
-    ),
+    querySubgraph<{
+      _meta: Meta | null;
+      protocols: { totalJobs: string }[];
+      provider: RawProvider | null;
+    }>(url, RISK_QUERY, { id: provider.toLowerCase(), since }, freshness.timeoutMs),
     getChainHead(freshness.rpcUrl, freshness.timeoutMs ?? 10_000),
   ]);
 
   // Fail closed on the _meta that came back WITH the data (same block) — throws if stale/lagging.
   const fresh = checkFreshness(data._meta, chainHead, freshness);
   const latestIndexedBlock = fresh.latestIndexedBlock.toString();
+
+  // Data-presence guard (013): a fresh index that has indexed ZERO jobs is empty/wrong-contract, not
+  // a source of "new provider" truth — refuse rather than quote a phantom-clean population.
+  const proto = data.protocols.length > 0 ? data.protocols[0] : undefined;
+  const totalJobs = proto ? toBigIntOrThrow(proto.totalJobs, "protocol.totalJobs") : 0n;
+  if (totalJobs === 0n) {
+    throw new VouchError("SUBGRAPH_UNAVAILABLE", "Subgraph has indexed no jobs (empty or wrong index)");
+  }
 
   // Genuinely absent AND the index is fresh ⇒ new provider. Never "blind".
   if (data.provider === null || data.provider === undefined) {

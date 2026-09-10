@@ -15,6 +15,10 @@ query RiskAgentInput($id: ID!, $since: BigInt!) {
     deployment
     hasIndexingErrors
   }
+  # Data-presence guard: a fresh index with totalJobs == 0 is empty/wrong-contract → agent refuses (013).
+  protocols(first: 1) {
+    totalJobs
+  }
   provider(id: $id) {
     id
     jobsCompleted
