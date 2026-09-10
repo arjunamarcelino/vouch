@@ -107,10 +107,11 @@ model PaymentIntent {
   idempotencyKey String   @id
   quote          Quote    @relation(fields: [quoteId], references: [quoteId], onDelete: Restrict)
   quoteId        String
-  action         String // POST_BOND | REFUND_BOND | CONSUME_BOND
+  action         String // POST_BOND | REFUND_BOND
   amount         String
   token          String
-  destination    String
+  destination    String // the escrow contract address
+  callData       String // viem-encoded contract call (postBond/refundBond) — replayed on reconcile
   chainId        Int
   paramsHash     String
   status         String   @default("PLANNED") // PLANNED|SUBMITTING|SUBMITTED|CONFIRMED|FAILED|ABANDONED

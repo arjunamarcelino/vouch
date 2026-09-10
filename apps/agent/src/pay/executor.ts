@@ -1,18 +1,21 @@
-import { formatUnits, type Address } from "viem";
-import { SpendPolicyViolationError } from "@vouch/shared/errors";
-import type { PaymentAction } from "@vouch/shared/schemas";
+import { encodeFunctionData, type Address, type Hex } from "viem";
+import { SpendPolicyViolationError, VouchError } from "@vouch/shared/errors";
+import { quoteBondEscrowAbi } from "@vouch/shared/abis";
+import type { PaymentAction, PaymentStatus } from "@vouch/shared/schemas";
 import { idempotencyKey, paramsHash } from "./idempotency";
 import { checkSpend, type SpendPolicy } from "../wallet/policy";
+import { assertChainSafety, type ChainReader, type ChainGuardConfig } from "../wallet/chainGuard";
 import type { AgentWallet } from "../wallet/agentWallet";
 
 /**
- * Crash-safe payment executor (plan §6.4). Persist PLANNED → policy + reserve → SUBMITTING →
- * sendUsdc(idempotencyKey) → SUBMITTED → poll → CONFIRMED/FAILED. Exactly-once rests on Circle's
- * idempotency key + the persisted intent status; a benign retry returns the prior intent, never a
- * second payment. Reconcile re-drives in-flight intents on startup (re-POST with the same key is the
- * safe "did it land?" query — data-integrity H3). Retry is intentionally minimal (§0.1.2).
+ * Crash-safe payment executor (plan §6.4). The bond moves via the QuoteBondEscrow CONTRACT
+ * (`postBond`/`refundBond`) through Circle DCW contract-execution — NOT a bare transfer (review 032),
+ * so funds are recoverable. Persist PLANNED → policy + reserve → SUBMITTING → executeContract(key) →
+ * SUBMITTED → poll → CONFIRMED/FAILED. Exactly-once rests on Circle's idempotency key + the persisted
+ * intent status; a benign retry returns the prior intent. Reconcile re-POSTs the stored `callData`
+ * with the same key (safe: Circle dedupes). Chain-safety is asserted before the first send (review 040).
  *
- * Storage + wallet are INJECTED so this is unit-testable without a live DB or Circle account.
+ * Storage + wallet + chain reader are INJECTED so this is unit-testable without a live DB/Circle/RPC.
  */
 
 export const USDC_DECIMALS = 6;
@@ -20,10 +23,11 @@ export const USDC_DECIMALS = 6;
 export interface StoredIntent {
   idempotencyKey: string;
   quoteId: string;
-  action: string;
+  action: PaymentAction;
   amount: string;
   destination: string;
-  status: string;
+  callData: string;
+  status: PaymentStatus;
   providerRef: string | null;
   txHash: string | null;
   attempts: number;
@@ -36,6 +40,7 @@ export interface ReserveArgs {
   amount: string;
   token: string;
   destination: string;
+  callData: string;
   chainId: number;
   paramsHash: string;
 }
@@ -49,9 +54,9 @@ export interface IntentStore {
   reserveIntent(intent: ReserveArgs): Promise<ReserveResult>;
   updateIntentStatus(
     key: string,
-    status: string,
+    status: PaymentStatus,
     fields?: { providerRef?: string; txHash?: string; incrementAttempt?: boolean },
-  ): Promise<void>;
+  ): Promise<StoredIntent>;
   getIntent(key: string): Promise<StoredIntent | null>;
   findInFlightIntents(): Promise<StoredIntent[]>;
 }
@@ -62,9 +67,13 @@ export interface ExecutorDeps {
   policy: SpendPolicy;
   chainId: number;
   usdcToken: Address;
+  /** The QuoteBondEscrow contract address (must have bytecode — guards against dEaD/EOA). */
+  escrowAddress: Address;
+  /** viem public client for the chain-safety preflight. Omit to skip (tests). */
+  chainReader?: ChainReader;
   /** Max status polls before leaving the intent SUBMITTED for later reconciliation. */
   maxPolls?: number;
-  /** Injected for tests; defaults to a real delay. */
+  /** Injected for tests; defaults to backoff+jitter delay. */
   sleep?: (ms: number) => Promise<void>;
 }
 
@@ -72,99 +81,125 @@ export interface PayRequest {
   quoteId: string;
   action: PaymentAction;
   amountBaseUnits: bigint;
-  destination: Address;
+  /** Required for POST_BOND (the bond's on-chain expiry). */
+  bondExpiresAt?: bigint;
 }
 
-const TERMINAL_OK = new Set(["COMPLETE", "CONFIRMED"]);
-const TERMINAL_FAIL = new Set(["FAILED", "DENIED", "CANCELLED"]);
+const TERMINAL_OK: ReadonlySet<string> = new Set(["COMPLETE", "CONFIRMED"]);
+const TERMINAL_FAIL: ReadonlySet<string> = new Set(["FAILED", "DENIED", "CANCELLED"]);
 
-function baseToDecimal(base: bigint): string {
-  return formatUnits(base, USDC_DECIMALS);
+/** Exponential backoff (250ms→~4s cap) with full jitter, seeded deterministically per attempt. */
+function backoffMs(attempt: number, rand: number): number {
+  const capped = Math.min(4000, 250 * 2 ** attempt);
+  return Math.floor(rand * capped);
 }
 
 export class PaymentExecutor {
   private readonly maxPolls: number;
   private readonly sleep: (ms: number) => Promise<void>;
+  private chainChecked = false;
 
   constructor(private readonly deps: ExecutorDeps) {
     this.maxPolls = deps.maxPolls ?? 10;
     this.sleep = deps.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
   }
 
-  /** Execute one payment idempotently. Returns the intent's final status. */
+  private encodeCall(req: PayRequest): Hex {
+    if (req.action === "POST_BOND") {
+      if (req.bondExpiresAt === undefined) {
+        throw new VouchError("VALIDATION_FAILED", "POST_BOND requires bondExpiresAt");
+      }
+      return encodeFunctionData({
+        abi: quoteBondEscrowAbi,
+        functionName: "postBond",
+        args: [req.quoteId as Hex, req.amountBaseUnits, req.bondExpiresAt],
+      });
+    }
+    return encodeFunctionData({
+      abi: quoteBondEscrowAbi,
+      functionName: "refundBond",
+      args: [req.quoteId as Hex],
+    });
+  }
+
+  /** Execute one bond action idempotently. Returns the intent's final stored state. */
   async execute(req: PayRequest): Promise<StoredIntent> {
     const key = idempotencyKey(req.quoteId, req.action);
 
-    // Idempotent short-circuit: an already-terminal/in-flight intent is not re-sent.
     const existing = await this.deps.store.getIntent(key);
-    if (existing && existing.status !== "PLANNED") {
-      return this.driveToTerminal(existing);
+    if (existing && existing.status !== "PLANNED") return this.driveToTerminal(existing);
+
+    // Pure policy pre-check applies to outbound-spend actions (POST_BOND). Refund moves escrow→poster.
+    if (req.action === "POST_BOND") {
+      const pre = checkSpend(this.deps.policy, req.amountBaseUnits, this.deps.escrowAddress);
+      if (!pre.ok) throw new SpendPolicyViolationError(pre.reasonCodes);
     }
 
-    // Pure policy pre-check (per-tx cap + allowlist) before constructing anything.
-    const pre = checkSpend(this.deps.policy, req.amountBaseUnits, req.destination);
-    if (!pre.ok) throw new SpendPolicyViolationError(pre.reasonCodes);
-
-    // Atomic reserve (daily cap + PLANNED insert). Idempotent on the key.
+    const callData = this.encodeCall(req);
     const reserved = await this.deps.store.reserveIntent({
       idempotencyKey: key,
       quoteId: req.quoteId,
       action: req.action,
       amount: req.amountBaseUnits.toString(),
       token: this.deps.usdcToken,
-      destination: req.destination,
+      destination: this.deps.escrowAddress,
+      callData,
       chainId: this.deps.chainId,
       paramsHash: paramsHash({
         amount: req.amountBaseUnits.toString(),
-        destination: req.destination,
+        destination: this.deps.escrowAddress,
         token: this.deps.usdcToken,
         chainId: this.deps.chainId,
       }),
     });
     if (!reserved.ok) throw new SpendPolicyViolationError(reserved.reasonCodes);
 
-    return this.submit(key, req);
+    await this.ensureChainSafe();
+    return this.submit(key, this.deps.escrowAddress, callData);
   }
 
-  private async submit(key: string, req: PayRequest): Promise<StoredIntent> {
+  /** Chain-safety + escrow-deployed preflight, run once before the first send (review 040/032). */
+  private async ensureChainSafe(): Promise<void> {
+    if (this.chainChecked || !this.deps.chainReader) return;
+    const cfg: ChainGuardConfig = { expectedChainId: this.deps.chainId, usdcAddress: this.deps.usdcToken };
+    await assertChainSafety(this.deps.chainReader, cfg);
+    const code = await this.deps.chainReader.getBytecode({ address: this.deps.escrowAddress });
+    if (code === undefined || code === "0x") {
+      // Catches the 0x…dEaD fallback / an EOA custody address → never a bare transfer to a non-contract.
+      throw new VouchError("WRONG_CONTRACT", `No contract code at escrow ${this.deps.escrowAddress}`);
+    }
+    this.chainChecked = true;
+  }
+
+  private async submit(key: string, contractAddress: string, callData: Hex): Promise<StoredIntent> {
     await this.deps.store.updateIntentStatus(key, "SUBMITTING", { incrementAttempt: true });
-    const res = await this.deps.wallet.sendUsdc({
-      destination: req.destination,
-      amountDecimal: baseToDecimal(req.amountBaseUnits),
-      idempotencyKey: key,
-    });
-    await this.deps.store.updateIntentStatus(key, "SUBMITTED", { providerRef: res.id });
-    const intent = await this.deps.store.getIntent(key);
-    return this.driveToTerminal(intent!);
+    const res = await this.deps.wallet.executeContract({ contractAddress, callData, idempotencyKey: key });
+    const submitted = await this.deps.store.updateIntentStatus(key, "SUBMITTED", { providerRef: res.id });
+    return this.driveToTerminal(submitted);
   }
 
-  /** Poll the provider until the tx reaches a terminal state, or leave it SUBMITTED for reconcile. */
+  /** Poll until terminal, or leave SUBMITTED for reconcile. Backoff + jitter between polls. */
   private async driveToTerminal(intent: StoredIntent): Promise<StoredIntent> {
     if (intent.status === "CONFIRMED" || intent.status === "FAILED") return intent;
     const ref = intent.providerRef;
-    if (!ref) {
-      // Crashed before providerRef was stored → safe idempotent re-POST is handled by reconcile().
-      return intent;
-    }
+    if (!ref) return intent; // crashed before providerRef stored → reconcile() re-POSTs
     for (let i = 0; i < this.maxPolls; i++) {
       const state = await this.deps.wallet.getTransactionStatus(ref);
       if (TERMINAL_OK.has(state)) {
-        await this.deps.store.updateIntentStatus(intent.idempotencyKey, "CONFIRMED", { txHash: ref });
-        return (await this.deps.store.getIntent(intent.idempotencyKey))!;
+        return this.deps.store.updateIntentStatus(intent.idempotencyKey, "CONFIRMED", { txHash: ref });
       }
       if (TERMINAL_FAIL.has(state)) {
-        await this.deps.store.updateIntentStatus(intent.idempotencyKey, "FAILED");
-        return (await this.deps.store.getIntent(intent.idempotencyKey))!;
+        return this.deps.store.updateIntentStatus(intent.idempotencyKey, "FAILED");
       }
-      await this.sleep(500);
+      await this.sleep(backoffMs(i, jitterSeed(intent.idempotencyKey, i)));
     }
-    return intent; // still pending → reconcile() will pick it up
+    return intent; // still pending → reconcile() picks it up
   }
 
   /**
-   * Startup crash reconciliation (plan §6.4): re-drive in-flight intents. Re-query by providerRef;
-   * if we crashed before storing it, re-POST with the SAME idempotency key (Circle returns the
-   * existing tx — never a double-pay).
+   * Startup crash reconciliation (plan §6.4): re-drive in-flight intents. Re-query by providerRef; if
+   * we crashed before storing it, re-POST the stored callData with the SAME idempotency key (Circle
+   * returns the existing tx — never a double-execution).
    */
   async reconcile(): Promise<void> {
     const inFlight = await this.deps.store.findInFlightIntents();
@@ -172,16 +207,26 @@ export class PaymentExecutor {
       if (intent.providerRef) {
         await this.driveToTerminal(intent);
       } else {
-        const res = await this.deps.wallet.sendUsdc({
-          destination: intent.destination,
-          amountDecimal: baseToDecimal(BigInt(intent.amount)),
+        await this.ensureChainSafe();
+        const res = await this.deps.wallet.executeContract({
+          contractAddress: intent.destination,
+          callData: intent.callData as Hex,
           idempotencyKey: intent.idempotencyKey,
         });
-        await this.deps.store.updateIntentStatus(intent.idempotencyKey, "SUBMITTED", {
+        const submitted = await this.deps.store.updateIntentStatus(intent.idempotencyKey, "SUBMITTED", {
           providerRef: res.id,
         });
-        await this.driveToTerminal((await this.deps.store.getIntent(intent.idempotencyKey))!);
+        await this.driveToTerminal(submitted);
       }
     }
   }
+}
+
+/** Deterministic per-(key,attempt) jitter in [0,1) — avoids Math.random (varies without global state). */
+function jitterSeed(key: string, attempt: number): number {
+  let h = 2166136261 ^ attempt;
+  for (let i = 0; i < key.length; i++) {
+    h = Math.imul(h ^ key.charCodeAt(i), 16777619);
+  }
+  return ((h >>> 0) % 1000) / 1000;
 }

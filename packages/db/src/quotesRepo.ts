@@ -40,7 +40,8 @@ export interface NewIntent {
   action: string;
   amount: string; // base-unit integer string
   token: string;
-  destination: string;
+  destination: string; // escrow contract address
+  callData: string; // viem-encoded contract call, replayed on reconcile
   chainId: number;
   paramsHash: string;
 }
@@ -114,8 +115,8 @@ export async function updateIntentStatus(
   idempotencyKey: string,
   status: string,
   fields: { providerRef?: string; txHash?: string; incrementAttempt?: boolean } = {},
-): Promise<void> {
-  await prisma.paymentIntent.update({
+) {
+  return prisma.paymentIntent.update({
     where: { idempotencyKey },
     data: {
       status,

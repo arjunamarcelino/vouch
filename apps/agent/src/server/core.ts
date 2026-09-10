@@ -54,7 +54,7 @@ export interface PaymentDriver {
     quoteId: string;
     action: PaymentAction;
     amountBaseUnits: bigint;
-    destination: Address;
+    bondExpiresAt?: bigint;
   }): Promise<StoredIntent>;
 }
 
@@ -156,7 +156,8 @@ export class AgentCore {
       quoteId,
       action,
       amountBaseUnits: this.deps.bondAmount,
-      destination: this.deps.escrowAddress,
+      // POST_BOND encodes the escrow's on-chain expiry from the signed commitment.
+      bondExpiresAt: action === "POST_BOND" ? BigInt(commitment.expiresAt) : undefined,
     });
     await this.appendTrace(
       quoteId,

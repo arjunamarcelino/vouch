@@ -95,10 +95,10 @@ export class PrismaAgentStore implements CoreStore, IntentStore {
 
   async updateIntentStatus(
     key: string,
-    status: string,
+    status: StoredIntent["status"],
     fields?: { providerRef?: string; txHash?: string; incrementAttempt?: boolean },
-  ): Promise<void> {
-    await repoUpdate(key, status, fields);
+  ): Promise<StoredIntent> {
+    return toStoredIntent(await repoUpdate(key, status, fields));
   }
 
   async getIntent(key: string): Promise<StoredIntent | null> {
@@ -118,6 +118,7 @@ interface IntentRow {
   action: string;
   amount: string;
   destination: string;
+  callData: string;
   status: string;
   providerRef: string | null;
   txHash: string | null;
@@ -128,10 +129,11 @@ function toStoredIntent(r: IntentRow): StoredIntent {
   return {
     idempotencyKey: r.idempotencyKey,
     quoteId: r.quoteId,
-    action: r.action,
+    action: r.action as StoredIntent["action"],
     amount: r.amount,
     destination: r.destination,
-    status: r.status,
+    callData: r.callData,
+    status: r.status as StoredIntent["status"],
     providerRef: r.providerRef,
     txHash: r.txHash,
     attempts: r.attempts,

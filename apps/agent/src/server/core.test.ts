@@ -84,14 +84,15 @@ class FakeStore implements CoreStore {
 
 class FakePayments implements PaymentDriver {
   calls = 0;
-  async execute(req: { quoteId: string; action: string; amountBaseUnits: bigint; destination: Address }) {
+  async execute(req: { quoteId: string; action: "POST_BOND" | "REFUND_BOND"; amountBaseUnits: bigint; bondExpiresAt?: bigint }) {
     this.calls += 1;
     const intent: StoredIntent = {
       idempotencyKey: `key-${req.quoteId}-${req.action}`,
       quoteId: req.quoteId,
       action: req.action,
       amount: req.amountBaseUnits.toString(),
-      destination: req.destination,
+      destination: ESCROW,
+      callData: "0xabcd",
       status: "CONFIRMED",
       providerRef: "tx-1",
       txHash: "tx-1",

@@ -195,7 +195,7 @@ export type AnyRiskQuote = z.infer<typeof anyRiskQuoteSchema>;
 
 // ---- payment intent (crash-safe executor state machine, plan §6.4) ----
 
-export const paymentActionSchema = z.enum(["POST_BOND", "REFUND_BOND", "CONSUME_BOND"]);
+export const paymentActionSchema = z.enum(["POST_BOND", "REFUND_BOND"]);
 export type PaymentAction = z.infer<typeof paymentActionSchema>;
 
 export const paymentStatusSchema = z.enum([

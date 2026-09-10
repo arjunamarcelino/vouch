@@ -9,7 +9,7 @@ import { NotImplementedError, VouchError } from "@vouch/shared/errors";
  * component of the Circle Agent Stack (plan §6.1). Verified surface (SDK v10.8.0 + Context7):
  *   initiateDeveloperControlledWalletsClient({ apiKey, entitySecret })
  *   client.getWalletTokenBalance({ id })
- *   client.createTransaction({ walletId, tokenId, destinationAddress, amounts, fee, idempotencyKey })
+ *   client.createContractExecutionTransaction({ walletId, contractAddress, callData, fee, idempotencyKey })
  *   client.getTransaction({ id })
  * The SDK generates the per-call entitySecretCiphertext from `entitySecret`. Arc enum:
  * Blockchain.ArcTestnet = "ARC-TESTNET", Blockchain.Arc = "ARC".
@@ -34,8 +34,17 @@ export interface SendResult {
 export interface AgentWallet {
   /** USDC balance as a decimal string (Circle returns decimal amounts). */
   getUsdcBalance(): Promise<string>;
-  /** Create an outbound USDC transfer. `amountDecimal` e.g. "0.50". Idempotent on `idempotencyKey`. */
-  sendUsdc(args: { destination: string; amountDecimal: string; idempotencyKey: string }): Promise<SendResult>;
+  /**
+   * Execute a contract call (e.g. QuoteBondEscrow.postBond/refundBond) via Circle DCW
+   * contract-execution. `callData` is viem-encoded. Idempotent on `idempotencyKey`. There is
+   * deliberately NO raw-transfer method — the wallet can only call allowlisted contracts, closing the
+   * bare-transfer fund-loss footgun (review 032).
+   */
+  executeContract(args: {
+    contractAddress: string;
+    callData: `0x${string}`;
+    idempotencyKey: string;
+  }): Promise<SendResult>;
   /** Poll a transaction's lifecycle state (INITIATED→…→COMPLETE / FAILED / DENIED / CANCELLED). */
   getTransactionStatus(id: string): Promise<string>;
 }
@@ -62,22 +71,21 @@ class CircleAgentWallet implements AgentWallet {
     return usdc.amount;
   }
 
-  async sendUsdc(args: {
-    destination: string;
-    amountDecimal: string;
+  async executeContract(args: {
+    contractAddress: string;
+    callData: `0x${string}`;
     idempotencyKey: string;
   }): Promise<SendResult> {
-    const res = await this.client.createTransaction({
+    const res = await this.client.createContractExecutionTransaction({
       walletId: this.cfg.walletId,
-      tokenId: this.cfg.usdcTokenId,
-      destinationAddress: args.destination,
-      amount: [args.amountDecimal],
+      contractAddress: args.contractAddress,
+      callData: args.callData,
       fee: { type: "level", config: { feeLevel: "MEDIUM" } },
       idempotencyKey: args.idempotencyKey,
     });
     const data = res.data;
     if (!data?.id || !data.state) {
-      throw new VouchError("WRONG_CONTRACT", "Circle createTransaction returned no id/state");
+      throw new VouchError("WRONG_CONTRACT", "Circle createContractExecutionTransaction returned no id/state");
     }
     return { id: data.id, state: data.state };
   }

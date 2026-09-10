@@ -114,12 +114,16 @@ function buildCore(env: AgentEnv, freshness: FreshnessConfig | null): BuiltCore 
 
   // The executor is both the core's PaymentDriver and the orchestrator's reconcile source. When the
   // wallet is unconfigured it runs against a stub whose calls fail loudly (never fabricates a tx).
+  // The chain reader powers the pre-send chain-safety + escrow-deployed preflight (review 032/040).
+  const chainReader = env.ARC_RPC_URL ? createArcClient(env.CHAIN_ENV, env.ARC_RPC_URL) : undefined;
   const executor = new PaymentExecutor({
     wallet: wallet ?? unconfiguredWallet(),
     store,
     policy: makeSpendPolicy(env.AGENT_PER_TX_CAP, allowlist),
     chainId: env.ARC_CHAIN_ID,
     usdcToken: env.USDC_ADDRESS as Address,
+    escrowAddress: escrow,
+    chainReader,
   });
 
   const core = new AgentCore({
@@ -155,7 +159,7 @@ function unconfiguredWallet(): AgentWallet {
   const notConfigured = () => Promise.reject(new NotImplementedError("agent wallet (payments) not configured"));
   return {
     getUsdcBalance: notConfigured,
-    sendUsdc: notConfigured,
+    executeContract: notConfigured,
     getTransactionStatus: notConfigured,
   };
 }

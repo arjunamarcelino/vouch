@@ -80,7 +80,18 @@ class MemStore implements CoreStore {
 
 const payments: PaymentDriver = {
   async execute() {
-    return { idempotencyKey: "k", quoteId: "q", action: "POST_BOND", amount: "0", destination: ESCROW, status: "CONFIRMED", providerRef: null, txHash: null, attempts: 0 };
+    return {
+      idempotencyKey: "k",
+      quoteId: "q",
+      action: "POST_BOND",
+      amount: "0",
+      destination: ESCROW,
+      callData: "0xabcd",
+      status: "CONFIRMED",
+      providerRef: null,
+      txHash: null,
+      attempts: 0,
+    };
   },
 };
 const health: HealthProbe = { subgraphOk: async () => true, walletConfigured: () => false };

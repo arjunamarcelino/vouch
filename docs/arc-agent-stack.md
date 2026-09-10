@@ -103,8 +103,12 @@ Everything is built and config-gated; a real tx is blocked only on credentials +
 - [ ] **🔴 B3:** `POST /quotes` fronted by auth + rate-limit before any funded run.
 - [ ] **H1:** redaction paths cover `CIRCLE_API_KEY`/`CIRCLE_ENTITY_SECRET`/`QUOTE_SIGNER_PK`; env-object
       logging forbidden; redaction test passing. _(follow-up — see below)_
-- [ ] `QUOTE_SIGNER_PK` (dedicated, ≠ payment wallet) set; `QUOTE_BOND_ESCROW_ADDRESS` deployed (Track D)
-      or a bond-custody address set (fallback).
+- [ ] `QUOTE_SIGNER_PK` (dedicated, ≠ payment wallet) set; `QUOTE_BOND_ESCROW_ADDRESS` = the **deployed
+      QuoteBondEscrow contract** (the executor calls `postBond` via contract-execution; the pre-send
+      guard refuses a non-contract / `0x…dEaD`).
+- [ ] **One-time `approve`:** the agent wallet must `approve(QuoteBondEscrow, USDC)` once (postBond pulls
+      via `transferFrom`); without it `postBond` reverts and the intent goes `FAILED` (fails loud, no
+      fund loss).
 - [ ] Run the bond post → capture the **real** `testnet.arcscan.app/tx/0x…` link → paste into §6 + demo.
 
 ## Mainnet-readiness tasks (before Sept 30)
