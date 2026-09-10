@@ -91,6 +91,8 @@ type Provider @entity(immutable: false) {
   lastClaimFrequencyBps: BigInt!
   lastAverageCoverageRatioBps: BigInt!
   lastPayoutToCoveredValueBps: BigInt!
+  "Closed coverage windows at the last snapshot (jobsCompleted + contestedCompletions + claimsUpheld) — a completion changes it so completions materialize a snapshot (029)."
+  lastClosedWindows: BigInt!
 
   jobs: [Job!]! @derivedFrom(field: "provider")
   claims: [Claim!]! @derivedFrom(field: "provider")

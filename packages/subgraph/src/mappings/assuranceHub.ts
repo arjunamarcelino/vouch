@@ -38,6 +38,8 @@ const BPS_UNDEFINED = BigInt.fromI32(-1);
 // written even when every ratio is still undefined (-1). Never appears in a stored snapshot.
 const BPS_NEVER = BigInt.fromI32(-2);
 const SECONDS_PER_DAY = BigInt.fromI32(86400);
+// Minimum closed coverage windows before a provider's claim-rate features are treated as meaningful (011).
+const MIN_CLOSED_WINDOWS = BigInt.fromI32(3);
 
 // JobStatus
 const FUNDED = "FUNDED";
@@ -118,6 +120,7 @@ function getOrCreateProvider(address: Address, event: ethereum.Event): Provider 
     p.lastClaimFrequencyBps = BPS_NEVER;
     p.lastAverageCoverageRatioBps = BPS_NEVER;
     p.lastPayoutToCoveredValueBps = BPS_NEVER;
+    p.lastClosedWindows = ZERO;
 
     let protocol = getOrCreateProtocol(event);
     protocol.totalProviders = protocol.totalProviders.plus(ONE);
@@ -191,6 +194,12 @@ function releaseExposureIfLocked(
 // snapshot; id collision impossible). plan §3.5.2/§3.5.3.
 function materializeRiskSnapshot(provider: Provider, event: ethereum.Event): void {
   let claimsResolved = provider.claimsUpheld.plus(provider.claimsRejected);
+  // Closed coverage windows = clean completions + contested completions + covered payouts. This is
+  // the track-record depth the risk features are meaningful over (011) and the sample-size the agent
+  // gates on. Also the diff trigger so a completion materializes a snapshot (029).
+  let closedWindows = provider.jobsCompleted
+    .plus(provider.contestedCompletions)
+    .plus(provider.claimsUpheld);
   let upheldClaimRateBps = toBps(provider.claimsUpheld, claimsResolved);
   let claimFrequencyBps = toBps(provider.claimsOpened, provider.jobsInitiallyApproved);
   let averageCoverageRatioBps = toBps(provider.totalGuaranteedValue, provider.totalCoveredAmount);
@@ -200,7 +209,8 @@ function materializeRiskSnapshot(provider: Provider, event: ethereum.Event): voi
     upheldClaimRateBps != provider.lastUpheldClaimRateBps ||
     claimFrequencyBps != provider.lastClaimFrequencyBps ||
     averageCoverageRatioBps != provider.lastAverageCoverageRatioBps ||
-    payoutToCoveredValueBps != provider.lastPayoutToCoveredValueBps;
+    payoutToCoveredValueBps != provider.lastPayoutToCoveredValueBps ||
+    closedWindows != provider.lastClosedWindows;
   if (!changed) return;
 
   let snapshot = new ProviderRiskSnapshot(
@@ -215,7 +225,9 @@ function materializeRiskSnapshot(provider: Provider, event: ethereum.Event): voi
   snapshot.totalCoveredAmount = provider.totalCoveredAmount;
   snapshot.totalPayoutAmount = provider.totalPayoutAmount;
   snapshot.sampleSize = claimsResolved;
-  snapshot.hasEnoughHistory = provider.jobsInitiallyApproved.gt(ZERO);
+  // Enough history = at least MIN_CLOSED_WINDOWS closed coverage windows (real outcomes), NOT a single
+  // approval — so a provider with no track record isn't scored as maximally trustworthy (011).
+  snapshot.hasEnoughHistory = closedWindows.ge(MIN_CLOSED_WINDOWS);
   snapshot.blockNumber = event.block.number;
   snapshot.timestamp = event.block.timestamp;
   snapshot.txHash = event.transaction.hash;
@@ -225,6 +237,7 @@ function materializeRiskSnapshot(provider: Provider, event: ethereum.Event): voi
   provider.lastClaimFrequencyBps = claimFrequencyBps;
   provider.lastAverageCoverageRatioBps = averageCoverageRatioBps;
   provider.lastPayoutToCoveredValueBps = payoutToCoveredValueBps;
+  provider.lastClosedWindows = closedWindows;
   provider.save();
 }
 

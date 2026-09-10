@@ -109,6 +109,19 @@ describe("AssuranceHub mappings", () => {
     assert.fieldEquals("Coverage", jobIdBytes(1).toHexString(), "status", "RELEASED");
   });
 
+  test("completion materializes a snapshot; hasEnoughHistory needs >= 3 closed windows (011/029)", () => {
+    approve(1, 20, 100, 1000);
+    let relTx = txHash(9);
+    handleCollateralReleased(collateralReleased(1, 100, relTx, 0, 10, 200000));
+    assert.fieldEquals("Provider", P, "jobsCompleted", "1");
+    assert.fieldEquals("Provider", P, "lastClosedWindows", "1");
+    // the completion wrote a snapshot (029) that reflects the new completedJobs...
+    let snapId = PROVIDER.concat(relTx).concatI32(0).toHexString();
+    assert.fieldEquals("ProviderRiskSnapshot", snapId, "completedJobs", "1");
+    // ...and 1 < 3 closed windows → not enough history (011)
+    assert.fieldEquals("ProviderRiskSnapshot", snapId, "hasEnoughHistory", "false");
+  });
+
   test("covered claim same-tx burst: no double-subtract, exposure hits zero, upheld counted", () => {
     approve(1, 20, 100, 1000);
     handleClaimOpened(claimOpened(1, txHash(5), 0, 5, 2000));
