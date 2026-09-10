@@ -240,11 +240,18 @@ Each artifact is labeled **TEE (`handlerInTee`) vs fallback** and **dry-run vs `
 
 Everything is built and config-gated; live/TEE evidence is blocked only on external unknowns.
 
-- [ ] **⚠️ VERIFY the Tenderly Virtual TestNet submission requirement [BLOCKING].** Owner decision
-      2026-09-11: **verify the rules first.** Confirm against the exact ETHOnline / Convergence 2026
-      submission rules whether an **Arc testnet explorer link** is accepted in lieu of a **Tenderly
-      Virtual TestNet** link. Add a **parallel Tenderly deployment only if** the rules require it —
-      do not build it speculatively.
+- [x] **✅ Tenderly Virtual TestNet requirement — VERIFIED 2026-09-11: NOT required for this track.**
+      Per the official [Convergence prizes page](https://chain.link/hackathon/prizes) and
+      [FAQ](https://chain.link/hackathon/faq): the general submission requirement is to
+      "Build, simulate, or deploy a CRE Workflow… demonstrate a successful **simulation (via the CRE
+      CLI)** or a live deployment on the CRE network." A Tenderly Virtual TestNet explorer link is
+      mandated **only for the Tenderly-specific track**, not the Confidential Workflow track. The FAQ
+      confirms local runs are fine ("You can run your application locally. You'll just need a working
+      demo") alongside a 3–5 min video. **Conclusion:** the `cre workflow simulate` evidence path (and
+      the `harness.ts` fallback) fully qualifies; **no parallel Tenderly deployment is needed.** No
+      testnet whitelist is published, so confirm Arc is CRE-supported or rely on the accepted CLI-sim
+      path (chain-agnostic). Required artifacts: 3–5 min public video, public repo, README linking all
+      Chainlink files, and the CRE sim/deploy shown in the video.
 - [ ] **Arc `chainSelectorName` resolves.** Confirm `getNetwork({chainFamily:"evm",
       chainSelectorName:"arc-testnet"})` returns non-falsy (selector `3034092155422581607`, bundled
       since SDK v1.3.1); the workflow throws on a falsy result.
