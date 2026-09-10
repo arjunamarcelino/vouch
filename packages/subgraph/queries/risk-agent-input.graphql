@@ -1,0 +1,41 @@
+# The EXACT query the risk agent runs to size a guarantee (plan §3.5.6 / §9).
+# Freshness (_meta) rides in the same request as the data so both come from one block. Only scalar
+# Provider fields + the bounded latest snapshot + a bounded trailing-30d day-bucket window + _meta —
+# NO @derivedFrom list selections (perf/safety, plan §9). validate-endpoint.mjs asserts this shape.
+#
+# $id    = provider address (lowercased)
+# $since = trailing-window cutoff = (nowSeconds - 30*86400), in SECONDS (day-buckets use BigInt seconds)
+query RiskAgentInput($id: ID!, $since: BigInt!) {
+  _meta {
+    block {
+      number
+      timestamp
+    }
+    deployment
+    hasIndexingErrors
+  }
+  provider(id: $id) {
+    id
+    jobsCompleted
+    totalCoveredAmount
+    claimsUpheld
+    snapshots(orderBy: blockNumber, orderDirection: desc, first: 1) {
+      upheldClaimRateBps
+      averageCoverageRatioBps
+      payoutToCoveredValueBps
+      claimFrequencyBps
+      sampleSize
+      hasEnoughHistory
+      blockNumber
+    }
+    dailyMetrics(
+      where: { dayStartTimestamp_gte: $since }
+      orderBy: dayStartTimestamp
+      orderDirection: desc
+      first: 31
+    ) {
+      upheldFailures
+      resolvedClaims
+    }
+  }
+}

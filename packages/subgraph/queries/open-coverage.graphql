@@ -1,0 +1,23 @@
+# Open coverage windows — provider collateral currently at risk (status LOCKED), by deadline.
+query OpenCoverage($first: Int = 50) {
+  coverages(where: { status: LOCKED }, orderBy: coverageDeadline, orderDirection: asc, first: $first) {
+    id
+    amount
+    status
+    coverageDeadline
+    lockedAtTimestamp
+    provider {
+      id
+      activeGuaranteeAmount
+    }
+    job {
+      jobId
+      client {
+        id
+      }
+      taskFee
+      guaranteeAmount
+      status
+    }
+  }
+}

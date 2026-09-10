@@ -1,0 +1,36 @@
+# Provider performance history — counters, recent risk snapshots, and daily metrics.
+# $id = provider address (lowercased).
+query ProviderHistory($id: ID!) {
+  provider(id: $id) {
+    id
+    jobsAccepted
+    jobsInitiallyApproved
+    jobsCompleted
+    contestedCompletions
+    claimsOpened
+    claimsUpheld
+    claimsRejected
+    activeGuaranteeAmount
+    totalCoveredAmount
+    totalGuaranteedValue
+    totalPayoutAmount
+    lastActivityTimestamp
+    snapshots(orderBy: blockNumber, orderDirection: desc, first: 10) {
+      upheldClaimRateBps
+      claimFrequencyBps
+      averageCoverageRatioBps
+      payoutToCoveredValueBps
+      sampleSize
+      hasEnoughHistory
+      blockNumber
+      timestamp
+    }
+    dailyMetrics(orderBy: dayStartTimestamp, orderDirection: desc, first: 30) {
+      dayId
+      dayStartTimestamp
+      upheldFailures
+      resolvedClaims
+      payoutAmount
+    }
+  }
+}
