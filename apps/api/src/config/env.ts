@@ -27,6 +27,13 @@ const envSchema = z
         message: "ARC_RPC_URL is required when SUBGRAPH_URL is set (subgraph freshness lag gate)",
       });
     }
+    if (e.SUBGRAPH_URL && !e.SUBGRAPH_DEPLOYMENT_ID) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["SUBGRAPH_DEPLOYMENT_ID"],
+        message: "SUBGRAPH_DEPLOYMENT_ID is required when SUBGRAPH_URL is set (deployment trust-root pin)",
+      });
+    }
   });
 
 export type ApiEnv = z.infer<typeof envSchema>;
