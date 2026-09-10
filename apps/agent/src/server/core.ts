@@ -46,6 +46,7 @@ export interface CoreStore {
   traceTip(quoteId: string): Promise<TraceTip | null>;
   consumeNonce(nonce: string, quoteId: string): Promise<boolean>;
   getIntent(key: string): Promise<StoredIntent | null>;
+  listTraces(quoteId: string): Promise<unknown[]>;
 }
 
 export interface PaymentDriver {
@@ -174,6 +175,11 @@ export class AgentCore {
 
   async getQuote(quoteId: string): Promise<QuoteCommitment | null> {
     return this.deps.store.getQuoteCommitment(quoteId);
+  }
+
+  /** The hash-chained decision log for a quote (demo/audit surface, plan §9). */
+  async getDecisionTrace(quoteId: string): Promise<unknown[]> {
+    return this.deps.store.listTraces(quoteId);
   }
 
   async getHealth(): Promise<{ subgraphOk: boolean; walletConfigured: boolean }> {

@@ -77,6 +77,9 @@ class FakeStore implements CoreStore {
   async getIntent(key: string) {
     return this.intents.get(key) ?? null;
   }
+  async listTraces(quoteId: string) {
+    return this.traces.filter((t) => t.quoteId === quoteId);
+  }
 }
 
 class FakePayments implements PaymentDriver {

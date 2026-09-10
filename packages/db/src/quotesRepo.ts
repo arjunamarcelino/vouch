@@ -157,3 +157,8 @@ export async function traceTip(quoteId: string) {
     orderBy: { seq: "desc" },
   });
 }
+
+/** The full decision chain for a quote, oldest→newest (demo/audit read surface). */
+export async function listTraces(quoteId: string) {
+  return prisma.decisionTrace.findMany({ where: { quoteId }, orderBy: { seq: "asc" } });
+}

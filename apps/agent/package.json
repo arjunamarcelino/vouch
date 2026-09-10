@@ -13,7 +13,10 @@
   },
   "dependencies": {
     "@circle-fin/developer-controlled-wallets": "^10.8.0",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "@vouch/shared": "workspace:*",
+    "fastify": "^5.12.3",
+    "fastify-type-provider-zod": "^7.0.0",
     "viem": "catalog:",
     "zod": "catalog:"
   },
