@@ -3,48 +3,17 @@
 // any transport error, indexing error, deployment mismatch, or lag over budget → non-zero exit.
 // Config from env — no hard-coded secrets. Prints latest indexed block + lag. Redacts keyed URLs.
 
+import { redact, gql, chainHead as chainHeadFromRpc } from "./_graph.mjs";
+
 const SUBGRAPH_URL = process.env.SUBGRAPH_URL;
 const STATUS_URL = process.env.SUBGRAPH_STATUS_URL;
 const RPC_URL = process.env.ARC_RPC_URL;
 const DEPLOYMENT_ID = process.env.SUBGRAPH_DEPLOYMENT_ID;
 const MAX_LAG = BigInt(process.env.SUBGRAPH_MAX_LAG_BLOCKS ?? "25");
-const TIMEOUT_MS = Number(process.env.SUBGRAPH_TIMEOUT_MS ?? "10000");
-
-function redact(url) {
-  // Origin only — gateway API keys live in the path, so never print it (012).
-  try {
-    return `${new URL(url).origin}/…`;
-  } catch {
-    return "<invalid-url>";
-  }
-}
 
 function fail(msg) {
   console.error(`✗ UNHEALTHY: ${msg}`);
   process.exit(1);
-}
-
-async function post(url, body) {
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(TIMEOUT_MS),
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status} (${redact(url)})`);
-  return res.json();
-}
-
-async function gql(url, query, variables = {}) {
-  const body = await post(url, { query, variables });
-  if (body.errors) throw new Error(`GraphQL errors (${redact(url)}): ${JSON.stringify(body.errors)}`);
-  return body.data;
-}
-
-async function chainHeadFromRpc() {
-  const body = await post(RPC_URL, { jsonrpc: "2.0", id: 1, method: "eth_blockNumber", params: [] });
-  if (!body.result) throw new Error("RPC returned no result for eth_blockNumber");
-  return BigInt(body.result);
 }
 
 async function main() {
@@ -83,7 +52,7 @@ async function main() {
     if (!s.synced) fail("subgraph is not synced");
     chainHead = BigInt(s.chains[0].chainHeadBlock.number);
   } else if (RPC_URL) {
-    chainHead = await chainHeadFromRpc();
+    chainHead = await chainHeadFromRpc(RPC_URL);
   } else {
     fail("neither SUBGRAPH_STATUS_URL nor ARC_RPC_URL set — cannot determine chain head");
   }

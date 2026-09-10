@@ -5,37 +5,19 @@
 //
 // Usage: node scripts/validate-endpoint.mjs [providerAddress]
 
+import { redact, gql, chainHead as chainHeadFromRpc } from "./_graph.mjs";
+
 const SUBGRAPH_URL = process.env.SUBGRAPH_URL;
 const RPC_URL = process.env.ARC_RPC_URL;
 const MAX_LAG = BigInt(process.env.SUBGRAPH_MAX_LAG_BLOCKS ?? "25");
-const TIMEOUT_MS = Number(process.env.SUBGRAPH_TIMEOUT_MS ?? "10000");
 const HEX_ADDRESS = /^0x[a-fA-F0-9]{40}$/;
 const INT_STRING = /^-?\d+$/;
 
 const providerArg = process.argv[2] ?? "0x1111111111111111111111111111111111111111";
 
-function redact(url) {
-  // Origin only — gateway API keys live in the path, so never print it (012).
-  try {
-    return `${new URL(url).origin}/…`;
-  } catch {
-    return "<invalid-url>";
-  }
-}
 function fail(msg) {
   console.error(`✗ INVALID: ${msg}`);
   process.exit(1);
-}
-
-async function post(url, body) {
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(TIMEOUT_MS),
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status} (${redact(url)})`);
-  return res.json();
 }
 
 // Required fields on the risk-agent-input contract → their validators.
@@ -46,6 +28,9 @@ function assertInt(obj, field, path) {
 
 async function main() {
   if (!SUBGRAPH_URL) fail("SUBGRAPH_URL not set");
+  // Fail closed: without a chain-head source we can't verify lag, so an all-fields-present but lagging
+  // index would falsely pass. Require ARC_RPC_URL (matches health-check.mjs) (025).
+  if (!RPC_URL) fail("ARC_RPC_URL not set — cannot verify indexing lag");
   if (!HEX_ADDRESS.test(providerArg)) fail(`bad provider address: ${providerArg}`);
 
   // Validate the SHAPE the agent actually reads (denormalized current risk view on Provider + _meta
@@ -68,9 +53,7 @@ async function main() {
       }
     }`;
 
-  const body = await post(SUBGRAPH_URL, { query, variables: { id: providerArg.toLowerCase() } });
-  if (body.errors) fail(`GraphQL errors: ${JSON.stringify(body.errors)}`);
-  const data = body.data;
+  const data = await gql(SUBGRAPH_URL, query, { id: providerArg.toLowerCase() });
 
   // --- freshness (fail closed even if all fields present) ---
   const m = data._meta;
@@ -78,13 +61,10 @@ async function main() {
   if (m.hasIndexingErrors) fail("subgraph reports indexing errors");
   if (typeof m.block.number !== "number") fail("_meta.block.number missing");
   const latestIndexed = BigInt(m.block.number);
-  if (RPC_URL) {
-    const rpc = await post(RPC_URL, { jsonrpc: "2.0", id: 1, method: "eth_blockNumber", params: [] });
-    const chainHead = BigInt(rpc.result);
-    const lag = chainHead - latestIndexed;
-    if (lag < 0n) fail(`chain head ${chainHead} behind indexed block ${latestIndexed}`);
-    if (lag > MAX_LAG) fail(`indexing lag ${lag} exceeds max ${MAX_LAG}`);
-  }
+  const head = await chainHeadFromRpc(RPC_URL);
+  const lag = head - latestIndexed;
+  if (lag < 0n) fail(`chain head ${head} behind indexed block ${latestIndexed}`);
+  if (lag > MAX_LAG) fail(`indexing lag ${lag} exceeds max ${MAX_LAG}`);
 
   // --- required-field shape ---
   const p = data.provider;
