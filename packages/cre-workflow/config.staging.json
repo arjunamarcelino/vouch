@@ -1,10 +1,16 @@
 {
-  "//": "Non-secret CRE workflow config — validated by configSchema in workflow.ts. NO secrets here (no tokens, no test criteria, no thresholds — those come from the Vault DON at runtime; plan §17.6-H3).",
-  "schedule": "0 0 * * *",
-  "//chainSelectorName": "CRE chain-selector NAME for Arc — MUST be confirmed. Resolve via getNetwork() at build; Arc testnet chain id is 5042002 (plan §8.1) but the CRE selector string is unresolved (plan §17.2 Unresolved).",
+  "//": "Non-secret CRE workflow config — validated by configSchema in config.ts. NO secrets here (no tokens, no test criteria, no thresholds — those come from the Vault DON at runtime; plan §6.3, §9). Replace every 0x0…0 / 0x0…placeholder before deploy.",
   "chainSelectorName": "arc-testnet",
+  "//chainId": "block.chainid of the settlement chain (Circle Arc testnet). Bound in the report as the anti cross-chain replay domain field.",
+  "chainId": "5042002",
+  "//consumerAddress": "writeReport receiver — the AssuranceHub that decodes the 7-tuple report (onReport).",
   "consumerAddress": "0x0000000000000000000000000000000000000000",
+  "//contractAddress": "AssuranceHub to watch (ClaimOpened log trigger) and read (getJob). Same AssuranceHub as consumerAddress.",
+  "contractAddress": "0x0000000000000000000000000000000000000000",
+  "//owner": "Vault DON secret-owner scope for the confidential-fetch credential ({{.token}}).",
+  "owner": "0x0000000000000000000000000000000000000000",
   "gasLimit": "500000",
-  "repoOwner": "your-github-org",
-  "testArtifactUrl": "https://example.invalid/private-test-artifact"
+  "testApiUrl": "https://example.invalid/private-test",
+  "//workflowId": "Pinned Keystone workflow identifier — bound in the evidence-commitment preimage. Set to the registered workflow id before deploy.",
+  "workflowId": "0x0000000000000000000000000000000000000000000000000000000000000000"
 }

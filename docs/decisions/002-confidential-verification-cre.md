@@ -41,3 +41,20 @@ injected inside the enclave via `{{.token}}` templating, never in node memory) w
   Arc `chainSelectorName`, and SDK/CLI versions must be confirmed at build time.
 - **Follow-on:** the enclave verdict still needs a trust-minimized path to move funds on Arc — see
   ADR-004.
+
+## Post-review hardening (2026-09-11)
+
+- **CORRECTION — the TS SDK *does* expose `handlerInTee` (this ADR's "TypeScript SDK reality" is
+  STALE).** Verified against **`@chainlink/cre-sdk@1.20.1`** (the version this build pins): the
+  TypeScript SDK exports **`handlerInTee`**, **`TeeRuntime`** (extends `BaseRuntime` + `SecretsProvider`),
+  **`reportFromDon`** (first-class on `TeeRuntime` — `runtime.reportFromDon(prepareReportRequest(hex))`),
+  and **`getSecret`**. There is **no** need to drop to Go for the `HandlerInTee` symbol, and no need to
+  restrict the confidential leg to `ConfidentialHTTPClient`-in-a-normal-handler.
+- **The TS path is used, not Go.** `packages/cre-workflow` runs the whole evaluation inside
+  `handlerInTee` (Nitro / `us-west-2`), fetches the private suite over `ConfidentialHTTPClient` with
+  `{{.token}}` injection, and reads the private threshold via `runtime.getSecret`. The
+  `ConfidentialHTTPClient`-in-normal-handler variant is retained **only** as a beta-gating fallback
+  that protects the credential but **not** the response data — evidence produced that way is labeled
+  as fallback.
+- Confidential Compute is **Early Access** as of early 2026: a live enclave run needs enrollment, but
+  the workflow **compiles and simulates now**. See `docs/chainlink-confidential-workflow.md`.

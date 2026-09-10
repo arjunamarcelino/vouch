@@ -1,0 +1,79 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { CLAIM_PENDING, decideVerdict, type DecideInput } from "./decide";
+
+const COMMIT =
+  "0x1111111111111111111111111111111111111111111111111111111111111111" as const;
+const OTHER =
+  "0x2222222222222222222222222222222222222222222222222222222222222222" as const;
+
+function base(overrides: Partial<DecideInput> = {}): DecideInput {
+  return {
+    status: CLAIM_PENDING,
+    passRate: 0.4,
+    threshold: 0.9,
+    commitHash: COMMIT,
+    submissionCommitment: COMMIT,
+    guaranteeAmount: 100_000_000n,
+    ...overrides,
+  };
+}
+
+test("status != ClaimPending -> REFUSE NOT_CLAIM_PENDING", () => {
+  const v = decideVerdict(base({ status: 4 }));
+  assert.deepEqual(v, { kind: "REFUSE", reason: "NOT_CLAIM_PENDING" });
+});
+
+test("NaN threshold -> REFUSE SECRET_MISSING (never CLEAN_CLOSE)", () => {
+  const v = decideVerdict(base({ threshold: Number.NaN }));
+  assert.deepEqual(v, { kind: "REFUSE", reason: "SECRET_MISSING" });
+});
+
+test("non-finite passRate -> REFUSE MALFORMED_RESPONSE", () => {
+  const v = decideVerdict(base({ passRate: Number.POSITIVE_INFINITY }));
+  assert.deepEqual(v, { kind: "REFUSE", reason: "MALFORMED_RESPONSE" });
+});
+
+test("out-of-range passRate (>1) -> REFUSE MALFORMED_RESPONSE", () => {
+  assert.deepEqual(decideVerdict(base({ passRate: 1.5 })), {
+    kind: "REFUSE",
+    reason: "MALFORMED_RESPONSE",
+  });
+  assert.deepEqual(decideVerdict(base({ passRate: -0.1 })), {
+    kind: "REFUSE",
+    reason: "MALFORMED_RESPONSE",
+  });
+});
+
+test("commitHash != submissionCommitment -> REFUSE COMMIT_MISMATCH", () => {
+  const v = decideVerdict(base({ commitHash: OTHER }));
+  assert.deepEqual(v, { kind: "REFUSE", reason: "COMMIT_MISMATCH" });
+});
+
+test("commit compare is case-insensitive", () => {
+  const v = decideVerdict(
+    base({ commitHash: COMMIT.toUpperCase().replace("0X", "0x") as `0x${string}` }),
+  );
+  // upper-cased hex of the same value must still MATCH (not COMMIT_MISMATCH)
+  assert.notEqual(v.kind, "REFUSE");
+});
+
+test("definitive clean (passRate >= threshold) -> CLEAN_CLOSE (covered=false)", () => {
+  const v = decideVerdict(base({ passRate: 0.95, threshold: 0.9 }));
+  assert.deepEqual(v, { kind: "CLEAN_CLOSE", covered: false });
+});
+
+test("boundary passRate == threshold -> CLEAN_CLOSE", () => {
+  const v = decideVerdict(base({ passRate: 0.9, threshold: 0.9 }));
+  assert.deepEqual(v, { kind: "CLEAN_CLOSE", covered: false });
+});
+
+test("confident covered failure (passRate < threshold) -> PAYOUT (covered=true)", () => {
+  const v = decideVerdict(base({ passRate: 0.42, threshold: 0.9 }));
+  assert.deepEqual(v, { kind: "PAYOUT", covered: true });
+});
+
+test("verdict never encodes an amount (amount is caller-set, secret-independent)", () => {
+  const v = decideVerdict(base({ passRate: 0.42 }));
+  assert.equal("amount" in v, false);
+});
