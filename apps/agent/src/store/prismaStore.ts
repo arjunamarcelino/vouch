@@ -1,0 +1,139 @@
+import {
+  insertQuote,
+  getQuoteRaw,
+  reserveIntent as repoReserve,
+  updateIntentStatus as repoUpdate,
+  getIntent as repoGetIntent,
+  findInFlightIntents as repoFindInFlight,
+  consumeNonce as repoConsumeNonce,
+  appendTrace as repoAppendTrace,
+  traceTip as repoTraceTip,
+  listTraces as repoListTraces,
+  type SpendCaps,
+} from "@vouch/db";
+import { quoteCommitmentSchema, parseOrThrow, type QuoteCommitment } from "@vouch/shared/schemas";
+import type { CoreStore, TraceTip } from "../server/core";
+import type { IntentStore, StoredIntent, ReserveArgs, ReserveResult } from "../pay/executor";
+
+/**
+ * Postgres-backed persistence adapter (plan §9.1) implementing both the core's `CoreStore` and the
+ * executor's `IntentStore` over `@vouch/db`. The agent OWNS these tables; the API/web read decision
+ * traces via the agent's REST core, not by importing this repo (architecture P2).
+ */
+export class PrismaAgentStore implements CoreStore, IntentStore {
+  constructor(private readonly caps: SpendCaps) {}
+
+  // --- CoreStore ---
+  async insertQuoteCommitment(c: QuoteCommitment): Promise<void> {
+    await insertQuote({
+      quoteId: c.quoteId,
+      jobHash: c.jobHash,
+      provider: c.score.provider,
+      scoringFnVersion: c.score.scoringFnVersion,
+      premiumBps: Number(c.score.premiumBps),
+      recommendedGuaranteeLimit: c.score.recommendedGuaranteeLimit,
+      assuranceServiceFee: c.score.assuranceServiceFee,
+      minProviderCollateral: c.score.minProviderCollateral,
+      confidenceLevel: c.score.confidenceLevel,
+      reasonCodes: c.score.reasonCodes,
+      signature: c.signature,
+      validAfter: BigInt(c.validAfter),
+      expiresAt: BigInt(c.expiresAt),
+      asOfBlock: BigInt(c.score.asOfBlock),
+      // Plain JSON (commitment is all-string fields) → satisfies Prisma InputJsonValue.
+      raw: JSON.parse(JSON.stringify(c)),
+    });
+  }
+
+  async getQuoteCommitment(quoteId: string): Promise<QuoteCommitment | null> {
+    const raw = await getQuoteRaw(quoteId);
+    if (!raw) return null;
+    return parseOrThrow(quoteCommitmentSchema, raw, "stored quote commitment");
+  }
+
+  async appendTrace(t: {
+    quoteId: string;
+    seq: number;
+    correlationId: string;
+    outcome: string;
+    reasonCodes: string[];
+    scoreInputs: Record<string, string>;
+    txHash: string | null;
+    prevRecordHash: string;
+    recordHash: string;
+  }): Promise<void> {
+    await repoAppendTrace({
+      quoteId: t.quoteId,
+      seq: t.seq,
+      correlationId: t.correlationId,
+      outcome: t.outcome,
+      reasonCodes: t.reasonCodes,
+      scoreInputs: t.scoreInputs,
+      txHash: t.txHash ?? undefined,
+      prevRecordHash: t.prevRecordHash,
+      recordHash: t.recordHash,
+    });
+  }
+
+  async traceTip(quoteId: string): Promise<TraceTip | null> {
+    const tip = await repoTraceTip(quoteId);
+    return tip ? { seq: tip.seq, recordHash: tip.recordHash } : null;
+  }
+
+  async consumeNonce(nonce: string, quoteId: string): Promise<boolean> {
+    return repoConsumeNonce(nonce, quoteId);
+  }
+
+  async listTraces(quoteId: string): Promise<unknown[]> {
+    return repoListTraces(quoteId);
+  }
+
+  // --- IntentStore ---
+  async reserveIntent(intent: ReserveArgs): Promise<ReserveResult> {
+    return repoReserve(intent, this.caps);
+  }
+
+  async updateIntentStatus(
+    key: string,
+    status: string,
+    fields?: { providerRef?: string; txHash?: string; incrementAttempt?: boolean },
+  ): Promise<void> {
+    await repoUpdate(key, status, fields);
+  }
+
+  async getIntent(key: string): Promise<StoredIntent | null> {
+    const row = await repoGetIntent(key);
+    return row ? toStoredIntent(row) : null;
+  }
+
+  async findInFlightIntents(): Promise<StoredIntent[]> {
+    const rows = await repoFindInFlight();
+    return rows.map(toStoredIntent);
+  }
+}
+
+interface IntentRow {
+  idempotencyKey: string;
+  quoteId: string;
+  action: string;
+  amount: string;
+  destination: string;
+  status: string;
+  providerRef: string | null;
+  txHash: string | null;
+  attempts: number;
+}
+
+function toStoredIntent(r: IntentRow): StoredIntent {
+  return {
+    idempotencyKey: r.idempotencyKey,
+    quoteId: r.quoteId,
+    action: r.action,
+    amount: r.amount,
+    destination: r.destination,
+    status: r.status,
+    providerRef: r.providerRef,
+    txHash: r.txHash,
+    attempts: r.attempts,
+  };
+}

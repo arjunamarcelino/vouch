@@ -16,6 +16,36 @@ const envSchema = z
     // Circle Agent Stack (agent wallet). Optional until wired; see wallet/agentWallet.ts.
     CIRCLE_API_KEY: z.string().optional(),
     CIRCLE_ENTITY_SECRET: z.string().optional(),
+    AGENT_WALLET_ID: z.string().optional(),
+    AGENT_USDC_TOKEN_ID: z.string().optional(),
+    // Quote signing (dedicated key, MUST differ from the payment wallet — security L2).
+    QUOTE_SIGNER_PK: z
+      .string()
+      .regex(/^0x[a-fA-F0-9]{64}$/u)
+      .optional(),
+    // Quote bond escrow (Track D) or custody fallback.
+    QUOTE_BOND_ESCROW_ADDRESS: z
+      .string()
+      .regex(/^0x[a-fA-F0-9]{40}$/u)
+      .optional(),
+    AGENT_QUOTE_BOND_AMOUNT: z.coerce.bigint().nonnegative().default(1_000_000n), // 1 USDC (6-dec)
+    // Spend policy (defense-in-depth; Circle-side controls are primary — security B1).
+    AGENT_PER_TX_CAP: z.coerce.bigint().nonnegative().default(1_000_000n),
+    AGENT_DAILY_CAP: z.coerce.bigint().nonnegative().default(10_000_000n),
+    AGENT_DEST_ALLOWLIST: z.string().default(""), // comma-separated addresses
+    // Interfaces.
+    AGENT_HTTP_PORT: z.coerce.number().int().positive().default(3002),
+    AGENT_ALLOW_MANUAL_PAY: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((v) => v === "true"),
+    // USDC contract on the target chain.
+    USDC_ADDRESS: z
+      .string()
+      .regex(/^0x[a-fA-F0-9]{40}$/u)
+      .default("0x3600000000000000000000000000000000000000"),
+    ARC_CHAIN_ID: z.coerce.number().int().positive().default(5042002),
+    QUOTE_TTL_SECONDS: z.coerce.bigint().positive().default(300n),
   })
   .superRefine((e, ctx) => {
     // The block-lag freshness gate can't run without an RPC. No RPC ⇒ freshness unverifiable ⇒ the

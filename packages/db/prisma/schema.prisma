@@ -90,6 +90,9 @@ model Quote {
   validAfter                BigInt
   expiresAt                 BigInt
   asOfBlock                 BigInt
+  /// Full signed QuoteCommitment (non-authoritative operational record) for exact reconstruction —
+  /// the flat columns above are for querying/indexing/the dashboard.
+  raw                       Json
   createdAt                 DateTime @default(now())
 
   intents   PaymentIntent[]

@@ -30,6 +30,8 @@ export interface NewQuote {
   validAfter: bigint;
   expiresAt: bigint;
   asOfBlock: bigint;
+  /** Full signed QuoteCommitment for exact reconstruction. */
+  raw: Prisma.InputJsonValue;
 }
 
 export interface NewIntent {
@@ -56,6 +58,12 @@ export type ReserveResult =
 
 export async function insertQuote(q: NewQuote): Promise<void> {
   await prisma.quote.create({ data: q });
+}
+
+/** The full stored QuoteCommitment (the `raw` column), or null. */
+export async function getQuoteRaw(quoteId: string): Promise<unknown | null> {
+  const row = await prisma.quote.findUnique({ where: { quoteId }, select: { raw: true } });
+  return row?.raw ?? null;
 }
 
 /**
