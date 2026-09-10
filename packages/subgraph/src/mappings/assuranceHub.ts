@@ -34,6 +34,9 @@ const ONE = BigInt.fromI32(1);
 const ZERO = BigInt.zero();
 const BPS = BigInt.fromI32(10000);
 const BPS_UNDEFINED = BigInt.fromI32(-1);
+// Distinct "never materialized" marker for the diff source so a provider's FIRST snapshot is always
+// written even when every ratio is still undefined (-1). Never appears in a stored snapshot.
+const BPS_NEVER = BigInt.fromI32(-2);
 const SECONDS_PER_DAY = BigInt.fromI32(86400);
 
 // JobStatus
@@ -111,10 +114,10 @@ function getOrCreateProvider(address: Address, event: ethereum.Event): Provider 
     p.totalFeesEarned = ZERO;
     p.totalServiceFees = ZERO;
     p.firstSeenBlock = event.block.number;
-    p.lastUpheldClaimRateBps = BPS_UNDEFINED;
-    p.lastClaimFrequencyBps = BPS_UNDEFINED;
-    p.lastAverageCoverageRatioBps = BPS_UNDEFINED;
-    p.lastPayoutToCoveredValueBps = BPS_UNDEFINED;
+    p.lastUpheldClaimRateBps = BPS_NEVER;
+    p.lastClaimFrequencyBps = BPS_NEVER;
+    p.lastAverageCoverageRatioBps = BPS_NEVER;
+    p.lastPayoutToCoveredValueBps = BPS_NEVER;
 
     let protocol = getOrCreateProtocol(event);
     protocol.totalProviders = protocol.totalProviders.plus(ONE);
