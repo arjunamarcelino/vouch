@@ -18,7 +18,7 @@
  * unresolved import would break `tsc --noEmit`. The confidential runtime is
  * therefore represented by a thin local `CreRuntime` adapter that throws until
  * the real SDK is installed and wired. The genuinely testable, SDK-independent
- * logic — the ABI encoding of the verdict payload the VouchCore receiver
+ * logic — the ABI encoding of the verdict payload the AssuranceHub receiver
  * decodes — lives in `buildVerdictPayload` below and is fully exercised.
  *
  * CONFIDENTIALITY INVARIANT (plan §11, §17.6-H3): private regression tests,
@@ -41,7 +41,7 @@ export const configSchema = z.object({
   /** CRE chain-selector NAME for the settlement chain. Arc value TBD — resolve
    *  via getNetwork() at build; confirm the Arc string (plan §17.2 Unresolved). */
   chainSelectorName: z.string(),
-  /** VouchCore receiver address on Arc that decodes the verdict report. */
+  /** AssuranceHub receiver address on Arc that decodes the verdict report. */
   consumerAddress: z.string(),
   /** Gas limit for EVMClient.writeReport, as a decimal string. */
   gasLimit: z.string(),
@@ -54,9 +54,13 @@ export const configSchema = z.object({
 export type Config = z.infer<typeof configSchema>;
 
 // ---------------------------------------------------------------------------
-// Verdict payload — the REAL onchain contract. VouchCore's onReport receiver
-// abi-decodes exactly this (uint256 jobId, bool regressed, uint256 amount)
-// tuple. This is SDK-independent and fully testable. (plan §17.2)
+// Verdict payload — the REAL onchain contract. AssuranceHub's onReport receiver
+// abi-decodes exactly this report: abi.encode(uint256 jobId, bool covered,
+// uint256 amount). `covered` is the confidential regression verdict; the
+// contract caps `amount` at the job's guaranteeAmount. onReport itself is gated
+// by the forwarder plus packed Keystone metadata
+// (bytes32 workflowId | bytes10 workflowName | address owner). This encoding is
+// SDK-independent and fully testable. (plan §17.2, §19 D7)
 // ---------------------------------------------------------------------------
 export const VerdictParams = [
   { name: "jobId", type: "uint256" },
@@ -65,7 +69,7 @@ export const VerdictParams = [
 ] as const;
 
 /**
- * Encode the minimal verdict tuple the VouchCore receiver decodes.
+ * Encode the minimal verdict tuple the AssuranceHub receiver decodes.
  *
  * @param jobId     the coverage/job identifier
  * @param regressed true if the private regression test detected a regression

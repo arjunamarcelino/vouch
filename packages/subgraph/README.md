@@ -4,10 +4,12 @@ The Graph subgraph (built from scratch) — the authoritative provider performan
 history for Vouch.
 
 ## Responsibilities
-- Index `VouchCore` events (`JobCreated`, `GuaranteeLocked`, `TaskFeeReleased`, `RegressionProven`,
-  `GuaranteePaid`, `GuaranteeReleased`) into `Job`, `Guarantee`, `Payout`, and `Provider` entities.
-- Derive provider reputation aggregates (jobs completed, guarantees locked, regressions, total
-  paid out) with idempotent counter updates.
+- Index `AssuranceHub` events (`JobCreated`, `JobFunded`, `ProviderAccepted`, `DeliverableSubmitted`,
+  `InitialEvaluationResolved`, `CoverageStarted`, `ClaimOpened`, `ConfidentialEvaluationResolved`,
+  `GuaranteePaid`, `CollateralReleased`, `JobExpired`, `JobCancelled`, `ServiceFeePaid`) into `Job`,
+  `Guarantee`, `Claim`, `Payout`, and `Provider` entities.
+- Derive provider reputation aggregates (jobs completed, guarantees locked, claims/regressions,
+  total paid out, fees earned) with idempotent counter updates.
 - Serve a live GraphQL endpoint consumed by `@vouch/agent` for risk quoting.
 - Drive per-network config (Arc testnet / mainnet) via `networks.json`; only `network:` changes
   between environments.
