@@ -2,6 +2,7 @@ import type { Address, LocalAccount } from "viem";
 import { VouchError, QuoteInvalidError } from "@vouch/shared/errors";
 import type { JobRequest, QuoteCommitment, PaymentAction, PaymentStatus } from "@vouch/shared/schemas";
 import type { VerifyReasonCode } from "@vouch/shared/reasonCodes";
+import { createLogger } from "@vouch/shared/logger";
 import type { ProviderRiskResult } from "../graph/client";
 import { scoreQuote, type ScoreParams } from "../risk/score";
 import {
@@ -23,6 +24,8 @@ import type { StoredIntent } from "../pay/executor";
  * destination from the stored quote — inputs are data, not decisions). `verifyQuote` is PURE.
  */
 
+const log = createLogger("agent:core");
+
 export interface TraceTip {
   seq: number;
   recordHash: string;
@@ -41,7 +44,7 @@ export interface CoreStore {
     txHash: string | null;
     prevRecordHash: string;
     recordHash: string;
-  }): Promise<void>;
+  }): Promise<boolean>; // false on a chain-linearization conflict (caller retries against the tip)
   traceTip(quoteId: string): Promise<TraceTip | null>;
   getIntent(key: string): Promise<StoredIntent | null>;
   listTraces(quoteId: string): Promise<unknown[]>;
@@ -154,14 +157,20 @@ export class AgentCore {
       // POST_BOND encodes the escrow's on-chain expiry from the signed commitment.
       bondExpiresAt: action === "POST_BOND" ? BigInt(commitment.expiresAt) : undefined,
     });
-    await this.appendTrace(
-      quoteId,
-      correlationId,
-      action === "POST_BOND" ? "BOND_POSTED" : "BOND_REFUNDED",
-      [],
-      { action, amount: this.deps.bondAmount.toString() },
-      intent.txHash,
-    );
+    // Trace is best-effort AFTER the on-chain action: a logging failure must not report a successful
+    // payment as failed (review 037). The record is reconstructable and reconcile re-observes state.
+    try {
+      await this.appendTrace(
+        quoteId,
+        correlationId,
+        action === "POST_BOND" ? "BOND_POSTED" : "BOND_REFUNDED",
+        [],
+        { action, amount: this.deps.bondAmount.toString() },
+        intent.txHash,
+      );
+    } catch (err) {
+      log.error({ quoteId, err: err instanceof Error ? err.message : String(err) }, "trace append failed post-payment");
+    }
     return { idempotencyKey: intent.idempotencyKey, status: intent.status };
   }
 
@@ -182,6 +191,11 @@ export class AgentCore {
     return { subgraphOk: await this.deps.health.subgraphOk(), walletConfigured: this.deps.health.walletConfigured() };
   }
 
+  /**
+   * Append a decision record, retrying against the fresh tip on a concurrent-append conflict
+   * (store.appendTrace returns false on a UNIQUE(quoteId,prevRecordHash)/(seq) violation — review 037).
+   * The per-quote chain stays linearized; the DB constraints prevent forks.
+   */
   private async appendTrace(
     quoteId: string,
     correlationId: string,
@@ -190,15 +204,20 @@ export class AgentCore {
     scoreInputs: Record<string, string>,
     txHash: string | null = null,
   ): Promise<void> {
-    const tip = await this.deps.store.traceTip(quoteId);
-    const rec = nextRecord(tip?.recordHash ?? GENESIS_HASH, tip?.seq ?? null, {
-      quoteId,
-      correlationId,
-      outcome,
-      reasonCodes,
-      scoreInputs,
-      txHash,
-    });
-    await this.deps.store.appendTrace(rec);
+    for (let attempt = 0; attempt < TRACE_APPEND_RETRIES; attempt++) {
+      const tip = await this.deps.store.traceTip(quoteId);
+      const rec = nextRecord(tip?.recordHash ?? GENESIS_HASH, tip?.seq ?? null, {
+        quoteId,
+        correlationId,
+        outcome,
+        reasonCodes,
+        scoreInputs,
+        txHash,
+      });
+      if (await this.deps.store.appendTrace(rec)) return;
+    }
+    throw new VouchError("VALIDATION_FAILED", `trace append contended for ${quoteId}`);
   }
 }
+
+const TRACE_APPEND_RETRIES = 5;

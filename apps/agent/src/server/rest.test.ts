@@ -58,6 +58,7 @@ class MemStore implements CoreStore {
   }
   async appendTrace(t: { quoteId: string; seq: number; recordHash: string }) {
     this.traces.push({ quoteId: t.quoteId, seq: t.seq, recordHash: t.recordHash });
+    return true;
   }
   async traceTip(id: string) {
     const rows = this.traces.filter((t) => t.quoteId === id);

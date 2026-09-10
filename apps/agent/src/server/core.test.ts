@@ -62,6 +62,7 @@ class FakeStore implements CoreStore {
   }
   async appendTrace(t: { quoteId: string; seq: number; outcome: string; recordHash: string }) {
     this.traces.push({ quoteId: t.quoteId, seq: t.seq, outcome: t.outcome, recordHash: t.recordHash });
+    return true;
   }
   async traceTip(quoteId: string) {
     const rows = this.traces.filter((t) => t.quoteId === quoteId);

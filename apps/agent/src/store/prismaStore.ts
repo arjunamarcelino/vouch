@@ -8,6 +8,7 @@ import {
   appendTrace as repoAppendTrace,
   traceTip as repoTraceTip,
   listTraces as repoListTraces,
+  Prisma,
   type SpendCaps,
 } from "@vouch/db";
 import { quoteCommitmentSchema, parseOrThrow, type QuoteCommitment } from "@vouch/shared/schemas";
@@ -60,18 +61,26 @@ export class PrismaAgentStore implements CoreStore, IntentStore {
     txHash: string | null;
     prevRecordHash: string;
     recordHash: string;
-  }): Promise<void> {
-    await repoAppendTrace({
-      quoteId: t.quoteId,
-      seq: t.seq,
-      correlationId: t.correlationId,
-      outcome: t.outcome,
-      reasonCodes: t.reasonCodes,
-      scoreInputs: t.scoreInputs,
-      txHash: t.txHash ?? undefined,
-      prevRecordHash: t.prevRecordHash,
-      recordHash: t.recordHash,
-    });
+  }): Promise<boolean> {
+    try {
+      await repoAppendTrace({
+        quoteId: t.quoteId,
+        seq: t.seq,
+        correlationId: t.correlationId,
+        outcome: t.outcome,
+        reasonCodes: t.reasonCodes,
+        scoreInputs: t.scoreInputs,
+        txHash: t.txHash ?? undefined,
+        prevRecordHash: t.prevRecordHash,
+        recordHash: t.recordHash,
+      });
+      return true;
+    } catch (err) {
+      // A concurrent append lost the UNIQUE(quoteId,prevRecordHash)/(seq) race → caller retries against
+      // the fresh tip (review 037). Any other error is a real failure.
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") return false;
+      throw err;
+    }
   }
 
   async traceTip(quoteId: string): Promise<TraceTip | null> {
