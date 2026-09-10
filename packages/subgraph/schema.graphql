@@ -1,20 +1,25 @@
-# Vouch subgraph schema — The Graph is AUTHORITATIVE for provider performance history.
+# Vouch AssuranceHub subgraph. The Graph is AUTHORITATIVE for provider performance history.
 #
-# Entity id strategy (plan §17.4 F4):
-#   Provider.id  = provider address (Bytes)
-#   Job.id       = jobId (Bytes-encoded uint256)   — immutable
-#   Guarantee.id = jobId (Bytes-encoded uint256)   — mutable (LOCKED → PAID | RELEASED)
-#   Payout.id    = jobId (Bytes-encoded uint256)   — immutable, one terminal payout per job (E5)
+# Entity id strategy: Provider = address; Job/Guarantee/Claim/Payout = jobId (Bytes-encoded uint256).
+# jobId-as-id makes reprocessing an UPSERT, matching onchain idempotency. Only commitments (bytes32
+# hashes) are stored — never preimages (plan §6.5).
 #
-# Using jobId as the id for Guarantee & Payout makes handler reprocessing an UPSERT instead of
-# appending duplicates, matching the onchain idempotency guarantees.
+# Counter ownership (plan §18.5): each Provider counter is owned by exactly ONE event so the
+# same-tx pairs (JobCreated+JobFunded, InitialEvaluationResolved+CoverageStarted+ServiceFeePaid,
+# ConfidentialEvaluationResolved+GuaranteePaid) never double-count.
 
-"""
-Terminal lifecycle of a guarantee's collateral.
-LOCKED   — provider has posted collateral; coverage window may be open.
-PAID     — a covered regression was proven; collateral (capped) went to the client.
-RELEASED — coverage window expired clean; collateral returned to the provider.
-"""
+enum JobStatus {
+  FUNDED
+  ACCEPTED
+  SUBMITTED
+  INITIALLY_APPROVED
+  CLAIM_PENDING
+  CLAIM_PAID
+  COMPLETED
+  CANCELLED
+  EXPIRED
+}
+
 enum GuaranteeStatus {
   LOCKED
   PAID
@@ -22,126 +27,89 @@ enum GuaranteeStatus {
 }
 
 """
-Provider reputation aggregate (mutable). Counters are derived in the subgraph (ADR-003) so the
-contracts stay gas-cheap. regressionRate = regressions / jobsCompleted is computed by consumers.
+Provider reputation aggregate (mutable). regressionRate = claimsPaid / jobsCompleted (computed by consumers).
 """
 type Provider @entity(immutable: false) {
-  "Provider address (Bytes)."
   id: Bytes!
-
-  "Number of covered windows that closed (clean or regressed) — the denominator for regressionRate."
-  jobsCompleted: BigInt!
-
-  "Number of jobs ever created for this provider."
   jobsCreated: BigInt!
-
-  "Number of guarantees this provider has ever locked."
+  jobsFunded: BigInt!
+  "Coverage windows that CLOSED (clean completion OR covered claim) — denominator for regressionRate."
+  jobsCompleted: BigInt!
   guaranteesLocked: BigInt!
-
-  "Number of guarantees currently active (locked and not yet paid or released)."
   guaranteesActive: BigInt!
-
-  "Number of proven covered regressions that resulted in a payout — the numerator for regressionRate."
-  regressions: BigInt!
-
-  "Total USDC (6-decimal base units) paid out to clients from this provider's guarantees."
+  claimsOpened: BigInt!
+  "Proven covered failures that paid a service credit (= regressions) — numerator for regressionRate."
+  claimsPaid: BigInt!
   totalPaidOut: BigInt!
-
-  "Total guaranteed value (sum of caps, 6-decimal base units) this provider has ever locked."
   totalGuaranteedValue: BigInt!
-
-  "Total task fees (6-decimal base units) this provider has earned on completed work."
   totalFeesEarned: BigInt!
-
-  "Block at which this provider was first indexed."
+  totalServiceFees: BigInt!
   firstSeenBlock: BigInt!
-
-  "Block at which this provider aggregate was last mutated."
   lastUpdatedBlock: BigInt!
 
   jobs: [Job!]! @derivedFrom(field: "provider")
   guarantees: [Guarantee!]! @derivedFrom(field: "provider")
+  claims: [Claim!]! @derivedFrom(field: "provider")
   payouts: [Payout!]! @derivedFrom(field: "provider")
 }
 
-"""
-An assurance job (immutable). id = jobId.
-"""
-type Job @entity(immutable: true) {
-  "jobId encoded as Bytes."
+"""An assurance job (MUTABLE — status advances). id = jobId."""
+type Job @entity(immutable: false) {
   id: Bytes!
-
-  "The raw onchain uint256 jobId (kept for display / sorting)."
   jobId: BigInt!
-
-  "Client address."
   client: Bytes!
-
-  "Provider reputation aggregate."
   provider: Provider!
-
-  "Task fee in USDC 6-decimal base units."
+  status: JobStatus!
   taskFee: BigInt!
-
-  "Advertised guarantee cap in USDC 6-decimal base units."
-  guaranteeCap: BigInt!
-
+  guaranteeAmount: BigInt!
+  serviceFee: BigInt!
+  submissionDeadline: BigInt!
+  coverageEnd: BigInt
+  publicCriteriaHash: Bytes!
+  privateCriteriaCommitment: Bytes!
+  submissionCommitment: Bytes
+  feeCounted: Boolean!
+  serviceFeeCounted: Boolean!
   createdAtBlock: BigInt!
   createdAtTimestamp: BigInt!
   txHash: Bytes!
 }
 
-"""
-A provider-funded performance guarantee (mutable — LOCKED → PAID | RELEASED). id = jobId.
-"""
+"""A provider-funded performance guarantee (MUTABLE — LOCKED → PAID | RELEASED). id = jobId."""
 type Guarantee @entity(immutable: false) {
-  "jobId encoded as Bytes (same id as the Job)."
   id: Bytes!
-
-  "The job this guarantee covers."
   job: Job!
-
-  "Provider reputation aggregate."
   provider: Provider!
-
-  "Advertised guarantee cap in USDC 6-decimal base units."
-  cap: BigInt!
-
-  "Collateral actually locked in USDC 6-decimal base units (>= cap)."
-  collateral: BigInt!
-
-  "Current lifecycle status."
+  amount: BigInt!
   status: GuaranteeStatus!
-
-  "Coverage window deadline (unix seconds) once coverage is opened; null before then."
   coverageDeadline: BigInt
-
-  "Whether the task fee has already been counted into provider.totalFeesEarned (idempotency guard)."
-  taskFeeReleased: Boolean!
-
   lockedAtBlock: BigInt!
   lockedAtTimestamp: BigInt!
 }
 
-"""
-A terminal service-credit payout to a client (immutable). id = jobId (one payout per job, E5).
-"""
-type Payout @entity(immutable: true) {
-  "jobId encoded as Bytes (same id as the Job)."
+"""A client claim opened during coverage (MUTABLE — resolved by the CRE). id = jobId (one per job)."""
+type Claim @entity(immutable: false) {
   id: Bytes!
-
-  "The job this payout settles."
   job: Job!
-
-  "Provider reputation aggregate whose collateral funded the payout."
   provider: Provider!
+  client: Bytes!
+  evidenceCommitment: Bytes!
+  "Confidential verdict. Meaningful only once resolvedAtTimestamp is set; false until then."
+  covered: Boolean!
+  serviceCredit: BigInt
+  openedAtBlock: BigInt!
+  openedAtTimestamp: BigInt!
+  resolvedAtBlock: BigInt
+  resolvedAtTimestamp: BigInt
+}
 
-  "Amount paid to the client in USDC 6-decimal base units (capped)."
+"""A terminal service-credit payout to a client (IMMUTABLE). id = jobId (one payout per job)."""
+type Payout @entity(immutable: true) {
+  id: Bytes!
+  job: Job!
+  provider: Provider!
   amount: BigInt!
-
-  "Client address that received the payout."
   toClient: Bytes!
-
   atBlock: BigInt!
   atTimestamp: BigInt!
   txHash: Bytes!

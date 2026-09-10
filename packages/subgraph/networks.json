@@ -1,12 +1,12 @@
 {
   "arc-testnet": {
-    "VouchCore": {
+    "AssuranceHub": {
       "address": "0x0000000000000000000000000000000000000000",
       "startBlock": 0
     }
   },
   "arc": {
-    "VouchCore": {
+    "AssuranceHub": {
       "address": "0x0000000000000000000000000000000000000000",
       "startBlock": 0
     }
