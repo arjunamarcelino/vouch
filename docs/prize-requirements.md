@@ -16,16 +16,26 @@ evidence.
 
 | Official requirement | Package / app | Demonstration evidence |
 |---|---|---|
-| Built **from scratch** during the event | `packages/subgraph` | New `AssuranceHub` subgraph authored during the event: `subgraph.yaml`, `schema.graphql`, `src/mappings/*.ts` indexing `AssuranceHub` events (Job, Guarantee, Claim, Payout, Provider). Git history shows it created from scratch. |
-| The Graph is **load-bearing** | `packages/subgraph` + `apps/agent` | The agent's risk quote **cannot be produced** without the subgraph — provider reputation (regressions, guarantees locked, total paid out) comes only from indexed Graph data, not from any mock. |
-| **Consume live (non-mocked) data** from a Graph provider | `apps/agent` (`src/risk/quote.ts`, `src/graph/client.ts`) | Agent runs a real GraphQL query against the deployed endpoint (Subgraph Studio URL, or local `graph-node` for `arc-testnet`) returning real indexed chain state. Freshness guard queries `_meta { block { number } hasIndexingErrors }` and refuses to quote if stale. |
-| Do **meaningful AI work** (reasoning / decisions / automation / NL interface) | `apps/agent` | Agent computes `regressionRate` and `payoutToGuaranteeRatio` from live data and makes an autonomous **guarantee-sizing / premium** decision. This is decision automation over live onchain reputation, not a passive display. |
-| Public repo + README + **2–4 min video** | root + `docs/demo-flow.md` | Public monorepo, root `README.md`, and the video script in `docs/demo-flow.md` (The Graph segment: live GraphQL query feeding the agent's risk quote). |
+| Built **from scratch** during the event | `packages/subgraph` | `AssuranceHub` subgraph authored during the event: `subgraph.yaml`, `schema.graphql` (13 entities), `src/mappings/assuranceHub.ts`. Git history shows it created and expanded from scratch. |
+| The Graph is **load-bearing** | `packages/subgraph` + `apps/agent` | The agent's risk quote is a pure function of provider history that exists **only** as indexed Graph data. The contract stores **no** reputation aggregates on-chain (ADR-003), there is no DB mirror, and no fixture. Remove or stale the subgraph and the agent can **only refuse** — proven live in `docs/the-graph-demo.md` steps 4–5. |
+| **Consume live (non-mocked) data** from a Graph provider | `apps/agent` (`src/graph/client.ts`, `src/risk/quote.ts`), `packages/shared/src/graph/client.ts` | The agent runs the real `queries/risk-agent-input.graphql` against the deployed endpoint (Studio for `arc`, or local `graph-node` for `arc-testnet`). `scripts/validate-endpoint.mjs` proves the live endpoint serves every required field. Freshness is asserted in-request (`_meta { block deployment hasIndexingErrors }` + RPC block-lag) before any read. |
+| Do **meaningful AI work** (reasoning / decisions / automation) | `apps/agent` + `packages/subgraph` | The subgraph computes provider risk features as integer basis points (`upheldClaimRateBps`, `claimFrequencyBps`, `averageCoverageRatioBps`, `payoutToCoveredValueBps`) into `ProviderRiskSnapshot`; the agent combines them with a read-time trailing-window `recentFailureRateBps` and makes an autonomous, **auditable** guarantee-sizing decision (premium band stamped with `asOfBlock` + `scoringFnVersion`). Decision automation over live on-chain reputation, not a passive display. |
+| **Fail closed** (no fabricated history) | `apps/agent`, `apps/api`, `packages/shared/src/graph` | When the subgraph is unavailable/lagging/stale, or the deployment id mismatches, or the RPC head is unreadable, the shared gate throws `SUBGRAPH_UNAVAILABLE`/`STALE`/`LAGGING`; the agent emits **no quote** and the API returns **503** — never a 200 with empty/fake history. A genuinely new provider (fresh index, no history) gets a documented conservative quote, distinct from "blind". |
+| **Health checks** (indexing lag + latest block) | `packages/subgraph/scripts/health-check.mjs` | Queries `_meta` + `indexingStatuses` (`chainHeadBlock − latestBlock`), asserts `synced`/`healthy`/no errors/lag within budget, reports the latest indexed block, and exits non-zero when unhealthy. |
+| **Matchstick tests** for every handler | `packages/subgraph/tests` | 12 passing Matchstick tests: one per handler + cross-cutting integrity (same-tx covered burst, no negative exposure, completion counting, timeout exclusion, idempotency, bps sentinel). `graph test` in CI. |
+| Public repo + README + **2–4 min video** | root + `docs/demo-flow.md` + `docs/the-graph-demo.md` | Public monorepo, root `README.md`, subgraph `README.md`, the video script in `docs/demo-flow.md` (The Graph segment), and the operator runbook `docs/the-graph-demo.md` (generate events → confirm indexed → query live → quote changes after an upheld claim → fail-closed on lag). |
 
-**Deployment note:** Arc **testnet** (`arc-testnet` / `eip155:5042002`) and Arc **mainnet**
-(`arc` / `eip155:5042`) are both listed supported Graph networks. If Subgraph Studio hosted
-indexing rejects `arc-testnet`, run a **local `graph-node`** against an Arc testnet RPC. Only the
-manifest `network:` value changes between environments (driven via `networks.json`).
+**Why The Graph is necessary for quote generation.** Provider reputation is emitted as *minimal*
+events and aggregated *only* by the subgraph (ADR-003 / ADR-006). The agent has no other source — no
+on-chain aggregate, no database mirror, no fixture — so a guarantee quote is literally impossible
+without live indexed Graph data, and the pipeline is designed so the only alternative to fresh data is
+a refusal.
+
+**Deployment note:** Arc **mainnet** (`arc` / `eip155:5042`) is a first-class Subgraph Studio network.
+`arc-testnet` (`eip155:5042002`) Studio support is unconfirmed **[verify at deploy time]** → fall back
+to a **local `graph-node`** against an Arc testnet RPC. Only the manifest `network:` value changes
+between environments (driven via `networks.json`). Deploy key / endpoint / deployment id come from env,
+never hard-coded.
 
 ---
 
