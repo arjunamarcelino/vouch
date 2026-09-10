@@ -63,7 +63,9 @@ contract AssuranceHubReentrancyTest is AssuranceHubConstants {
         _expectGuard();
         hub.onReport(
             abi.encodePacked(WORKFLOW_ID, WORKFLOW_NAME, workflowOwner),
-            abi.encode(block.chainid, address(hub), jobId, true, GUARANTEE)
+            abi.encode(
+                block.chainid, address(hub), jobId, true, GUARANTEE, keccak256("evidence"), uint64(block.timestamp)
+            )
         );
     }
 

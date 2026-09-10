@@ -184,7 +184,8 @@ contract AssuranceHubNegativeTest is AssuranceHubBase {
 
     function test_onReport_WrongChain_Reverts() public {
         uint256 jobId = _driveTo(AssuranceHub.State.ClaimPending);
-        bytes memory badReport = abi.encode(uint256(999_999), address(hub), jobId, true, GUARANTEE);
+        bytes memory badReport =
+            abi.encode(uint256(999_999), address(hub), jobId, true, GUARANTEE, EVIDENCE_COMMITMENT, _evalAt());
         vm.prank(forwarder);
         vm.expectRevert(Errors.ReportDomainMismatch.selector);
         hub.onReport(_metadataGood(), badReport);
@@ -192,10 +193,53 @@ contract AssuranceHubNegativeTest is AssuranceHubBase {
 
     function test_onReport_WrongReceiver_Reverts() public {
         uint256 jobId = _driveTo(AssuranceHub.State.ClaimPending);
-        bytes memory badReport = abi.encode(block.chainid, address(0xBEEF), jobId, true, GUARANTEE);
+        bytes memory badReport =
+            abi.encode(block.chainid, address(0xBEEF), jobId, true, GUARANTEE, EVIDENCE_COMMITMENT, _evalAt());
         vm.prank(forwarder);
         vm.expectRevert(Errors.ReportDomainMismatch.selector);
         hub.onReport(_metadataGood(), badReport);
+    }
+
+    // ---- evidence / timestamp validation (plan §5) ---- //
+
+    function test_onReport_ZeroEvidenceCommitment_Reverts() public {
+        uint256 jobId = _driveTo(AssuranceHub.State.ClaimPending);
+        vm.prank(forwarder);
+        vm.expectRevert(Errors.BadCommitment.selector);
+        hub.onReport(_metadataGood(), _reportEx(jobId, true, GUARANTEE, bytes32(0), _evalAt()));
+    }
+
+    function test_onReport_ZeroEvaluatedAt_Reverts() public {
+        uint256 jobId = _driveTo(AssuranceHub.State.ClaimPending);
+        vm.prank(forwarder);
+        vm.expectRevert(Errors.BadTimestamp.selector);
+        hub.onReport(_metadataGood(), _reportEx(jobId, true, GUARANTEE, EVIDENCE_COMMITMENT, 0));
+    }
+
+    function test_onReport_EvaluatedAtBeyondSkew_Reverts() public {
+        uint256 jobId = _driveTo(AssuranceHub.State.ClaimPending);
+        uint64 tooFar = uint64(block.timestamp) + hub.EVAL_TIMESTAMP_SKEW() + 1;
+        vm.prank(forwarder);
+        vm.expectRevert(Errors.BadTimestamp.selector);
+        hub.onReport(_metadataGood(), _reportEx(jobId, true, GUARANTEE, EVIDENCE_COMMITMENT, tooFar));
+    }
+
+    function test_onReport_EvaluatedAtWithinSkew_OK() public {
+        uint256 jobId = _driveTo(AssuranceHub.State.ClaimPending);
+        uint64 withinSkew = uint64(block.timestamp) + hub.EVAL_TIMESTAMP_SKEW();
+        vm.prank(forwarder);
+        hub.onReport(_metadataGood(), _reportEx(jobId, true, GUARANTEE, EVIDENCE_COMMITMENT, withinSkew));
+        _assertState(jobId, AssuranceHub.State.ClaimPaid);
+    }
+
+    /// @dev Precedence (plan §5, M2): a settled job surfaces AlreadySettled, NOT BadCommitment/BadTimestamp,
+    ///      even when the replayed report also carries bad evidence — so the relay classifies it terminal.
+    function test_onReport_SettledPrecedesEvidenceChecks() public {
+        uint256 jobId = _driveTo(AssuranceHub.State.ClaimPending);
+        _onReport(jobId, true, GUARANTEE);
+        vm.prank(forwarder);
+        vm.expectRevert(Errors.AlreadySettled.selector);
+        hub.onReport(_metadataGood(), _reportEx(jobId, true, GUARANTEE, bytes32(0), 0));
     }
 
     // ---- replay / double-settle ---- //

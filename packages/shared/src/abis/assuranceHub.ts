@@ -108,6 +108,19 @@ export const assuranceHubAbi = [
   },
   {
     "type": "function",
+    "name": "EVAL_TIMESTAMP_SKEW",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "MAX_COVERAGE",
     "inputs": [],
     "outputs": [
@@ -910,6 +923,18 @@ export const assuranceHubAbi = [
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
+      },
+      {
+        "name": "evidenceCommitment",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "evaluatedAt",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
       }
     ],
     "anonymous": false
@@ -1476,6 +1501,11 @@ export const assuranceHubAbi = [
   {
     "type": "error",
     "name": "BadState",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "BadTimestamp",
     "inputs": []
   },
   {

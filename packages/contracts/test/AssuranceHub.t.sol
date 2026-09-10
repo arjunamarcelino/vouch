@@ -102,7 +102,7 @@ contract AssuranceHubUnitTest is AssuranceHubBase {
         _assertState(jobId, AssuranceHub.State.ClaimPending);
 
         vm.expectEmit(true, false, false, true, address(hub));
-        emit ConfidentialEvaluationResolved(jobId, true, GUARANTEE);
+        emit ConfidentialEvaluationResolved(jobId, true, GUARANTEE, EVIDENCE_COMMITMENT, _evalAt());
         vm.expectEmit(true, true, false, true, address(hub));
         emit GuaranteePaid(jobId, client, GUARANTEE);
         _onReport(jobId, true, GUARANTEE);
@@ -135,7 +135,7 @@ contract AssuranceHubUnitTest is AssuranceHubBase {
         uint64 coverageEnd = hub.getJob(jobId).coverageEnd;
 
         vm.expectEmit(true, false, false, true, address(hub));
-        emit ConfidentialEvaluationResolved(jobId, false, 0);
+        emit ConfidentialEvaluationResolved(jobId, false, 0, EVIDENCE_COMMITMENT, _evalAt());
         _onReport(jobId, false, 0);
 
         _assertState(jobId, AssuranceHub.State.InitiallyApproved);

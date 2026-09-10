@@ -1,5 +1,5 @@
 import { assert, describe, test, clearStore, beforeEach, afterAll } from "matchstick-as/assembly/index";
-import { BigInt } from "@graphprotocol/graph-ts";
+import { BigInt, Bytes } from "@graphprotocol/graph-ts";
 import {
   handleJobCreated,
   handleProviderAccepted,
@@ -134,9 +134,12 @@ describe("AssuranceHub mappings", () => {
     handleClaimOpened(claimOpened(1, txHash(5), 0, 5, 2000));
     // resolveClaim covered → same tx: ConfidentialEvaluationResolved + GuaranteePaid + CollateralReleased(remainder)
     let tx = txHash(6);
-    handleConfidentialEvaluationResolved(confidentialEvaluationResolved(1, true, 60, tx, 0, 6, 3000));
+    handleConfidentialEvaluationResolved(
+      confidentialEvaluationResolved(1, true, 60, tx, 0, 6, 3000, Bytes.fromHexString("0x" + "11".repeat(32)), 2990),
+    );
     handleGuaranteePaid(guaranteePaid(1, 60, tx, 1, 6, 3000));
     handleCollateralReleased(collateralReleased(1, 40, tx, 2, 6, 3000));
+    assert.entityCount("ConfidentialEvaluation", 1);
 
     assert.fieldEquals("Provider", P, "claimsUpheld", "1");
     assert.fieldEquals("Provider", P, "claimsRejected", "0");
@@ -157,7 +160,9 @@ describe("AssuranceHub mappings", () => {
     approve(1, 20, 100, 1000);
     handleClaimOpened(claimOpened(1, txHash(5), 0, 5, 2000));
     let tx = txHash(6);
-    handleConfidentialEvaluationResolved(confidentialEvaluationResolved(1, true, 60, tx, 0, 6, 3000));
+    handleConfidentialEvaluationResolved(
+      confidentialEvaluationResolved(1, true, 60, tx, 0, 6, 3000, Bytes.fromHexString("0x" + "11".repeat(32)), 2990),
+    );
     handleGuaranteePaid(guaranteePaid(1, 60, tx, 1, 6, 3000));
     handleGuaranteePaid(guaranteePaid(1, 60, tx, 1, 6, 3000)); // replay same event
     assert.fieldEquals("Provider", P, "totalPayoutAmount", "60");
@@ -168,7 +173,7 @@ describe("AssuranceHub mappings", () => {
     approve(1, 20, 100, 1000);
     handleClaimOpened(claimOpened(1, txHash(5), 0, 5, 2000));
     handleConfidentialEvaluationResolved(
-      confidentialEvaluationResolved(1, false, 0, txHash(6), 0, 6, 3000),
+      confidentialEvaluationResolved(1, false, 0, txHash(6), 0, 6, 3000, Bytes.fromHexString("0x" + "22".repeat(32)), 2990),
     );
     assert.fieldEquals("Provider", P, "claimsRejected", "1");
     assert.fieldEquals("Provider", P, "claimsUpheld", "0");
@@ -185,7 +190,8 @@ describe("AssuranceHub mappings", () => {
     // resolveClaimTimeout: ClaimTimedOut (first) + ConfidentialEvaluationResolved(false,0) same tx
     let tx = txHash(7);
     handleClaimTimedOut(claimTimedOut(1, tx, 0, 7, 500000));
-    handleConfidentialEvaluationResolved(confidentialEvaluationResolved(1, false, 0, tx, 1, 7, 500000));
+    // Timeout path: zero evidence commitment, block time as the stamp (mirrors the contract default).
+    handleConfidentialEvaluationResolved(confidentialEvaluationResolved(1, false, 0, tx, 1, 7, 500000, Bytes.empty(), 500000));
     assert.fieldEquals("Provider", P, "claimsRejected", "0"); // timeout excluded
     assert.fieldEquals("Claim", jobIdBytes(1).toHexString(), "resolvedByTimeout", "true");
     assert.entityCount("ProviderDailyMetric", 0); // no day-bucket for a timeout

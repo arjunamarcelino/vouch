@@ -39,6 +39,7 @@ library Errors {
     error ZeroPayout();
     error BadCommitment();
     error BadMetadata(); // packed CRE metadata shorter than 62 bytes
+    error BadTimestamp(); // report evaluatedAt is zero or beyond block.timestamp + EVAL_TIMESTAMP_SKEW
     error SelfDealing(); // provider == client
     error AmountAboveCap(); // reported service credit exceeds the guarantee
 
