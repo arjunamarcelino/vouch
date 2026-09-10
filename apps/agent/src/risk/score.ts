@@ -12,6 +12,7 @@ import {
 import { applyBpsFloor, applyBpsCeil, bigIntMin, bigIntMax, clamp } from "@vouch/shared/bigint";
 import { VouchError } from "@vouch/shared/errors";
 import type { ProviderRiskResult } from "../graph/client";
+import { NEW_PROVIDER_FACTOR_BPS, riskExposureFactorBps } from "./exposure";
 
 /**
  * Deterministic transparent pricing model (plan §4). Turns LIVE indexed provider history + the job's
@@ -52,12 +53,7 @@ const MAX_PREMIUM_BPS = 2_000n; // 20.00% ceiling
 // clamp (a relative %-of-fee cap would just mirror MAX_PREMIUM_BPS). Default 10 USDC; override via
 // ScoreParams for tests / policy.
 const DEFAULT_MAX_SERVICE_FEE = 10_000_000n; // 10 USDC (6-dec)
-// Exposure factor (guarantee-limit scaling) — mirrors risk/quote.ts (027).
-const FULL_FACTOR_BPS = 10_000n;
-const MIN_FACTOR_BPS = 3_000n;
-const NEW_PROVIDER_FACTOR_BPS = 5_000n;
-const UPHELD_EXPOSURE_WEIGHT = 2n;
-const RECENT_EXPOSURE_WEIGHT = 1n;
+// Exposure factor (guarantee-limit scaling) is the shared model in ./exposure (used by v1 quote.ts too).
 // Confidence thresholds.
 const HIGH_CONFIDENCE_SAMPLE = 20n;
 
@@ -162,13 +158,8 @@ function computeScore(f: RawFeatures, job: JobRequest, params: ScoreParams): Ris
   premiumBps = cappedPremium;
 
   // --- exposure ceiling (guarantee limit) — risk scales it DOWN, never up (027) ---
-  let exposureFactorBps: bigint;
-  if (f.isNew || !f.hasEnoughHistory) {
-    exposureFactorBps = NEW_PROVIDER_FACTOR_BPS;
-  } else {
-    const riskBps = upheld * UPHELD_EXPOSURE_WEIGHT + recent * RECENT_EXPOSURE_WEIGHT;
-    exposureFactorBps = clamp(FULL_FACTOR_BPS - riskBps, MIN_FACTOR_BPS, FULL_FACTOR_BPS);
-  }
+  const exposureFactorBps =
+    f.isNew || !f.hasEnoughHistory ? NEW_PROVIDER_FACTOR_BPS : riskExposureFactorBps(upheld, recent);
   const recommendedGuaranteeLimit = applyBpsFloor(params.baseGuaranteeCap, exposureFactorBps);
 
   // Oversized-guarantee guard: never cover above the computed ceiling.

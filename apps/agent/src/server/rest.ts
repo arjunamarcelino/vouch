@@ -30,7 +30,6 @@ const HTTP_STATUS = {
   QUOTE_INVALID: 400,
   SPEND_POLICY_VIOLATION: 403,
   WRONG_CONTRACT: 500,
-  DUPLICATE_SUBMISSION: 409,
 } satisfies Record<VouchErrorCode, number>;
 
 export interface RestOptions {

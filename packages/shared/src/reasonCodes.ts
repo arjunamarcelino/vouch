@@ -13,7 +13,6 @@ import { z } from "zod";
 /** Scoring reason codes — why the deterministic model produced the amounts it did (§4.3). */
 export const SCORING_REASON_CODES = [
   "FRESH_DATA",
-  "DEGRADED_DATA",
   "NEW_PROVIDER_CONSERVATIVE",
   "INSUFFICIENT_HISTORY_SURCHARGE",
   "HISTORY_DISCOUNT_APPLIED",
@@ -27,14 +26,17 @@ export const SCORING_REASON_CODES = [
   "COLLATERAL_FLOOR_APPLIED",
 ] as const;
 
-/** Verify reason codes — why a quote failed verification (§5). Returned by `verifyQuote`, not thrown. */
+/**
+ * Verify reason codes — why a quote failed verification (§5). Returned by `verifyQuote`, not thrown.
+ * A chain/verifyingContract mismatch surfaces as `BAD_SIGNER` (the domain is part of the signature);
+ * nonce replay is enforced at action time in the DB, not by the pure verifier — so neither has its own
+ * returned code.
+ */
 export const VERIFY_REASON_CODES = [
-  "CHAIN_MISMATCH",
   "QUOTE_EXPIRED",
   "QUOTE_NOT_YET_VALID",
   "JOB_PARAMS_ALTERED",
   "BAD_SIGNER",
-  "QUOTE_REPLAY",
 ] as const;
 
 export const reasonCodeSchema = z.enum([...SCORING_REASON_CODES, ...VERIFY_REASON_CODES]);

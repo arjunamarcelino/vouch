@@ -22,8 +22,7 @@ export type VouchErrorCode =
   | "QUOTE_INVALID"
   // Payment executor guards (plan §6).
   | "SPEND_POLICY_VIOLATION"
-  | "WRONG_CONTRACT"
-  | "DUPLICATE_SUBMISSION";
+  | "WRONG_CONTRACT";
 
 export class VouchError extends Error {
   readonly code: VouchErrorCode;

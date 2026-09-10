@@ -30,6 +30,8 @@ export class PrismaAgentStore implements CoreStore, IntentStore {
       jobHash: c.jobHash,
       provider: c.score.provider,
       scoringFnVersion: c.score.scoringFnVersion,
+      // Safe Number(): premiumBps is capped ≤ MAX_PREMIUM_BPS (2000), far under 2^53, and stored as an
+      // Int column — this is the one non-BigInt in the money path and it is NOT a base-unit amount.
       premiumBps: Number(c.score.premiumBps),
       recommendedGuaranteeLimit: c.score.recommendedGuaranteeLimit,
       assuranceServiceFee: c.score.assuranceServiceFee,

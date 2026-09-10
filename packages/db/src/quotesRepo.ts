@@ -180,7 +180,7 @@ export async function traceTip(quoteId: string) {
   });
 }
 
-/** The full decision chain for a quote, oldest→newest (demo/audit read surface). */
-export async function listTraces(quoteId: string) {
-  return prisma.decisionTrace.findMany({ where: { quoteId }, orderBy: { seq: "asc" } });
+/** The decision chain for a quote, oldest→newest, capped (demo/audit read surface — review 044). */
+export async function listTraces(quoteId: string, limit = 1000) {
+  return prisma.decisionTrace.findMany({ where: { quoteId }, orderBy: { seq: "asc" }, take: limit });
 }

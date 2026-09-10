@@ -21,7 +21,7 @@ import type { StoredIntent } from "../pay/executor";
  *
  * Agent-native parity (§0.6): `requestQuote` is READ-ONLY (score + sign + persist + trace — no USDC
  * moves); the bond is posted only via `executePayment` (destructive, idempotent, re-derives amount +
- * destination from the stored quote — inputs are data, not decisions). `verifyQuote` is PURE.
+ * destination from agent config — inputs are data, not decisions). `verifyQuote` is PURE.
  */
 
 const log = createLogger("agent:core");
@@ -124,8 +124,8 @@ export class AgentCore {
 
   /**
    * DESTRUCTIVE + idempotent: post or refund the bond for a stored quote. Amount + destination are
-   * re-derived (never accepted from the caller). POST_BOND consumes the quote's nonce atomically at
-   * action time; a replay is a no-op.
+   * re-derived from agent config (never accepted from the caller). POST_BOND consumes the quote's nonce
+   * atomically in the reserve tx (executor); a replay is a no-op.
    */
   async executePayment(
     quoteId: string,

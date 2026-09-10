@@ -44,7 +44,7 @@ export function createMcpServer(core: AgentCore, opts: RestOptions = {}): McpSer
       title: "Request assurance quote",
       description: "Score a provider+job from live subgraph data and return a signed, expiring quote. Read-only (no funds move).",
       inputSchema: jobRequestSchema.shape,
-      annotations: { readOnlyHint: true, destructiveHint: false },
+      annotations: { readOnlyHint: true },
     },
     async (args, extra) => guard(() => core.requestQuote(args, String(extra.requestId ?? "mcp"))),
   );
@@ -109,7 +109,7 @@ export function createMcpServer(core: AgentCore, opts: RestOptions = {}): McpSer
       "assurance_execute_payment",
       {
         title: "Execute bond payment",
-        description: "Post or refund the quote bond. Amount+destination are re-derived from the stored quote; idempotent.",
+        description: "Post or refund the quote bond. Amount+destination are re-derived from agent config; idempotent.",
         inputSchema: { quote_id: z.string(), action: paymentActionSchema },
         annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
       },

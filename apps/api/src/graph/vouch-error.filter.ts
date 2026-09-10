@@ -20,10 +20,9 @@ const STATUS = {
   CHAIN_NOT_CONFIGURED: HttpStatus.INTERNAL_SERVER_ERROR,
   NOT_IMPLEMENTED: HttpStatus.NOT_IMPLEMENTED,
   // agent quotation & settlement (plan §9.2 / §0.6)
-  QUOTE_INVALID: HttpStatus.BAD_REQUEST, // caller presented an expired/replayed/tampered quote
+  QUOTE_INVALID: HttpStatus.BAD_REQUEST, // caller presented an expired/tampered quote
   SPEND_POLICY_VIOLATION: HttpStatus.FORBIDDEN,
   WRONG_CONTRACT: HttpStatus.INTERNAL_SERVER_ERROR, // chain/contract misconfig — treat as internal
-  DUPLICATE_SUBMISSION: HttpStatus.CONFLICT,
 } satisfies Record<VouchErrorCode, HttpStatus>;
 
 @Catch(VouchError)
