@@ -28,6 +28,8 @@ export class JobsService {
    * brand-new zero-history provider doesn't top the list; the phantom `regressions` field is gone.
    */
   async topProviders(): Promise<ProviderRow[]> {
+    // Fail closed: a lagging/stale index must 503, not serve stale reputation or read [] as clean (014).
+    await this.graph.assertFresh();
     const data = await this.graph.query<{ providers: unknown[] }>(
       `query Top {
         providers(
