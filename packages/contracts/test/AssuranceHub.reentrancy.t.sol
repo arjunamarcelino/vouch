@@ -1,33 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {Test} from "forge-std/Test.sol";
 import {AssuranceHub} from "../src/AssuranceHub.sol";
 import {ReentrantUSDC} from "./mocks/ReentrantUSDC.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {AssuranceHubConstants} from "./AssuranceHubConstants.sol";
 
 /// @title AssuranceHubReentrancyTest
 /// @notice Arms ReentrantUSDC on each outbound transfer path and asserts the guard trips.
-contract AssuranceHubReentrancyTest is Test {
+/// @dev Shares actors + constants with the main suite via AssuranceHubConstants (finding 010);
+///      only the token (ReentrantUSDC) and setUp differ.
+contract AssuranceHubReentrancyTest is AssuranceHubConstants {
     AssuranceHub internal hub;
     ReentrantUSDC internal evil;
 
-    address internal admin = makeAddr("admin");
-    address internal evaluator = makeAddr("evaluator");
-    address internal feeRecipient = makeAddr("feeRecipient");
-    address internal forwarder = makeAddr("forwarder");
-    address internal workflowOwner = makeAddr("workflowOwner");
-    address internal client = makeAddr("client");
-    address internal provider = makeAddr("provider");
-
-    bytes32 internal constant WORKFLOW_ID = keccak256("vouch-assurance-v1");
-    bytes10 internal constant WORKFLOW_NAME = bytes10("vouchclaim");
-    uint256 internal constant TASK_FEE = 20e6;
-    uint256 internal constant GUARANTEE = 100e6;
-    uint256 internal constant SERVICE_FEE = 5e6;
-    uint64 internal constant COVERAGE_DURATION = 1 days;
-    uint64 internal constant SUBMIT_WINDOW = 2 days;
-    uint256 internal constant MINT = 1_000_000e6;
     bytes32 internal constant H = keccak256("h");
 
     function setUp() public {
