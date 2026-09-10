@@ -403,7 +403,10 @@ contract AssuranceHub is ReceiverBase, AccessControl, Pausable, ReentrancyGuard 
             usdc.safeTransfer(job.client, amount);
             if (remainder > 0) usdc.safeTransfer(job.provider, remainder);
         } else {
-            // Not covered: return to coverage. Claim latch stays set -> no re-claim. No funds move.
+            // Not covered: return to coverage. DESIGN (finding 016, ADR-005): the claim latch stays
+            // set, so a job gets exactly ONE claim for the whole coverage window — a not-covered
+            // verdict consumes coverage even if a different covered failure later occurs in-window.
+            // Intentional MVP behavior; a rejected claim cannot be re-filed. No funds move.
             job.status = State.InitiallyApproved;
             emit ConfidentialEvaluationResolved(jobId, false, 0);
         }
