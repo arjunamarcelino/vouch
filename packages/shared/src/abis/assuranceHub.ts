@@ -1470,5 +1470,10 @@ export const assuranceHubAbi = [
     "type": "error",
     "name": "ZeroPayout",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ZeroWorkflowIdentity",
+    "inputs": []
   }
 ] as const;

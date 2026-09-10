@@ -42,6 +42,8 @@ abstract contract ReceiverBase is IReceiver {
     /// @dev Sets the expected workflow identity. Concrete contract must gate the caller.
     function _setExpectedWorkflow(bytes32 workflowId, bytes10 workflowName, address workflowOwner) internal {
         if (workflowOwner == address(0)) revert Errors.ZeroAddress();
+        // id + name are load-bearing defense-in-depth for the settlement gate; never allow zero.
+        if (workflowId == bytes32(0) || workflowName == bytes10(0)) revert Errors.ZeroWorkflowIdentity();
         expectedWorkflowId = workflowId;
         expectedWorkflowName = workflowName;
         expectedWorkflowOwner = workflowOwner;

@@ -10,6 +10,7 @@ library Errors {
     error NotProvider();
     error NotForwarder();
     error UnauthorizedWorkflow();
+    error ZeroWorkflowIdentity(); // workflowId or workflowName is zero (weakens the settlement gate)
 
     // --- State machine ---
     error BadState();

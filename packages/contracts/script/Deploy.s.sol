@@ -16,6 +16,7 @@ contract Deploy is Script {
         address usdc = vm.envAddress("ARC_USDC_ADDRESS");
         address forwarder = vm.envAddress("CRE_FORWARDER_ADDRESS");
         bytes32 workflowId = vm.envBytes32("CRE_WORKFLOW_ID");
+        // bytes10(...) takes the leading 10 bytes, matching ReceiverBase's m[32:42] name decode.
         bytes10 workflowName = bytes10(vm.envBytes32("CRE_WORKFLOW_NAME"));
         address workflowOwner = vm.envAddress("CRE_WORKFLOW_OWNER");
         address admin = vm.envAddress("ADMIN_ADDRESS");
@@ -30,6 +31,8 @@ contract Deploy is Script {
         // require non-zero and operator-supplied; do NOT require code (an EOA relay has none).
         require(forwarder != address(0), "CRE_FORWARDER_ADDRESS unset/zero");
         require(workflowOwner != address(0), "CRE_WORKFLOW_OWNER unset/zero");
+        require(workflowId != bytes32(0), "CRE_WORKFLOW_ID unset/zero");
+        require(workflowName != bytes10(0), "CRE_WORKFLOW_NAME unset/zero");
 
         vm.startBroadcast(deployerPk);
         hub = new AssuranceHub(usdc, forwarder, workflowId, workflowName, workflowOwner, admin, evaluator, feeRecipient);
