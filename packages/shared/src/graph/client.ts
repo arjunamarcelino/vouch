@@ -181,18 +181,29 @@ export function checkFreshness(meta: Meta | null, chainHead: bigint, cfg: Freshn
     );
   }
 
-  // Wall-clock staleness is a secondary signal RELATIVE to sync lag: only meaningful when the
-  // subgraph is also block-behind. A quiet chain (old head, zero lag) must NOT refuse.
-  const nowSeconds = cfg.nowSeconds ?? Math.floor(Date.now() / 1000);
+  // A money-moving read needs a block timestamp; a missing one can't be aged, so refuse (019).
   const metaTs = meta.block.timestamp;
-  if (metaTs !== null && lagBlocks > 0n) {
-    const staleness = nowSeconds - metaTs;
-    if (staleness > cfg.maxStalenessSeconds) {
-      throw new VouchError(
-        "SUBGRAPH_STALE",
-        `Subgraph block is ${staleness}s old (max ${cfg.maxStalenessSeconds})`,
-      );
-    }
+  if (metaTs === null || metaTs === undefined) {
+    throw new VouchError("SUBGRAPH_STALE", "Subgraph block has no timestamp");
+  }
+  const nowSeconds = cfg.nowSeconds ?? Math.floor(Date.now() / 1000);
+  const staleness = nowSeconds - metaTs;
+  // Primary: wall-clock staleness is meaningful RELATIVE to sync lag — a quiet chain (old head, zero
+  // lag) must NOT refuse (architecture HIGH). Secondary: an ABSOLUTE ceiling still refuses a block
+  // that's implausibly old even at lag==0, so a frozen/lying RPC (head==stale indexed) can't bypass
+  // both gates (security 019). One RPC can't distinguish "quiet" from "lying" below that ceiling.
+  const HARD_STALENESS_MULTIPLIER = 10;
+  if (lagBlocks > 0n && staleness > cfg.maxStalenessSeconds) {
+    throw new VouchError(
+      "SUBGRAPH_STALE",
+      `Subgraph block is ${staleness}s old (max ${cfg.maxStalenessSeconds})`,
+    );
+  }
+  if (staleness > cfg.maxStalenessSeconds * HARD_STALENESS_MULTIPLIER) {
+    throw new VouchError(
+      "SUBGRAPH_STALE",
+      `Subgraph block is ${staleness}s old (absolute max ${cfg.maxStalenessSeconds * HARD_STALENESS_MULTIPLIER})`,
+    );
   }
 
   return { dataConfidence: "FRESH", latestIndexedBlock, chainHead, lagBlocks };
