@@ -301,14 +301,14 @@ contract AssuranceHub is ReceiverBase, AccessControl, Pausable, ReentrancyGuard 
             job.status = State.InitiallyApproved;
             totalLiabilities -= (taskFee + serviceFee);
 
+            // Effects phase: emit all events before any interaction (CEI, finding 009).
             emit InitialEvaluationResolved(jobId, msg.sender, true);
             emit CoverageStarted(jobId, coverageEnd);
+            if (serviceFee > 0) emit ServiceFeePaid(jobId, feeRecipient, serviceFee);
 
+            // Interactions.
             usdc.safeTransfer(job.provider, taskFee);
-            if (serviceFee > 0) {
-                usdc.safeTransfer(feeRecipient, serviceFee);
-                emit ServiceFeePaid(jobId, feeRecipient, serviceFee);
-            }
+            if (serviceFee > 0) usdc.safeTransfer(feeRecipient, serviceFee);
         } else {
             uint256 refund = taskFee + serviceFee;
             job.status = State.Cancelled;
@@ -372,15 +372,14 @@ contract AssuranceHub is ReceiverBase, AccessControl, Pausable, ReentrancyGuard 
             job.status = State.ClaimPaid;
             totalLiabilities -= guarantee;
 
+            // Effects phase: emit all events before any interaction (CEI, finding 009).
             emit ConfidentialEvaluationResolved(jobId, true, payout);
-
-            usdc.safeTransfer(job.client, payout);
             emit GuaranteePaid(jobId, job.client, payout);
+            if (remainder > 0) emit CollateralReleased(jobId, job.provider, remainder);
 
-            if (remainder > 0) {
-                usdc.safeTransfer(job.provider, remainder);
-                emit CollateralReleased(jobId, job.provider, remainder);
-            }
+            // Interactions. Conservation: payout + remainder == guarantee.
+            usdc.safeTransfer(job.client, payout);
+            if (remainder > 0) usdc.safeTransfer(job.provider, remainder);
         } else {
             // Not covered: return to coverage. Claim latch stays set -> no re-claim. No funds move.
             job.status = State.InitiallyApproved;
