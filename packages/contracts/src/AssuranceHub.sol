@@ -370,12 +370,15 @@ contract AssuranceHub is ReceiverBase, AccessControl, Pausable, ReentrancyGuard 
     /// @notice CRE receiver finalizes the confidential claim. ClaimPending -> ClaimPaid | InitiallyApproved.
     /// @dev NOT pausable (an already-earned claim must finalize). Gated by forwarder + workflow identity.
     /// @param metadata Packed Keystone metadata (bytes32 id | bytes10 name | address owner).
-    /// @param report   abi.encode(uint256 jobId, bool covered, uint256 amount). `amount` is the CRE's
-    ///                 decided service credit; the contract caps it at the guarantee.
+    /// @param report   abi.encode(uint256 chainId, address hub, uint256 jobId, bool covered, uint256 amount).
+    ///                 `chainId`+`hub` bind the report to THIS deployment (anti cross-chain replay, 003);
+    ///                 `amount` is the CRE's decided service credit, capped at the guarantee.
     function onReport(bytes calldata metadata, bytes calldata report) external override nonReentrant {
         _authorizeReport(metadata);
 
-        (uint256 jobId, bool covered, uint256 amount) = abi.decode(report, (uint256, bool, uint256));
+        (uint256 reportChainId, address reportHub, uint256 jobId, bool covered, uint256 amount) =
+            abi.decode(report, (uint256, address, uint256, bool, uint256));
+        if (reportChainId != block.chainid || reportHub != address(this)) revert Errors.ReportDomainMismatch();
 
         AssuranceJob storage job = _jobs[jobId];
         if (settled[jobId]) revert Errors.AlreadySettled();

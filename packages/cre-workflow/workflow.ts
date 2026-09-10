@@ -63,14 +63,18 @@ export type Config = z.infer<typeof configSchema>;
 // SDK-independent and fully testable. (plan §17.2, §19 D7)
 // ---------------------------------------------------------------------------
 export const VerdictParams = [
+  { name: "chainId", type: "uint256" },
+  { name: "hub", type: "address" },
   { name: "jobId", type: "uint256" },
   { name: "covered", type: "bool" },
   { name: "amount", type: "uint256" },
 ] as const;
 
 /**
- * Encode the minimal verdict tuple the AssuranceHub receiver decodes.
+ * Encode the verdict report the AssuranceHub receiver decodes.
  *
+ * @param chainId   `block.chainid` of the target settlement chain (anti cross-chain replay, 003)
+ * @param hub       the AssuranceHub contract address the report is bound to (must == the receiver)
  * @param jobId     the coverage/job identifier
  * @param covered   true if the confidential test proved a covered failure (regression)
  * @param amount    the service credit to pay the client. The CRE MUST pass a value in
@@ -80,11 +84,13 @@ export const VerdictParams = [
  * @returns ABI-encoded `0x`-prefixed hex payload
  */
 export function buildVerdictPayload(
+  chainId: bigint,
+  hub: `0x${string}`,
   jobId: bigint,
   covered: boolean,
   amount: bigint,
 ): `0x${string}` {
-  return encodeAbiParameters(VerdictParams, [jobId, covered, amount]);
+  return encodeAbiParameters(VerdictParams, [chainId, hub, jobId, covered, amount]);
 }
 
 // ---------------------------------------------------------------------------
@@ -148,7 +154,8 @@ export function createCreRuntime(_config: Config): CreRuntime {
 //
 //     // amount MUST be nonzero and <= guaranteeAmount — the contract reverts, never clamps (005).
 //     const credit = min(decidedCredit, guaranteeAmount); // > 0
-//     const payload = buildVerdictPayload(BigInt(jobId), true, credit);
+//     // Bind the report to this chain + receiver (anti cross-chain replay, 003):
+//     const payload = buildVerdictPayload(chainId, consumerAddress, BigInt(jobId), true, credit);
 //     const report = runtime
 //       .report(prepareReportRequest(hexToBase64(payload)))
 //       .result();

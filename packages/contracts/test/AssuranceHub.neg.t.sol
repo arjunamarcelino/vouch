@@ -180,6 +180,24 @@ contract AssuranceHubNegativeTest is AssuranceHubBase {
         hub.onReport(_metadataGood(), _report(jobId, true, GUARANTEE + 1));
     }
 
+    // ---- cross-deployment report replay (003) ---- //
+
+    function test_onReport_WrongChain_Reverts() public {
+        uint256 jobId = _driveTo(AssuranceHub.State.ClaimPending);
+        bytes memory badReport = abi.encode(uint256(999_999), address(hub), jobId, true, GUARANTEE);
+        vm.prank(forwarder);
+        vm.expectRevert(Errors.ReportDomainMismatch.selector);
+        hub.onReport(_metadataGood(), badReport);
+    }
+
+    function test_onReport_WrongReceiver_Reverts() public {
+        uint256 jobId = _driveTo(AssuranceHub.State.ClaimPending);
+        bytes memory badReport = abi.encode(block.chainid, address(0xBEEF), jobId, true, GUARANTEE);
+        vm.prank(forwarder);
+        vm.expectRevert(Errors.ReportDomainMismatch.selector);
+        hub.onReport(_metadataGood(), badReport);
+    }
+
     // ---- replay / double-settle ---- //
 
     function test_DuplicatePayout_Reverts() public {

@@ -75,7 +75,10 @@ contract AssuranceHubReentrancyTest is Test {
         evil.arm(address(hub), abi.encodeCall(hub.withdrawCollateral, (jobId)));
         vm.prank(forwarder);
         _expectGuard();
-        hub.onReport(abi.encodePacked(WORKFLOW_ID, WORKFLOW_NAME, workflowOwner), abi.encode(jobId, true, GUARANTEE));
+        hub.onReport(
+            abi.encodePacked(WORKFLOW_ID, WORKFLOW_NAME, workflowOwner),
+            abi.encode(block.chainid, address(hub), jobId, true, GUARANTEE)
+        );
     }
 
     function test_Reentrancy_WithdrawCollateral() public {

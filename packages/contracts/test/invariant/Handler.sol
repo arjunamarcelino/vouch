@@ -142,7 +142,7 @@ contract Handler is Test {
         uint256 jobId = _pick(seed);
         if (jobId == type(uint256).max || _st(jobId) != AssuranceHub.State.ClaimPending) return;
         vm.prank(forwarder);
-        hub.onReport(_meta(), abi.encode(jobId, covered, GUARANTEE));
+        hub.onReport(_meta(), abi.encode(block.chainid, address(hub), jobId, covered, GUARANTEE));
         if (covered) {
             ghost_paidOut += GUARANTEE;
             ghost_liabilities -= GUARANTEE;

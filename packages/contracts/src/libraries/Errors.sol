@@ -11,6 +11,7 @@ library Errors {
     error NotForwarder();
     error UnauthorizedWorkflow();
     error ZeroWorkflowIdentity(); // workflowId or workflowName is zero (weakens the settlement gate)
+    error ReportDomainMismatch(); // report chainId/receiver != this deployment (cross-chain replay)
     error NoPendingChange(); // apply* called with nothing queued
     error TimelockNotElapsed(); // apply* called before the timelock eta
 

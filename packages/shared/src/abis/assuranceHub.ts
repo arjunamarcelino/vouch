@@ -1560,6 +1560,11 @@ export const assuranceHubAbi = [
   },
   {
     "type": "error",
+    "name": "ReportDomainMismatch",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "SafeERC20FailedOperation",
     "inputs": [
       {

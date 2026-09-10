@@ -91,8 +91,9 @@ abstract contract AssuranceHubBase is Test {
         return _metadata(WORKFLOW_ID, WORKFLOW_NAME, workflowOwner);
     }
 
-    function _report(uint256 jobId, bool covered, uint256 amount) internal pure returns (bytes memory) {
-        return abi.encode(jobId, covered, amount);
+    function _report(uint256 jobId, bool covered, uint256 amount) internal view returns (bytes memory) {
+        // Domain-bound report (003): chainId + hub prefix the verdict tuple.
+        return abi.encode(block.chainid, address(hub), jobId, covered, amount);
     }
 
     function _onReport(uint256 jobId, bool covered, uint256 amount) internal {
