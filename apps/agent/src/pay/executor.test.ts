@@ -90,6 +90,7 @@ function executor(store: FakeStore, wallet: FakeWallet, chainReader?: ChainReade
     usdcToken: USDC,
     escrowAddress: ESCROW,
     chainReader,
+    awaitConfirmation: true, // drive synchronously in tests so terminal state is assertable
     sleep: async () => {},
   });
 }

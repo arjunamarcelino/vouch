@@ -20,6 +20,9 @@ const log = createLogger("agent");
 /** Stable non-zero EIP-712 verifyingContract when no escrow is deployed yet (§0.3 M1). */
 const FALLBACK_VERIFYING_CONTRACT = "0x000000000000000000000000000000000000dEaD" as Address;
 
+/** How often to re-drive in-flight payment intents (background/crash backstop — review 035). */
+const RECONCILE_INTERVAL_MS = 30_000;
+
 /**
  * Composition root for the autonomous risk-quotation & settlement agent. Wires live subgraph → score
  * → signed quote → policy-capped Circle wallet → payment executor → REST/MCP → autonomous monitor.
@@ -50,6 +53,13 @@ async function main(): Promise<void> {
     const app = createRestServer(core.core, { allowManualPay: env.AGENT_ALLOW_MANUAL_PAY });
     await app.listen({ port: env.AGENT_HTTP_PORT, host: "0.0.0.0" });
     log.info({ port: env.AGENT_HTTP_PORT, allowManualPay: env.AGENT_ALLOW_MANUAL_PAY }, "REST server listening");
+
+    // Periodic reconcile: finalize intents whose background drive didn't complete (crash/restart
+    // backstop for the non-blocking executor — review 035). Startup reconcile runs in the orchestrator.
+    const reconcileTimer = setInterval(() => {
+      void core.executor.reconcile().catch((err: unknown) => logError("reconcile", err));
+    }, RECONCILE_INTERVAL_MS);
+    reconcileTimer.unref?.();
 
     // Autonomous monitor: reconcile in-flight intents, then react to job openings.
     if (env.VOUCH_CORE_ADDRESS && env.ARC_RPC_URL) {

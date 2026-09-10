@@ -1,5 +1,6 @@
 import { encodeFunctionData, type Address, type Hex } from "viem";
 import { SpendPolicyViolationError, VouchError } from "@vouch/shared/errors";
+import { createLogger } from "@vouch/shared/logger";
 import { quoteBondEscrowAbi } from "@vouch/shared/abis";
 import type { PaymentAction, PaymentStatus } from "@vouch/shared/schemas";
 import { idempotencyKey, paramsHash } from "./idempotency";
@@ -75,6 +76,13 @@ export interface ExecutorDeps {
   chainReader?: ChainReader;
   /** Max status polls before leaving the intent SUBMITTED for later reconciliation. */
   maxPolls?: number;
+  /**
+   * When false (default), `execute` returns as soon as the tx is SUBMITTED and drives it to terminal
+   * in the BACKGROUND — so the HTTP request is never blocked on confirmation (review 035). The periodic
+   * reconcile loop (index.ts) + startup reconcile are the crash backstops. Tests set true to drive
+   * synchronously and assert the terminal state.
+   */
+  awaitConfirmation?: boolean;
   /** Injected for tests; defaults to backoff+jitter delay. */
   sleep?: (ms: number) => Promise<void>;
 }
@@ -96,14 +104,18 @@ function backoffMs(attempt: number, rand: number): number {
   return Math.floor(rand * capped);
 }
 
+const log = createLogger("agent:executor");
+
 export class PaymentExecutor {
   private readonly maxPolls: number;
   private readonly sleep: (ms: number) => Promise<void>;
+  private readonly awaitConfirmation: boolean;
   private chainChecked = false;
 
   constructor(private readonly deps: ExecutorDeps) {
     this.maxPolls = deps.maxPolls ?? 10;
     this.sleep = deps.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
+    this.awaitConfirmation = deps.awaitConfirmation ?? false;
   }
 
   private encodeCall(req: PayRequest): Hex {
@@ -179,7 +191,12 @@ export class PaymentExecutor {
     await this.deps.store.updateIntentStatus(key, "SUBMITTING", { incrementAttempt: true });
     const res = await this.deps.wallet.executeContract({ contractAddress, callData, idempotencyKey: key });
     const submitted = await this.deps.store.updateIntentStatus(key, "SUBMITTED", { providerRef: res.id });
-    return this.driveToTerminal(submitted);
+    if (this.awaitConfirmation) return this.driveToTerminal(submitted);
+    // Non-blocking: return SUBMITTED now; finalize in the background (periodic reconcile is the backstop).
+    void this.driveToTerminal(submitted).catch((err: unknown) =>
+      log.error({ key, err: err instanceof Error ? err.message : String(err) }, "background drive failed"),
+    );
+    return submitted;
   }
 
   /** Poll until terminal, or leave SUBMITTED for reconcile. Backoff + jitter between polls. */
