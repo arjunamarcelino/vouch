@@ -117,7 +117,9 @@ export class ChainService {
   }
 
   async getJob(jobId: bigint): Promise<OnchainJob> {
-    const raw = (await resilient(
+    // Consume viem's ABI-inferred struct directly (no `as unknown as Record` cast) so a future ABI
+    // field-rename/reorder fails at COMPILE time instead of silently yielding `undefined` (review 059).
+    const raw = await resilient(
       () =>
         this.rpc().readContract({
           address: this.hub(),
@@ -126,22 +128,22 @@ export class ChainService {
           args: [jobId],
         }),
       this.opts(),
-    )) as unknown as Record<string, unknown>;
+    );
     const ordinal = Number(raw.status);
     return {
-      client: raw.client as Address,
-      provider: raw.provider as Address,
-      taskFee: raw.taskFee as bigint,
-      guaranteeAmount: raw.guaranteeAmount as bigint,
-      serviceFee: raw.serviceFee as bigint,
-      publicCriteriaHash: raw.publicCriteriaHash as Hex,
-      privateCriteriaCommitment: raw.privateCriteriaCommitment as Hex,
-      submissionCommitment: raw.submissionCommitment as Hex,
-      claimEvidenceCommitment: raw.claimEvidenceCommitment as Hex,
-      submissionDeadline: raw.submissionDeadline as bigint,
-      coverageDuration: raw.coverageDuration as bigint,
-      coverageEnd: raw.coverageEnd as bigint,
-      claimResolutionDeadline: raw.claimResolutionDeadline as bigint,
+      client: raw.client,
+      provider: raw.provider,
+      taskFee: raw.taskFee,
+      guaranteeAmount: raw.guaranteeAmount,
+      serviceFee: raw.serviceFee,
+      publicCriteriaHash: raw.publicCriteriaHash,
+      privateCriteriaCommitment: raw.privateCriteriaCommitment,
+      submissionCommitment: raw.submissionCommitment,
+      claimEvidenceCommitment: raw.claimEvidenceCommitment,
+      submissionDeadline: raw.submissionDeadline,
+      coverageDuration: raw.coverageDuration,
+      coverageEnd: raw.coverageEnd,
+      claimResolutionDeadline: raw.claimResolutionDeadline,
       status: jobStateFromOrdinal(ordinal),
       statusOrdinal: ordinal,
     };
