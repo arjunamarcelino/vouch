@@ -16,7 +16,11 @@ import path from "node:path";
 
 const apiDir = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const repoRoot = path.dirname(path.dirname(apiDir));
-const adminUrl = process.env.TEST_PG_ADMIN_URL ?? "postgresql://arjuna@localhost:5432/postgres";
+// Generic default (no personal username); CI/local override via TEST_PG_ADMIN_URL. Review 064.
+const adminUrl = process.env.TEST_PG_ADMIN_URL ?? "postgresql://postgres@localhost:5432/postgres";
+// When set (CI), a missing/unreachable Postgres FAILS instead of a silent green skip — so a green
+// pipeline actually implies the concurrency suite ran (review 064).
+const requireDb = process.env.REQUIRE_DB === "1";
 
 function psql(url, sql) {
   execFileSync("psql", [url, "-v", "ON_ERROR_STOP=1", "-q", "-c", sql], { stdio: ["ignore", "ignore", "inherit"] });
@@ -27,7 +31,12 @@ function reachable(url) {
 }
 
 if (!reachable(adminUrl)) {
-  console.log(`[db-harness] No Postgres reachable at ${adminUrl} — SKIPPING DB e2e (run \`pnpm --filter @vouch/api test:db\` with a Postgres up).`);
+  const msg = `[db-harness] No Postgres reachable at ${adminUrl}`;
+  if (requireDb) {
+    console.error(`${msg} and REQUIRE_DB=1 — FAILING (set TEST_PG_ADMIN_URL to a reachable maintenance DB).`);
+    process.exit(1);
+  }
+  console.log(`${msg} — SKIPPING DB e2e (set REQUIRE_DB=1 in CI to make this a failure).`);
   process.exit(0);
 }
 

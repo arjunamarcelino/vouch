@@ -33,3 +33,13 @@ pnpm --filter @vouch/api demo       # print the canonical demo flow + integratio
 Postgres). It SKIPS cleanly when no Postgres is reachable, so `pnpm test` stays green without infra.
 The DB e2e covers the happy paths that need a real database: the full SIWE session flow, single-use
 nonce replay rejection, Stripe-style idempotency, and the openJob double-fund unique-index backstop.
+
+## Runtime note (why SWC, no `dist`)
+
+`dev`/`start` run `src/main.ts` through the `@swc-node/register` ESM loader (like `apps/agent` runs
+from source via `tsx`) — **not** a compiled `dist`. This is deliberate: NestJS constructor injection
+needs `emitDecoratorMetadata`, which esbuild/`tsx` does **not** emit but SWC does (`.swcrc`). Running
+from source also avoids a monorepo-wide compile step (the internal `@vouch/*` packages are consumed as
+TS source). `build` is therefore typecheck-only (`tsc --noEmit`); do not "fix" `dev`/`start` back to
+`tsx` — it would silently break DI. In CI, set `REQUIRE_DB=1` so `test:db` fails (not silently skips)
+when no Postgres is reachable, and point `TEST_PG_ADMIN_URL` at a service Postgres.
