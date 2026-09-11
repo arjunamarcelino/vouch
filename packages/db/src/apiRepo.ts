@@ -349,7 +349,8 @@ export async function listFeedEventsForAddress(
 /**
  * Truncate ONLY the API-owned offchain operational tables. NEVER touches the agent-owned financial
  * store (Quote / PaymentIntent / DecisionTrace / UsedNonce) or any onchain state. NOTE: if the
- * FeedEvent UPDATE/DELETE revoke (002-api-constraints.sql) is applied, this must run as the table owner.
+ * FeedEvent is app-level immutable (no update/delete endpoint) but NOT DB-revoked, so this DELETE runs
+ * on the app role (review 060) — the reset and the append-only guard are no longer mutually exclusive.
  */
 export async function resetOperationalData(): Promise<void> {
   // Order: dependents first, then JobMetadata (cascades its children), then standalone tables.

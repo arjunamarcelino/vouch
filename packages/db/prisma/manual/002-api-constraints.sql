@@ -51,6 +51,8 @@ CREATE INDEX IF NOT EXISTS tracked_tx_pending_idx
   ON "TrackedTransaction" ("lastCheckedAt")
   WHERE status = 'PENDING';
 
--- Append-only feed: revoke row mutation from the app role so a compromised app credential can't
--- rewrite activity history. NOTE: demo/reset TRUNCATE must therefore run as the table OWNER, not app_role.
-REVOKE UPDATE, DELETE ON "FeedEvent" FROM :"app_role";
+-- FeedEvent immutability is enforced at the APPLICATION layer (no update/delete endpoint; only
+-- appendFeedEvent writes). We deliberately do NOT REVOKE UPDATE/DELETE from the app role here: the app
+-- role owns the demo/reset DELETE path (resetOperationalData), and a DB-level revoke would make
+-- POST /demo/reset fail (or force a second owner connection) — the two are mutually exclusive under one
+-- role (review 060). DecisionTrace (agent-owned, 001) keeps its revoke; FeedEvent is a rebuildable UI feed.

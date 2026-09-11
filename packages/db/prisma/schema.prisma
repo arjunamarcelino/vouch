@@ -160,8 +160,9 @@ model TrackedTransaction {
   @@index([prepareKey])
 }
 
-/// Append-only, non-secret activity feed for the dashboard. Role-level immutable
-/// (REVOKE UPDATE/DELETE in manual SQL). `payload` is allowlisted + redacted;
+/// Append-only, non-secret activity feed for the dashboard. Immutable at the APP layer
+/// (only appendFeedEvent writes; no update/delete endpoint) — not DB-revoked, so demo
+/// reset can DELETE it on the app role (review 060). `payload` is allowlisted + redacted;
 /// any money-shaped values are display mirrors of chain events, never decided on.
 model FeedEvent {
   id            String   @id @default(uuid())
