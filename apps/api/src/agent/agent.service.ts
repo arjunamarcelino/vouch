@@ -1,5 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { VouchError } from "@vouch/shared/errors";
+import { z } from "zod";
+import { parseOrThrow, quoteCommitmentSchema, decisionTraceSchema } from "@vouch/shared/schemas";
 import { correlationId } from "../common/correlation/correlation";
 import { loadEnv } from "../config/env";
 
@@ -45,27 +47,34 @@ export class AgentService {
     return this.get("/health");
   }
 
-  requestQuote(job: unknown): Promise<unknown> {
-    return this.request("/quotes", { method: "POST", body: job });
+  async requestQuote(job: unknown): Promise<unknown> {
+    const q = await this.request("/quotes", { method: "POST", body: job });
+    return this.withStaleGuard(q); // validate the agent's signed commitment before returning
   }
 
   verifyQuote(body: unknown): Promise<unknown> {
     return this.request("/quotes/verify", { method: "POST", body });
   }
 
-  /** Fetch a quote and stamp a stale guard so a caller never acts on an expired quote (Stream D). */
+  /** Fetch a quote, validate it, and stamp a fail-CLOSED stale guard (review 058). */
   async quote(quoteId: string): Promise<unknown> {
-    const q = (await this.get(`/quotes/${encodeURIComponent(quoteId)}`)) as { expiresAt?: string } | null;
-    if (q && typeof q === "object") {
-      const nowSec = Math.floor(Date.now() / 1000);
-      const expired = q.expiresAt !== undefined && Number(q.expiresAt) <= nowSec;
-      return { ...q, expired };
-    }
-    return q;
+    return this.withStaleGuard(await this.get(`/quotes/${encodeURIComponent(quoteId)}`));
   }
 
-  explanation(quoteId: string): Promise<unknown> {
-    return this.get(`/traces/${encodeURIComponent(quoteId)}`);
+  /**
+   * Validate the agent's quote against the shared commitment schema (fail-closed: a malformed payload
+   * throws VALIDATION_FAILED, never passes through), then stamp `expired`. A missing / non-numeric
+   * `expiresAt` can't occur post-validation, so `expired` is honest (was fail-OPEN: `NaN <= now` → false).
+   */
+  private withStaleGuard(q: unknown): unknown {
+    const parsed = parseOrThrow(quoteCommitmentSchema, q, "agent quote");
+    const expired = Number(parsed.expiresAt) <= Math.floor(Date.now() / 1000);
+    return { ...(q as object), expired };
+  }
+
+  async explanation(quoteId: string): Promise<unknown> {
+    const traces = await this.get(`/traces/${encodeURIComponent(quoteId)}`);
+    return parseOrThrow(z.array(decisionTraceSchema), traces, "agent decision traces");
   }
 
   txStatus(key: string): Promise<unknown> {
