@@ -20,3 +20,4 @@ onlyBuiltDependencies:
   - "esbuild"
   - "@tailwindcss/oxide"
   - "@parcel/watcher"
+  - "@swc/core"

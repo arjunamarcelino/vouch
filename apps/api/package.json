@@ -2,11 +2,13 @@
   "name": "@vouch/api",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "nest start --watch",
+    "dev": "node --watch --import @swc-node/register/esm-register src/main.ts",
+    "start": "node --import @swc-node/register/esm-register src/main.ts",
     "build": "tsc --noEmit -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "node --import tsx --test 'src/**/*.test.ts'",
+    "test": "node --import @swc-node/register/esm-register --test 'src/**/*.test.ts'",
     "lint": "eslint ."
   },
   "dependencies": {
@@ -30,11 +32,12 @@
   "devDependencies": {
     "@nestjs/cli": "^11.0.0",
     "@nestjs/testing": "^11.2.3",
+    "@swc-node/register": "^1.12.1",
+    "@swc/core": "^1.16.2",
     "@types/cookie-parser": "^1.4.10",
     "@types/node": "^22.10.5",
     "@types/supertest": "^7.2.1",
     "@vouch/config": "workspace:*",
-    "supertest": "^7.2.2",
-    "tsx": "^4.23.13"
+    "supertest": "^7.2.2"
   }
 }
