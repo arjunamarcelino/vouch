@@ -216,7 +216,7 @@ type ConfidentialEvaluation @entity(immutable: true) {
   provider: Provider!
   covered: Boolean!
   serviceCredit: BigInt!
-  "Public-safe keccak binding of the confidential evaluation (reveals no secret criteria); zero on the timeout path."
+  "Public-safe keccak binding of the confidential evaluation (reveals no secret criteria); 32 zero bytes (bytes32(0)) on the permissionless timeout path."
   evidenceCommitment: Bytes!
   "Enclave-stamped evaluation time (seconds); block time on the timeout path."
   evaluatedAt: BigInt!

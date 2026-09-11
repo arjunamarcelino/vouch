@@ -190,8 +190,21 @@ describe("AssuranceHub mappings", () => {
     // resolveClaimTimeout: ClaimTimedOut (first) + ConfidentialEvaluationResolved(false,0) same tx
     let tx = txHash(7);
     handleClaimTimedOut(claimTimedOut(1, tx, 0, 7, 500000));
-    // Timeout path: zero evidence commitment, block time as the stamp (mirrors the contract default).
-    handleConfidentialEvaluationResolved(confidentialEvaluationResolved(1, false, 0, tx, 1, 7, 500000, Bytes.empty(), 500000));
+    // Timeout path: the contract emits bytes32(0) — 32 zero bytes, NOT an empty
+    // array — plus block time as the stamp. Mirror the real emitted value. (todo 050)
+    handleConfidentialEvaluationResolved(
+      confidentialEvaluationResolved(
+        1,
+        false,
+        0,
+        tx,
+        1,
+        7,
+        500000,
+        Bytes.fromHexString("0x" + "00".repeat(32)),
+        500000,
+      ),
+    );
     assert.fieldEquals("Provider", P, "claimsRejected", "0"); // timeout excluded
     assert.fieldEquals("Claim", jobIdBytes(1).toHexString(), "resolvedByTimeout", "true");
     assert.entityCount("ProviderDailyMetric", 0); // no day-bucket for a timeout

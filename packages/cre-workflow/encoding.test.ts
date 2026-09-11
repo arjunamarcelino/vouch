@@ -1,9 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { decodeAbiParameters, size } from "viem";
+import { decodeAbiParameters, size, toBytes } from "viem";
 import {
   assertBytes32,
   buildVerdictPayload,
+  jobIdFromTopic,
   VERDICT_ABI_PARAMS,
   VERDICT_PAYLOAD_BYTES,
 } from "./encoding";
@@ -11,6 +12,15 @@ import {
 const HUB = "0x00000000000000000000000000000000000000A1" as const;
 const COMMIT =
   "0x1111111111111111111111111111111111111111111111111111111111111111" as const;
+
+test("jobIdFromTopic decodes an indexed uint256 topic word", () => {
+  // ClaimOpened jobId=42 as a 32-byte big-endian topic word.
+  const topic = toBytes("0x" + (42).toString(16).padStart(64, "0"));
+  assert.equal(jobIdFromTopic(topic), 42n);
+  // max uint256 round-trips.
+  const maxTopic = toBytes("0x" + "f".repeat(64));
+  assert.equal(jobIdFromTopic(maxTopic), (1n << 256n) - 1n);
+});
 
 test("7-tuple round-trips a covered PAYOUT verdict", () => {
   const payload = buildVerdictPayload({

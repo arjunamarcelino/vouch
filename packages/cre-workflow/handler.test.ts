@@ -193,26 +193,25 @@ test("amount is always in {0, guaranteeAmount} and never derived from passRate",
   assert.equal(decode(payloadOf(rp.payload)).amount, 0n);
 });
 
-test("no injected sentinel or passRate leaks into the emitted payload", async () => {
-  const cases: ReadonlyArray<{ name: string; body: { passRate: number } }> = [
-    { name: "valid-pass", body: validPass },
-    { name: "valid-failure", body: validFailure },
-    { name: "replay", body: replay },
-  ];
-  for (const c of cases) {
-    const m = makePort({ secret: THRESHOLD, body: c.body });
-    const r = await runEvaluation(m.port, CFG, JOB_ID);
-    const payload = payloadOf(r.payload).toLowerCase();
-    assert.equal(
-      payload.includes(SENTINEL_TOKEN.toLowerCase()),
-      false,
-      `${c.name}: token sentinel leaked into payload`,
-    );
-    // passRate (e.g. "0.42") must not appear as a substring of the hex payload.
-    assert.equal(
-      payload.includes(String(c.body.passRate)),
-      false,
-      `${c.name}: passRate leaked into payload`,
-    );
-  }
+test("emitted payload is EXACTLY the 7 expected domain fields — no extra/leaked field", async () => {
+  // Positive invariant (todo 050): a substring scan of ABI-hex is tautological
+  // (a "." or "SENTINEL_" can never appear in hex). Instead decode and assert the
+  // full field set + exact size, so an added/rearranged/leaked field fails loudly.
+  const m = makePort({ secret: THRESHOLD, body: validFailure });
+  const r = await runEvaluation(m.port, CFG, JOB_ID);
+  const hex = payloadOf(r.payload);
+
+  // 7 static 32-byte words == 224 bytes exactly; any extra field changes this.
+  assert.equal((hex.length - 2) / 2, 224, "payload must be exactly 224 bytes (7 words)");
+
+  const d = decode(hex);
+  assert.equal(d.chainId, BigInt(CFG.chainId));
+  assert.equal((d.hub as string).toLowerCase(), CFG.assuranceHubAddress.toLowerCase());
+  assert.equal(d.jobId, JOB_ID);
+  assert.equal(d.covered, true);
+  assert.equal(d.amount, GUARANTEE);
+  assert.equal(d.evaluatedAt, FIXED_NOW);
+  // evidenceCommitment is a nonzero keccak of PUBLIC fields — never a secret.
+  assert.match(d.commitment as string, /^0x[0-9a-f]{64}$/);
+  assert.notEqual((d.commitment as string).toLowerCase(), `0x${"0".repeat(64)}`);
 });

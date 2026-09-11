@@ -39,11 +39,11 @@ import {
   bytesToHex,
   decodeFunctionResult,
   encodeFunctionData,
-  hexToBigInt,
   toEventSelector,
   zeroAddress,
 } from "viem";
 import { configWithChainCheck, type Config, type ConfigInput } from "./config";
+import { jobIdFromTopic } from "./encoding";
 import { runEvaluation, type EvalPort } from "./port";
 
 /** Minimal `getJob` ABI — the AssuranceJob tuple field order is load-bearing
@@ -184,7 +184,7 @@ async function evalInTee(
   if (topic1 === undefined) {
     return "REFUSED:NO_JOBID";
   }
-  const jobId = hexToBigInt(bytesToHex(topic1));
+  const jobId = jobIdFromTopic(topic1);
 
   const port = makePort(rt, evmClient);
   const result = await runEvaluation(port, rt.config, jobId);

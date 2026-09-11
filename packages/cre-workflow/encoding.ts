@@ -10,7 +10,7 @@
  * All 7 fields are static, so the encoded length is 7 * 32 = 224 bytes.
  * Encoded with `encodeAbiParameters` (NOT `encodePacked`).
  */
-import { encodeAbiParameters, size } from "viem";
+import { bytesToHex, encodeAbiParameters, hexToBigInt, size } from "viem";
 import type { AbiParameter } from "viem";
 
 /** The frozen 7-tuple ABI parameter list (encode order is load-bearing). */
@@ -52,6 +52,15 @@ export function assertBytes32(hex: `0x${string}`): `0x${string}` {
     throw new Error(`expected a 32-byte hex value, received ${n} bytes`);
   }
   return hex;
+}
+
+/**
+ * Derive the `jobId` from a `ClaimOpened` log's indexed `topics[1]` (a 32-byte
+ * word). Pure + SDK-independent so the derivation is unit-testable without a
+ * runtime (todo 050). The workflow adapter passes `log.topics[1]`.
+ */
+export function jobIdFromTopic(topic: Uint8Array): bigint {
+  return hexToBigInt(bytesToHex(topic));
 }
 
 /** Build the ABI-encoded positional verdict tuple from named fields. */
