@@ -51,4 +51,31 @@ export class JobsService {
     );
     return parseOrThrow(z.array(providerRowSchema), data.providers, "provider rows");
   }
+
+  /**
+   * One provider's proven performance, most-authoritative source (The Graph). Fail-closed on staleness
+   * (assertFresh) — a lagging index must 503, never serve stale reputation. Returns null when the
+   * provider has no indexed history yet.
+   */
+  async providerPerformance(address: string): Promise<ProviderRow | null> {
+    await this.graph.assertFresh();
+    const id = address.toLowerCase();
+    const data = await this.graph.query<{ provider: unknown | null }>(
+      `query One($id: ID!) {
+        provider(id: $id) {
+          id
+          jobsCompleted
+          jobsInitiallyApproved
+          claimsUpheld
+          claimsRejected
+          totalPayoutAmount
+          activeGuaranteeAmount
+          lastUpheldClaimRateBps
+        }
+      }`,
+      { id },
+    );
+    if (data.provider === null || data.provider === undefined) return null;
+    return parseOrThrow(providerRowSchema, data.provider, "provider row");
+  }
 }
