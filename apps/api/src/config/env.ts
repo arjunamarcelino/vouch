@@ -18,6 +18,8 @@ const envSchema = z
     // Base URL of the agent's REST core (apps/agent). The dashboard reads quotes / decision traces
     // via the agent, NOT by importing its DB repo (architecture P2 — no shared-DB coupling).
     AGENT_URL: z.string().url().default("http://localhost:3002"),
+    // Bearer key the API presents to the agent's REST core on signing routes (unset in dev).
+    AGENT_API_KEY: z.string().optional(),
 
     // ---- chain (chainId itself is derived from CHAIN_ENV via chainForEnv — no standalone env) ----
     ARC_RPC_URL_FALLBACK: z.string().url().optional(),
