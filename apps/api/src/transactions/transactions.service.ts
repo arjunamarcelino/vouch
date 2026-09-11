@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { type Hex } from "viem";
-import type { TxAction } from "@vouch/shared/schemas";
+import { VouchError } from "@vouch/shared/errors";
+import { HEX32_RE, type TxAction } from "@vouch/shared/schemas";
 import {
   getPreparedIntent,
   startTracking,
@@ -63,7 +64,8 @@ export class TransactionsService {
 
   async track(ctx: { address: string }, input: { txHash: string; preparedId: string }): Promise<TrackResult> {
     const txHash = input.txHash.toLowerCase();
-    if (!/^0x[0-9a-f]{64}$/u.test(txHash)) throw new ApiError("TX_MISMATCH", "Malformed txHash");
+    // A malformed hash is a client validation error (400), not a mismatch-against-intent (review 066/kieran).
+    if (!HEX32_RE.test(txHash)) throw new VouchError("VALIDATION_FAILED", "Malformed txHash");
 
     const prepared = await getPreparedIntent(input.preparedId);
     if (!prepared) throw new ApiError("NOT_FOUND", "No prepared intent for this tx (prepare first)");

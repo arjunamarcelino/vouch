@@ -10,10 +10,14 @@ import { z } from "zod";
  * — precision); contracts/subgraph use uint256/BigInt.
  */
 
+// Raw RegExps — the SINGLE source of truth for the hex shapes. Exported so app-layer string guards
+// (controllers, env parsing) reuse them instead of re-hand-rolling `/^0x…{64}$/` and drifting (review 066).
+export const HEX_ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/u;
+export const HEX32_RE = /^0x[a-fA-F0-9]{64}$/u;
+export const SELECTOR_RE = /^0x[a-fA-F0-9]{8}$/u;
+
 /** 0x-prefixed 20-byte address. */
-export const hexAddress = z
-  .string()
-  .regex(/^0x[a-fA-F0-9]{40}$/u, "must be a 0x-prefixed 20-byte address");
+export const hexAddress = z.string().regex(HEX_ADDRESS_RE, "must be a 0x-prefixed 20-byte address");
 
 /** Integer string of USDC base units (6-dec). */
 export const baseUnits = z.string().regex(/^\d+$/u, "must be an integer string of USDC base units");
@@ -29,7 +33,7 @@ export const uintString = z.string().regex(/^\d+$/u, "must be a non-negative int
 export const ratioBpsString = z.string().regex(/^(-1|\d+)$/u, "must be a bps integer or the -1 sentinel");
 
 /** bytes32 hex (quoteId / jobHash / nonce / commitment). */
-export const hex32 = z.string().regex(/^0x[a-fA-F0-9]{64}$/u, "must be a 0x-prefixed 32-byte hex string");
+export const hex32 = z.string().regex(HEX32_RE, "must be a 0x-prefixed 32-byte hex string");
 
 /** 65-byte ECDSA signature hex (r‖s‖v). */
 export const hexSignature = z
@@ -40,6 +44,4 @@ export const hexSignature = z
 export const hexData = z.string().regex(/^0x([a-fA-F0-9]{2})*$/u, "must be 0x-prefixed hex calldata");
 
 /** 4-byte function selector (0x + 8 hex). */
-export const selectorHex = z
-  .string()
-  .regex(/^0x[a-fA-F0-9]{8}$/u, "must be a 0x-prefixed 4-byte function selector");
+export const selectorHex = z.string().regex(SELECTOR_RE, "must be a 0x-prefixed 4-byte function selector");

@@ -14,7 +14,17 @@ import { hexAddress, baseUnits, uintString, ratioBpsString, hex32, hexSignature 
  */
 
 // Re-export the primitives so existing `@vouch/shared/schemas` importers keep working.
-export { hexAddress, baseUnits, uintString, ratioBpsString, hex32, hexSignature } from "./primitives";
+export {
+  hexAddress,
+  baseUnits,
+  uintString,
+  ratioBpsString,
+  hex32,
+  hexSignature,
+  HEX_ADDRESS_RE,
+  HEX32_RE,
+  SELECTOR_RE,
+} from "./primitives";
 export * from "./api";
 
 /** Parse at a boundary, mapping ZodError → typed VouchError (plan §5.1 D5). */

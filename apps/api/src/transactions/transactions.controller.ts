@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Post, Req, UseGuards, UseInterceptors } from "@nestjs/common";
 import { z } from "zod";
-import { parseOrThrow } from "@vouch/shared/schemas";
+import { parseOrThrow, hex32 } from "@vouch/shared/schemas";
 import { TransactionsService, type TrackResult } from "./transactions.service";
 import { AuthGuard } from "../auth/guards/auth.guard";
 import { IdempotencyInterceptor } from "../common/idempotency/idempotency.interceptor";
@@ -8,7 +8,7 @@ import type { SessionUser } from "../auth/roles";
 
 const trackBodySchema = z
   .object({
-    txHash: z.string().regex(/^0x[a-fA-F0-9]{64}$/u, "must be a 32-byte tx hash"),
+    txHash: hex32, // shared 32-byte hex primitive (review 066)
     preparedId: z.string().uuid(),
   })
   .strict();

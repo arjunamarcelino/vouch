@@ -1,5 +1,6 @@
 import { Controller, Get, Param } from "@nestjs/common";
 import { ApiError } from "../common/errors";
+import { HEX_ADDRESS_RE } from "@vouch/shared/schemas";
 import { JobsService } from "./jobs.service";
 
 /** Public provider reputation (Graph-authoritative, fail-closed). Separate prefix — no /jobs collision. */
@@ -9,7 +10,7 @@ export class ProvidersController {
 
   @Get(":address/performance")
   async performance(@Param("address") address: string): Promise<unknown> {
-    if (!/^0x[a-fA-F0-9]{40}$/u.test(address)) throw new ApiError("NOT_FOUND", "Malformed address");
+    if (!HEX_ADDRESS_RE.test(address)) throw new ApiError("NOT_FOUND", "Malformed address");
     const row = await this.jobs.providerPerformance(address);
     if (!row) throw new ApiError("NOT_FOUND", "No indexed performance for this provider");
     return row;

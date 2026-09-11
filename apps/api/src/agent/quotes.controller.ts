@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Post, UseGuards, UseInterceptors } from "@nestjs/common";
 import { VouchError } from "@vouch/shared/errors";
+import { HEX32_RE } from "@vouch/shared/schemas";
 import { AgentService } from "./agent.service";
 import { AuthGuard } from "../auth/guards/auth.guard";
 import { IdempotencyInterceptor } from "../common/idempotency/idempotency.interceptor";
@@ -10,7 +11,7 @@ import { IdempotencyInterceptor } from "../common/idempotency/idempotency.interc
  * decision log. All quoteId path params are strict-format-validated before interpolation (SSRF — M2).
  */
 function requireQuoteId(quoteId: string): string {
-  if (!/^0x[a-fA-F0-9]{64}$/u.test(quoteId)) throw new VouchError("VALIDATION_FAILED", "Malformed quoteId");
+  if (!HEX32_RE.test(quoteId)) throw new VouchError("VALIDATION_FAILED", "Malformed quoteId");
   return quoteId;
 }
 

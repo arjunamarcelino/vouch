@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ConfigInvalidError } from "@vouch/shared/errors";
+import { HEX_ADDRESS_RE } from "@vouch/shared/schemas";
 
 const envSchema = z
   .object({
@@ -13,7 +14,7 @@ const envSchema = z
     ARC_RPC_URL: z.string().url().optional(),
     VOUCH_CORE_ADDRESS: z
       .string()
-      .regex(/^0x[a-fA-F0-9]{40}$/u)
+      .regex(HEX_ADDRESS_RE)
       .optional(),
     // Base URL of the agent's REST core (apps/agent). The dashboard reads quotes / decision traces
     // via the agent, NOT by importing its DB repo (architecture P2 — no shared-DB coupling).
@@ -26,7 +27,7 @@ const envSchema = z
     // USDC ERC-20 (6-dec). Optional: ChainService reads usdc() from the hub when unset (trust-minimized).
     ARC_USDC_ADDRESS: z
       .string()
-      .regex(/^0x[a-fA-F0-9]{40}$/u)
+      .regex(HEX_ADDRESS_RE)
       .optional(),
     CONFIRMATIONS_REQUIRED: z.coerce.number().int().positive().default(3),
     // Contract deploy block — the fromBlock floor for event scans (bounds eth_getLogs; review 057).
