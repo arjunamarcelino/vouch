@@ -24,12 +24,19 @@ model JobMetadata {
   /// before confirmation are keyed by clientRequestId and reconciled later.
   jobId           String?  @unique
   clientRequestId String   @id @default(uuid())
+  /// Lowercased 0x parties (soft references — a provider may never have done SIWE,
+  /// so NO FK to UserProfile). Backed by indexes for GET /jobs/mine.
+  clientAddress   String?
+  providerAddress String?
   uiTitle         String
   description     String   @default("")
   /// Opaque internal handle. NEVER a URL, credential, or token — the real repo
   /// location + creds are resolved only inside the CRE enclave (plan §17.9-F3).
   repoRef         String?
-  /// Nullable cache of onchain status. Display-only, best-effort.
+  /// Opaque reference to claim evidence. NEVER a preimage/URL/credential.
+  evidenceRef     String?
+  /// Nullable cache of onchain status. Display-only, best-effort, written ONE-
+  /// directionally by the tracker; NEVER read for authz/money/state decisions.
   cachedStatus    String?
   lastSyncedBlock BigInt?
   lastSyncedAt    DateTime?
@@ -38,6 +45,137 @@ model JobMetadata {
 
   notifications NotificationState[]
   agentRuns     AgentRunLog[]
+  trackedTxs    TrackedTransaction[]
+  feedEvents    FeedEvent[]
+
+  // Composite so GET /jobs/mine (WHERE address ORDER BY createdAt DESC) is index-ordered (review 072).
+  @@index([clientAddress, createdAt(sort: Desc)])
+  @@index([providerAddress, createdAt(sort: Desc)])
+}
+
+// =============================================================================
+// apps/api operational store (Phase 0). Offchain/UX only — NEVER money,
+// reputation, secrets, or preimages. Rebuildable. See docs/plans §Data ownership.
+// =============================================================================
+
+/// Offchain display profile keyed by lowercased wallet address. `kind` is a HINT
+/// only — never drives authorization (roles come from chain hasRole / job party).
+model UserProfile {
+  address     String   @id // lowercased 0x (CHECK enforced in manual SQL)
+  displayName String   @default("")
+  kind        String? // CLIENT | PROVIDER | EVALUATOR — hint only
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+/// Single-use SIWE nonce. Consumed via an atomic `UPDATE … WHERE consumed=false
+/// AND expiresAt > now()` CAS (affected-rows === 1 is the lock). GC by expiresAt.
+model SiweNonce {
+  nonce      String    @id
+  address    String? // bound at consume time (lowercased)
+  consumed   Boolean   @default(false)
+  issuedAt   DateTime  @default(now())
+  expiresAt  DateTime
+  consumedAt DateTime?
+
+  @@index([expiresAt])
+}
+
+/// Stripe-style idempotency record. Identity is (scope, route, key) — scope is the
+/// lowercased session address (sentinel "public" for unauth'd writes) so keys are
+/// caller-namespaced (no cross-tenant replay). `state` LOCKED|COMPLETED with a lease
+/// so a crashed in-flight claim is reclaimable. `response` replays byte-exact.
+model IdempotencyRecord {
+  scope       String
+  route       String
+  key         String
+  requestHash String // keccak256 of canonical method+route+body
+  state       String   @default("LOCKED") // LOCKED | COMPLETED
+  /// Random per-claim fence: complete/release only act when the caller's token still owns the row,
+  /// so a concurrent reclaimer can't clobber another request's active claim (review 052).
+  leaseToken  String?
+  statusCode  Int?
+  response    Json?
+  lockedAt    DateTime @default(now())
+  expiresAt   DateTime // lease + GC horizon
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  @@id([scope, route, key])
+  @@index([expiresAt])
+  @@index([createdAt])
+}
+
+/// The server-side record of what the API told a wallet to sign. `POST /transactions/
+/// track` diffs the mined tx against this (selector + decoded argsHash). Pre-hash
+/// lifecycle lives here (PREPARED → SUBMITTED → ABANDONED); post-hash on TrackedTransaction.
+model PreparedIntent {
+  preparedId   String   @id @default(uuid())
+  /// The prepare's Idempotency-Key. Caller-scoped (unique per (scope, key)) so one caller's key can
+  /// never return another caller's intent — the raw header is client-controlled (review 053).
+  idempotencyKey String
+  scope        String // lowercased session address that prepared it
+  action       String // TxAction
+  functionName String
+  to           String // expected contract (lowercased)
+  selector     String // 0x-8-hex expected selector
+  argsHash     String // keccak256 of canonical decoded args
+  chainId      Int
+  jobRequestId String?
+  jobId        String?
+  status       String   @default("PREPARED") // PREPARED | SUBMITTED | ABANDONED
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  trackedTx TrackedTransaction?
+
+  @@unique([scope, idempotencyKey])
+}
+
+/// A submitted onchain tx the API verifies + mirrors (one-directional). Keyed by the
+/// lowercased txHash (makes track idempotent). `prepareKey` + partial-unique
+/// UNIQUE(prepareKey) WHERE action='OPEN_JOB' is the DB backstop for the double-fund bind.
+model TrackedTransaction {
+  txHash           String   @id // lowercased 0x-64
+  prepared         PreparedIntent? @relation(fields: [preparedId], references: [preparedId], onDelete: SetNull)
+  preparedId       String?  @unique
+  prepareKey       String? // == PreparedIntent.idempotencyKey; partial-unique for OPEN_JOB
+  job              JobMetadata? @relation(fields: [jobRequestId], references: [clientRequestId], onDelete: SetNull)
+  jobRequestId     String?
+  jobId            String?
+  chainId          Int
+  toAddress        String
+  functionSelector String
+  action           String // TxAction
+  status           String   @default("PENDING") // PENDING|CONFIRMED|FAILED|MISMATCH|REORGED
+  confirmations    Int      @default(0)
+  blockNumber      BigInt?
+  eventVerified    Boolean  @default(false)
+  lastCheckedAt    DateTime @default(now())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([status])
+  @@index([jobRequestId])
+  @@index([jobId])
+  @@index([prepareKey])
+}
+
+/// Append-only, non-secret activity feed for the dashboard. Immutable at the APP layer
+/// (only appendFeedEvent writes; no update/delete endpoint) — not DB-revoked, so demo
+/// reset can DELETE it on the app role (review 060). `payload` is allowlisted + redacted;
+/// any money-shaped values are display mirrors of chain events, never decided on.
+model FeedEvent {
+  id            String   @id @default(uuid())
+  job           JobMetadata? @relation(fields: [jobRequestId], references: [clientRequestId], onDelete: Cascade)
+  jobRequestId  String?
+  kind          String // FeedEventKind
+  correlationId String?
+  payload       Json
+  at            DateTime @default(now())
+
+  @@index([jobRequestId, at])
+  @@index([at])
 }
 
 /// Offchain-origin notification bookkeeping (NOT rebuildable from chain).

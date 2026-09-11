@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { z } from "zod";
 import { parseOrThrow } from "@vouch/shared/schemas";
+import { listJobsForAddress } from "@vouch/db";
 import { GraphService } from "../graph/graph.service";
 
 const providerRowSchema = z.object({
@@ -28,10 +29,11 @@ export class JobsService {
    * brand-new zero-history provider doesn't top the list; the phantom `regressions` field is gone.
    */
   async topProviders(): Promise<ProviderRow[]> {
-    // Fail closed: a lagging/stale index must 503, not serve stale reputation or read [] as clean (014).
-    await this.graph.assertFresh();
-    const data = await this.graph.query<{ providers: unknown[] }>(
+    // Fold _meta into the data query + one freshness check (review 063): data + freshness share a block
+    // in ONE round-trip. Fail closed — a lagging/stale index 503s, never serves stale reputation.
+    const data = await this.graph.queryFresh<{ providers: unknown[] }>(
       `query Top {
+        ${GraphService.META_SELECTION}
         providers(
           first: 20
           where: { jobsInitiallyApproved_gt: 0 }
@@ -50,5 +52,46 @@ export class JobsService {
       }`,
     );
     return parseOrThrow(z.array(providerRowSchema), data.providers, "provider rows");
+  }
+
+  /**
+   * One provider's proven performance, most-authoritative source (The Graph). Fail-closed on staleness
+   * (assertFresh) — a lagging index must 503, never serve stale reputation. Returns null when the
+   * provider has no indexed history yet.
+   */
+  async providerPerformance(address: string): Promise<ProviderRow | null> {
+    const id = address.toLowerCase();
+    const data = await this.graph.queryFresh<{ provider: unknown | null }>(
+      `query One($id: ID!) {
+        ${GraphService.META_SELECTION}
+        provider(id: $id) {
+          id
+          jobsCompleted
+          jobsInitiallyApproved
+          claimsUpheld
+          claimsRejected
+          totalPayoutAmount
+          activeGuaranteeAmount
+          lastUpheldClaimRateBps
+        }
+      }`,
+      { id },
+    );
+    if (data.provider === null || data.provider === undefined) return null;
+    return parseOrThrow(providerRowSchema, data.provider, "provider row");
+  }
+
+  /** The caller's jobs (operational metadata; cachedStatus is a display-only mirror — review 065). */
+  async listMine(address: string): Promise<unknown[]> {
+    const rows = await listJobsForAddress(address);
+    const addr = address.toLowerCase();
+    return rows.map((r) => ({
+      clientRequestId: r.clientRequestId,
+      jobId: r.jobId,
+      uiTitle: r.uiTitle,
+      role: r.clientAddress === addr ? "client" : "provider",
+      cachedStatus: r.cachedStatus,
+      createdAt: r.createdAt,
+    }));
   }
 }
