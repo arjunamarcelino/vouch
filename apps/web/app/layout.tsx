@@ -5,6 +5,7 @@ import { cookieToInitialState } from "wagmi";
 import "./globals.css";
 import { getConfig } from "../lib/wagmi";
 import { Providers } from "./providers";
+import { SiteHeader } from "../components/shell/SiteHeader";
 
 export const metadata: Metadata = {
   title: "Vouch — Confidential Outcome Assurance",
@@ -23,8 +24,17 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
 
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="bg-surface text-foreground antialiased">
-        <Providers initialState={initialState}>{children}</Providers>
+      <body className="min-h-dvh bg-surface text-foreground antialiased">
+        <Providers initialState={initialState}>
+          <a
+            href="#main"
+            className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-card focus:px-3 focus:py-2 focus:ring-2 focus:ring-ring"
+          >
+            Skip to content
+          </a>
+          <SiteHeader />
+          <main id="main">{children}</main>
+        </Providers>
       </body>
     </html>
   );

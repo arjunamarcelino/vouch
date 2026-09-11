@@ -1,12 +1,20 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { WagmiProvider, type State } from "wagmi";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { RainbowKitProvider, lightTheme, darkTheme } from "@rainbow-me/rainbowkit";
+import { QueryClientProvider, useQueryClient } from "@tanstack/react-query";
+import {
+  RainbowKitProvider,
+  RainbowKitAuthenticationProvider,
+  lightTheme,
+  darkTheme,
+  type AuthenticationStatus,
+} from "@rainbow-me/rainbowkit";
 import "@rainbow-me/rainbowkit/styles.css";
 import { getConfig } from "../lib/wagmi";
 import { getQueryClient } from "../lib/query";
+import { makeAuthAdapter } from "../lib/auth";
+import { useAuthMe, queryKeys } from "../lib/api/hooks";
 
 /**
  * Client providers for the wallet-heavy surface. `WagmiProvider` is React Context so it MUST be a
@@ -35,6 +43,33 @@ const rainbowTheme = {
   }),
 };
 
+/**
+ * SIWE gate: builds the auth adapter (invalidating `/auth/me` on verify/sign-out) and feeds RainbowKit
+ * a status derived from the server session — so role-gating and the connect UI follow the httpOnly
+ * cookie, never optimistic client state.
+ */
+function AuthGate({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
+  const me = useAuthMe();
+  const adapter = useMemo(
+    () => makeAuthAdapter(() => void queryClient.invalidateQueries({ queryKey: queryKeys.authMe })),
+    [queryClient],
+  );
+  const status: AuthenticationStatus = me.isLoading
+    ? "loading"
+    : me.data
+      ? "authenticated"
+      : "unauthenticated";
+
+  return (
+    <RainbowKitAuthenticationProvider adapter={adapter} status={status}>
+      <RainbowKitProvider theme={rainbowTheme} modalSize="compact">
+        {children}
+      </RainbowKitProvider>
+    </RainbowKitAuthenticationProvider>
+  );
+}
+
 export function Providers({
   children,
   initialState,
@@ -48,9 +83,7 @@ export function Providers({
   return (
     <WagmiProvider config={config} initialState={initialState}>
       <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider theme={rainbowTheme} modalSize="compact">
-          {children}
-        </RainbowKitProvider>
+        <AuthGate>{children}</AuthGate>
       </QueryClientProvider>
     </WagmiProvider>
   );

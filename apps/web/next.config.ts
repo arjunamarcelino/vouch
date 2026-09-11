@@ -9,6 +9,8 @@ const nextConfig: NextConfig = {
   // injected + WalletConnect), so keep these SDKs out of the server bundle; they're lazy-loaded only if
   // their connector is ever instantiated, which we never do.
   serverExternalPackages: ["@coinbase/cdp-sdk", "@base-org/account"],
+  // Don't emit Next's auto-generated AGENTS.md / CLAUDE.md — this repo intentionally keeps none.
+  agentRules: false,
 };
 
 export default nextConfig;
