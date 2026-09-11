@@ -18,6 +18,7 @@ import {
   type PublicClient,
 } from "viem";
 import { VouchError } from "@vouch/shared/errors";
+import { ApiError } from "../errors";
 import { assuranceHubAbi } from "@vouch/shared/abis";
 import { chainForEnv } from "@vouch/shared/chains";
 import { jobStateFromOrdinal, type JobState, type PreparableFunction } from "@vouch/shared/schemas";
@@ -204,6 +205,54 @@ export class ChainService {
 
   async getTransaction(hash: Hex) {
     return resilient(() => this.rpc().getTransaction({ hash }), this.opts());
+  }
+
+  async claimFiled(jobId: bigint): Promise<boolean> {
+    return resilient(
+      () =>
+        this.rpc().readContract({
+          address: this.hub(),
+          abi: assuranceHubAbi,
+          functionName: "claimFiled",
+          args: [jobId],
+        }) as Promise<boolean>,
+      this.opts(),
+    );
+  }
+
+  /**
+   * Latest `ConfidentialEvaluationResolved` for a job (the CRE verdict), or null if none yet. Decoded
+   * defensively — a malformed/mismatched event fails closed (the API never fabricates a verdict). A
+   * zero evidenceCommitment on this event is the LEGITIMATE timeout path, not malformed.
+   */
+  async confidentialResolution(
+    jobId: bigint,
+  ): Promise<{ covered: boolean; serviceCredit: bigint; evidenceCommitment: Hex; evaluatedAt: bigint } | null> {
+    const event = (assuranceHubAbi as readonly { type: string; name?: string }[]).find(
+      (x) => x.type === "event" && x.name === "ConfidentialEvaluationResolved",
+    );
+    const logs = (await resilient(
+      () =>
+        this.rpc().getLogs({
+          address: this.hub(),
+          event: event as never,
+          args: { jobId } as never,
+          fromBlock: "earliest",
+          toBlock: "latest",
+        }),
+      this.opts(),
+    )) as { args?: Record<string, unknown> }[];
+    if (logs.length === 0) return null;
+    const a = logs[logs.length - 1]?.args;
+    if (!a || typeof a.covered !== "boolean" || typeof a.serviceCredit !== "bigint" || typeof a.evidenceCommitment !== "string") {
+      throw new ApiError("CRE_RESULT_MALFORMED", "Malformed ConfidentialEvaluationResolved");
+    }
+    return {
+      covered: a.covered,
+      serviceCredit: a.serviceCredit,
+      evidenceCommitment: a.evidenceCommitment as Hex,
+      evaluatedAt: typeof a.evaluatedAt === "bigint" ? a.evaluatedAt : 0n,
+    };
   }
 
   async getTransactionReceipt(hash: Hex) {

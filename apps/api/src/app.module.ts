@@ -8,6 +8,7 @@ import { GraphModule } from "./graph/graph.module";
 import { HealthModule } from "./health/health.module";
 import { JobsModule } from "./jobs/jobs.module";
 import { TransactionsModule } from "./transactions/transactions.module";
+import { ClaimsModule } from "./claims/claims.module";
 import { AgentModule } from "./agent/agent.module";
 import { CorrelationMiddleware } from "./common/correlation/correlation";
 import { LoggingInterceptor } from "./common/logging/logging.interceptor";
@@ -21,6 +22,7 @@ import { LoggingInterceptor } from "./common/logging/logging.interceptor";
     HealthModule,
     JobsModule,
     TransactionsModule,
+    ClaimsModule,
     AgentModule,
   ],
   controllers: [AppController],
