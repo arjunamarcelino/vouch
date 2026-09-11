@@ -43,7 +43,7 @@ const MIRROR_STATUS: Partial<Record<TxAction, string>> = {
 
 export interface TrackResult {
   txHash: string;
-  status: "PENDING" | "CONFIRMED";
+  status: "PENDING" | "CONFIRMED" | "MISMATCH";
   confirmations: number;
   eventVerified: boolean;
   jobId?: string;
@@ -202,10 +202,11 @@ export class TransactionsService {
   async getStatus(txHash: string): Promise<TrackResult> {
     const row = await getTrackedTx(txHash);
     if (!row) throw new ApiError("NOT_FOUND", "Unknown transaction");
-    const status = row.status === "CONFIRMED" ? "CONFIRMED" : "PENDING";
+    // Surface the true terminal state — a MISMATCH must NOT read as PENDING (review 062).
+    const status = row.status === "CONFIRMED" ? "CONFIRMED" : row.status === "MISMATCH" ? "MISMATCH" : "PENDING";
     return {
       txHash: row.txHash,
-      status: status as "PENDING" | "CONFIRMED",
+      status,
       confirmations: row.confirmations,
       eventVerified: row.eventVerified,
       jobId: row.jobId ?? undefined,

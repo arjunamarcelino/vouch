@@ -17,7 +17,6 @@ export type ApiErrorCode =
   | "TX_MISMATCH" // 422 — mined tx ≠ prepared intent
   | "TX_REVERTED" // 422 — receipt reverted (carries decoded Errors.* reason)
   | "TX_TIMEOUT" // 504 — receipt not found within the bounded wait
-  | "REORG" // 409 — tracked tx dropped below confirmations / re-orged
   | "CRE_RESULT_MALFORMED"; // 502 — malformed ConfidentialEvaluationResolved
 
 export class ApiError extends Error {

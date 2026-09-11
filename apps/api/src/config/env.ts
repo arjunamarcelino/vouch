@@ -33,8 +33,6 @@ const envSchema = z
     VOUCH_DEPLOY_BLOCK: z.coerce.number().int().nonnegative().optional(),
     RPC_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
     RPC_MAX_RETRIES: z.coerce.number().int().nonnegative().default(3),
-    TX_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(4_000),
-    TX_POLL_MAX_ATTEMPTS: z.coerce.number().int().positive().default(60),
 
     // ---- session / SIWE ----
     SESSION_SECRET: z.string().min(32).optional(), // required outside development (superRefine)

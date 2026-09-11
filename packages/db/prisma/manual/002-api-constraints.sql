@@ -20,7 +20,7 @@ DO $$ BEGIN
   -- Status/action vocabularies pinned at the DB (last line of defence against a buggy writer).
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'tracked_tx_status_enum') THEN
     ALTER TABLE "TrackedTransaction" ADD CONSTRAINT tracked_tx_status_enum
-      CHECK (status IN ('PENDING','CONFIRMED','FAILED','MISMATCH','REORGED'));
+      CHECK (status IN ('PENDING','CONFIRMED','MISMATCH'));
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'tracked_tx_action_enum') THEN
     ALTER TABLE "TrackedTransaction" ADD CONSTRAINT tracked_tx_action_enum
@@ -45,11 +45,6 @@ END $$;
 CREATE UNIQUE INDEX IF NOT EXISTS tracked_tx_openjob_prepare_key
   ON "TrackedTransaction" ("prepareKey")
   WHERE action = 'OPEN_JOB' AND "prepareKey" IS NOT NULL;
-
--- Poller scan stays bounded as tracked-tx count grows (mirrors payment_intent_active_idx).
-CREATE INDEX IF NOT EXISTS tracked_tx_pending_idx
-  ON "TrackedTransaction" ("lastCheckedAt")
-  WHERE status = 'PENDING';
 
 -- FeedEvent immutability is enforced at the APPLICATION layer (no update/delete endpoint; only
 -- appendFeedEvent writes). We deliberately do NOT REVOKE UPDATE/DELETE from the app role here: the app

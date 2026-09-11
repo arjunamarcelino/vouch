@@ -36,7 +36,6 @@ const API_STATUS = {
   TX_MISMATCH: HttpStatus.UNPROCESSABLE_ENTITY,
   TX_REVERTED: HttpStatus.UNPROCESSABLE_ENTITY,
   TX_TIMEOUT: HttpStatus.GATEWAY_TIMEOUT,
-  REORG: HttpStatus.CONFLICT,
   CRE_RESULT_MALFORMED: HttpStatus.BAD_GATEWAY,
 } satisfies Record<ApiErrorCode, HttpStatus>;
 

@@ -74,14 +74,12 @@ export const txActionSchema = z.enum([
 ]);
 export type TxAction = z.infer<typeof txActionSchema>;
 
-/** Post-hash tracking lifecycle. Pre-hash states (PREPARED/ABANDONED) live on PreparedIntent. */
-export const trackedTxStatusSchema = z.enum([
-  "PENDING",
-  "CONFIRMED",
-  "FAILED",
-  "MISMATCH",
-  "REORGED",
-]);
+/**
+ * Post-hash tracking lifecycle actually produced by the tracker (review 062). Pre-hash states
+ * (PREPARED/ABANDONED) live on PreparedIntent. REORGED/FAILED were removed as unimplemented — no code
+ * path produces them (there is no background reorg reconciler); the schema no longer promises them.
+ */
+export const trackedTxStatusSchema = z.enum(["PENDING", "CONFIRMED", "MISMATCH"]);
 export type TrackedTxStatus = z.infer<typeof trackedTxStatusSchema>;
 
 /** Allowlisted, non-secret activity-feed event kinds. */
