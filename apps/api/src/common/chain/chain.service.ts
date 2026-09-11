@@ -316,8 +316,14 @@ export class ChainService {
     return decodeFunctionData({ abi, data: input } as Parameters<typeof decodeFunctionData>[0]);
   }
 
-  /** Extract typed logs for `eventName` from a receipt's logs (topic0 + ABI matched by viem). */
+  /**
+   * Extract typed logs for `eventName` from a receipt (topic0 + ABI matched by viem). Pinned to the hub
+   * `address` so a look-alike event from another contract in the same tx can't be mistaken for ours
+   * (defense-in-depth — review 069).
+   */
   eventsFromLogs(eventName: string, logs: readonly unknown[]) {
-    return parseEventLogs({ abi: assuranceHubAbi, eventName: eventName as never, logs: logs as never });
+    const hub = this.hub();
+    const fromHub = (logs as { address?: string }[]).filter((l) => this.addressEq(l.address, hub));
+    return parseEventLogs({ abi: assuranceHubAbi, eventName: eventName as never, logs: fromHub as never });
   }
 }

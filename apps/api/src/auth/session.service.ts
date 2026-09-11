@@ -2,7 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { getProfile } from "@vouch/db";
 import { ChainService } from "../common/chain/chain.service";
-import { loadEnv } from "../config/env";
+import { loadEnv, sessionSecret } from "../config/env";
 import { SESSION_COOKIE } from "./guards/auth.guard";
 
 export interface SessionCookie {
@@ -26,7 +26,7 @@ export interface SessionCookie {
 @Injectable()
 export class SessionService {
   private readonly env = loadEnv();
-  private readonly secret = this.env.SESSION_SECRET ?? "dev-insecure-secret-please-set-SESSION_SECRET";
+  private readonly secret = sessionSecret();
 
   constructor(
     private readonly jwt: JwtService,

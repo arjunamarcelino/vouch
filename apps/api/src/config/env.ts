@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { ConfigInvalidError } from "@vouch/shared/errors";
 import { HEX_ADDRESS_RE } from "@vouch/shared/schemas";
@@ -104,4 +105,16 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): ApiEnv {
     throw new ConfigInvalidError("Invalid api environment", parsed.error.flatten());
   }
   return parsed.data;
+}
+
+// The JWT signing secret. Outside development SESSION_SECRET is REQUIRED (superRefine). In development,
+// rather than a KNOWN hardcoded constant (which would let anyone forge a session — review 069), fall
+// back to a per-process RANDOM secret: dev sessions simply don't survive a restart, and there is no
+// public constant to forge with. Generated once so sign + verify agree within a process.
+let devSecret: string | undefined;
+export function sessionSecret(): string {
+  const configured = loadEnv().SESSION_SECRET;
+  if (configured) return configured;
+  devSecret ??= randomBytes(32).toString("hex");
+  return devSecret;
 }

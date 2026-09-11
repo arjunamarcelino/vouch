@@ -1,6 +1,6 @@
 import { Global, Module } from "@nestjs/common";
 import { JwtModule } from "@nestjs/jwt";
-import { loadEnv } from "../config/env";
+import { loadEnv, sessionSecret } from "../config/env";
 import { AuthGuard } from "./guards/auth.guard";
 import { RolesGuard } from "./guards/roles.guard";
 import { JobPartyGuard } from "./guards/job-party.guard";
@@ -19,7 +19,7 @@ import { SessionService } from "./session.service";
   imports: [
     JwtModule.register({
       global: true,
-      secret: loadEnv().SESSION_SECRET ?? "dev-insecure-secret-please-set-SESSION_SECRET",
+      secret: sessionSecret(),
       signOptions: { expiresIn: loadEnv().SESSION_TTL_SECONDS, algorithm: "HS256" },
     }),
   ],

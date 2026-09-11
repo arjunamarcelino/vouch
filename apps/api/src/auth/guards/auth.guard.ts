@@ -1,7 +1,7 @@
 import { Injectable, type CanActivate, type ExecutionContext } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { ApiError } from "../../common/errors";
-import { loadEnv } from "../../config/env";
+import { sessionSecret } from "../../config/env";
 import type { SessionUser } from "../roles";
 
 /**
@@ -20,7 +20,7 @@ const COOKIE = "__Host-vouch_session";
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-  private readonly secret = loadEnv().SESSION_SECRET ?? "dev-insecure-secret-please-set-SESSION_SECRET";
+  private readonly secret = sessionSecret();
 
   constructor(private readonly jwt: JwtService) {}
 

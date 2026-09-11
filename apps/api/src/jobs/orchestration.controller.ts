@@ -70,11 +70,11 @@ export class OrchestrationController {
   }
 
   @Post(":id/expire/prepare")
+  @JobParty("any") // parity with resolve-timeout; the contract stays permissionless (review 069)
+  @UseGuards(JobPartyGuard)
   @UseInterceptors(IdempotencyInterceptor)
-  async expire(@Req() req: PrepareReq, @Param("id") id: string): Promise<TransactionRequest> {
-    const jobId = requireNumericJobId(id);
-    const job = await this.chain.getJob(BigInt(jobId));
-    return this.orchestration.prepareExpireJob(prepareCtx(req), jobId, job);
+  expire(@Req() req: PrepareReq, @Param("id") id: string): Promise<TransactionRequest> {
+    return this.orchestration.prepareExpireJob(prepareCtx(req), requireNumericJobId(id), req.job!);
   }
 
   @Post(":id/withdraw/prepare")

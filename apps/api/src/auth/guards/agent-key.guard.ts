@@ -1,6 +1,14 @@
+import { timingSafeEqual } from "node:crypto";
 import { Injectable, type CanActivate, type ExecutionContext } from "@nestjs/common";
 import { ApiError } from "../../common/errors";
 import { loadEnv } from "../../config/env";
+
+/** Constant-time string compare (no early-exit timing leak — review 069). */
+function safeEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  return ab.length === bb.length && timingSafeEqual(ab, bb);
+}
 
 /**
  * Bearer `SYSTEM_API_KEY` gate for system/agent callbacks (health, tx re-verification triggers). It
@@ -17,8 +25,8 @@ export class AgentKeyGuard implements CanActivate {
     const auth = ctx.switchToHttp().getRequest<{ headers: Record<string, string | string[] | undefined> }>().headers[
       "authorization"
     ];
-    const token = typeof auth === "string" && auth.startsWith("Bearer ") ? auth.slice(7) : undefined;
-    if (token !== this.key) throw new ApiError("UNAUTHORIZED", "Invalid system key");
+    const token = typeof auth === "string" && auth.startsWith("Bearer ") ? auth.slice(7) : "";
+    if (!safeEqual(token, this.key)) throw new ApiError("UNAUTHORIZED", "Invalid system key");
     return true;
   }
 }
