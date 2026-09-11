@@ -11,6 +11,7 @@ import {
   slice,
   decodeFunctionData,
   parseEventLogs,
+  TransactionReceiptNotFoundError,
   type Abi,
   type Address,
   type Hex,
@@ -207,6 +208,18 @@ export class ChainService {
 
   async getTransactionReceipt(hash: Hex) {
     return resilient(() => this.rpc().getTransactionReceipt({ hash }), this.opts());
+  }
+
+  /** Receipt, or null when the tx is not yet mined (an expected PENDING, not an error). */
+  async getReceiptOrNull(hash: Hex): Promise<Awaited<ReturnType<PublicClient["getTransactionReceipt"]>> | null> {
+    try {
+      return await this.getTransactionReceipt(hash);
+    } catch (err) {
+      if (err instanceof TransactionReceiptNotFoundError || /could not be found|not be found/i.test(String(err))) {
+        return null;
+      }
+      throw err;
+    }
   }
 
   // ---------------- encode / selectors (pure) ----------------

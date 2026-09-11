@@ -7,12 +7,22 @@ import { ProfilesModule } from "./profiles/profiles.module";
 import { GraphModule } from "./graph/graph.module";
 import { HealthModule } from "./health/health.module";
 import { JobsModule } from "./jobs/jobs.module";
+import { TransactionsModule } from "./transactions/transactions.module";
 import { AgentModule } from "./agent/agent.module";
 import { CorrelationMiddleware } from "./common/correlation/correlation";
 import { LoggingInterceptor } from "./common/logging/logging.interceptor";
 
 @Module({
-  imports: [CommonModule, AuthModule, ProfilesModule, GraphModule, HealthModule, JobsModule, AgentModule],
+  imports: [
+    CommonModule,
+    AuthModule,
+    ProfilesModule,
+    GraphModule,
+    HealthModule,
+    JobsModule,
+    TransactionsModule,
+    AgentModule,
+  ],
   controllers: [AppController],
   providers: [{ provide: APP_INTERCEPTOR, useClass: LoggingInterceptor }],
 })

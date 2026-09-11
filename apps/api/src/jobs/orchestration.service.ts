@@ -1,10 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { Injectable } from "@nestjs/common";
-import { keccak256, toBytes, getAddress, type Hex } from "viem";
+import { getAddress, type Hex } from "viem";
 import type { TransactionRequest, PreparableFunction, TxAction } from "@vouch/shared/schemas";
 import { upsertPreparedIntent, createProvisionalJob } from "@vouch/db";
 import { ApiError } from "../common/errors";
 import { ChainService, type OnchainJob } from "../common/chain/chain.service";
+import { hashCallArgs } from "../common/chain/args-hash";
 import {
   approveInputSchema,
   openJobInputSchema,
@@ -19,19 +20,6 @@ const MAX_COVERAGE = 2_592_000n; // 30d (AssuranceHub.MAX_COVERAGE)
 export interface PrepareCtx {
   address: string; // lowercased session address
   idempotencyKey: string; // == PreparedIntent.idempotencyKey (openJob double-fund bind)
-}
-
-/** Canonical, order-preserving hash of the encoded args — track recomputes this from decoded args. */
-function hashArgs(args: readonly unknown[]): string {
-  const canonical = args
-    .map((a) => {
-      if (typeof a === "bigint") return `i:${a.toString()}`;
-      if (typeof a === "boolean") return `x:${a ? 1 : 0}`;
-      if (typeof a === "string") return `s:${a.toLowerCase()}`;
-      return `?:${String(a)}`;
-    })
-    .join("|");
-  return keccak256(toBytes(canonical));
 }
 
 /**
@@ -61,7 +49,7 @@ export class OrchestrationService {
       functionName,
       to,
       selector,
-      argsHash: hashArgs(args),
+      argsHash: hashCallArgs(args),
       chainId: this.chain.chainId,
       jobRequestId: ids.jobRequestId,
       jobId: ids.jobId,
