@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { VouchError } from "../errors";
 import { reasonCodeSchema, confidenceLevelSchema } from "../reasonCodes";
+import { hexAddress, baseUnits, uintString, ratioBpsString, hex32, hexSignature } from "./primitives";
 
 /**
  * Runtime boundary schemas shared across web / api / agent.
@@ -8,24 +9,13 @@ import { reasonCodeSchema, confidenceLevelSchema } from "../reasonCodes";
  *
  * Financial fields are represented as decimal STRINGS of 6-decimal USDC base
  * units (never JS number — precision) at the API boundary; contracts/subgraph
- * use uint256/BigInt. See plan §17.9.
+ * use uint256/BigInt. See plan §17.9. The hex/base-unit regex primitives now live
+ * in `./primitives` (exported so apps/api's boundary DTOs reuse them — TS review §3).
  */
 
-const hexAddress = z
-  .string()
-  .regex(/^0x[a-fA-F0-9]{40}$/u, "must be a 0x-prefixed 20-byte address");
-
-const baseUnits = z.string().regex(/^\d+$/u, "must be an integer string of USDC base units");
-
-/** Non-negative integer string (counts / block numbers / positive bps like a premium factor). */
-const uintString = z.string().regex(/^\d+$/u, "must be a non-negative integer string");
-
-/**
- * A ratio in basis points: a non-negative integer, or exactly `-1` (the "undefined ratio" sentinel
- * the subgraph emits on a zero denominator). Any OTHER negative is rejected so a spurious value can't
- * be silently read as zero-risk (017).
- */
-const ratioBpsString = z.string().regex(/^(-1|\d+)$/u, "must be a bps integer or the -1 sentinel");
+// Re-export the primitives so existing `@vouch/shared/schemas` importers keep working.
+export { hexAddress, baseUnits, uintString, ratioBpsString, hex32, hexSignature } from "./primitives";
+export * from "./api";
 
 /** Parse at a boundary, mapping ZodError → typed VouchError (plan §5.1 D5). */
 export function parseOrThrow<T>(schema: z.ZodType<T>, value: unknown, what: string): T {
@@ -95,13 +85,6 @@ export type RiskQuote = z.infer<typeof riskQuoteSchema>;
 // ============================================================================
 // v2 — full transparent pricing model + signed expiring commitment (plan §4/§5)
 // ============================================================================
-
-/** bytes32 hex (quoteId / jobHash / nonce). */
-const hex32 = z.string().regex(/^0x[a-fA-F0-9]{64}$/u, "must be a 0x-prefixed 32-byte hex string");
-/** 65-byte ECDSA signature hex (r‖s‖v). */
-const hexSignature = z
-  .string()
-  .regex(/^0x[a-fA-F0-9]{130}$/u, "must be a 0x-prefixed 65-byte signature");
 
 /** v2 scoring function version — new output shape (do NOT reuse the v1 literal — TS review §1). */
 export const SCORING_FN_VERSION_V2 = "2.0.0" as const;
