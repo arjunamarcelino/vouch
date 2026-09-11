@@ -266,9 +266,18 @@ export async function getJobMetaByJobId(jobId: string) {
   return prisma.jobMetadata.findUnique({ where: { jobId } });
 }
 
-/** Reconcile the provisional row to its onchain jobId (idempotent; @unique(jobId) catches dup-fund). */
-export async function reconcileJobId(clientRequestId: string, jobId: string) {
-  return prisma.jobMetadata.update({ where: { clientRequestId }, data: { jobId } });
+/**
+ * Reconcile the provisional row to its onchain jobId. Guarded so it only sets when the row's jobId is
+ * NULL or already equal — a second, DIFFERENT jobId on the same intent (a two-prepare double-fund) is
+ * NOT silently overwritten; it returns 0 rows so the caller can raise DUPLICATE_JOB (review 061).
+ * Returns true iff reconciled (or already equal); false on a differing-jobId conflict.
+ */
+export async function reconcileJobId(clientRequestId: string, jobId: string): Promise<boolean> {
+  const { count } = await prisma.jobMetadata.updateMany({
+    where: { clientRequestId, OR: [{ jobId: null }, { jobId }] },
+    data: { jobId },
+  });
+  return count > 0;
 }
 
 /**

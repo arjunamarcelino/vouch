@@ -176,10 +176,17 @@ export class TransactionsService {
   ): Promise<void> {
     let requestId = jobRequestId ?? undefined;
     if (jobId && requestId && action === "OPEN_JOB") {
-      // @unique(jobId) collision here IS the loud duplicate-job flag (dup fund). Surface, don't swallow.
+      // Two loud duplicate-fund signals (review 061): (a) reconcileJobId returns false when THIS intent
+      // already maps to a DIFFERENT jobId (two prepares, two funded jobs) — no silent overwrite;
+      // (b) a P2002 when the SAME jobId maps onto another intent. Either → DUPLICATE_JOB, never swallow.
       try {
-        await reconcileJobId(requestId, jobId);
+        const reconciled = await reconcileJobId(requestId, jobId);
+        if (!reconciled) {
+          await appendFeedEvent({ kind: "DUPLICATE_JOB", jobRequestId: requestId, payload: { jobId } });
+          throw new ApiError("IDEMPOTENCY_CONFLICT", "This intent already maps to a different jobId (possible double-fund)");
+        }
       } catch (err) {
+        if (err instanceof ApiError) throw err;
         if (err && typeof err === "object" && (err as { code?: string }).code === "P2002") {
           await appendFeedEvent({ kind: "DUPLICATE_JOB", jobRequestId: requestId, payload: { jobId } });
           throw new ApiError("IDEMPOTENCY_CONFLICT", "Duplicate JobCreated for this intent (possible double-fund)");
