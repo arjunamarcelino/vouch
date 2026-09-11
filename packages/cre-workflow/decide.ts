@@ -70,7 +70,7 @@ export interface DecideInput {
  *
  * Truth table (first match wins):
  *   status != ClaimPending                          -> REFUSE NOT_CLAIM_PENDING
- *   threshold missing/empty/NaN (non-finite)        -> REFUSE SECRET_MISSING
+ *   threshold missing/NaN/out of (0,1]              -> REFUSE SECRET_MISSING
  *   passRate non-finite or out of [0,1]             -> REFUSE MALFORMED_RESPONSE
  *   commitHash != submissionCommitment              -> REFUSE COMMIT_MISMATCH
  *   definitive clean (passRate >= threshold)        -> CLEAN_CLOSE (covered=false)
@@ -84,7 +84,12 @@ export function decideVerdict(input: DecideInput): Verdict {
   if (input.status !== CLAIM_PENDING) {
     return { kind: "REFUSE", reason: "NOT_CLAIM_PENDING" };
   }
-  if (!Number.isFinite(input.threshold)) {
+  // Threshold is a semi-trusted operator secret. It MUST be a finite value in
+  // (0, 1]: a threshold > 1 would make every claim PAYOUT, and 0 would make
+  // every claim CLEAN_CLOSE (client remedy unreachable). Out of range -> REFUSE,
+  // never a silent flip of the money path. Defense-in-depth mirroring the port's
+  // thresholdSchema. (todo 045)
+  if (!Number.isFinite(input.threshold) || input.threshold <= 0 || input.threshold > 1) {
     return { kind: "REFUSE", reason: "SECRET_MISSING" };
   }
   if (

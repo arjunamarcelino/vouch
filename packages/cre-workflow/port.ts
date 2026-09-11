@@ -53,9 +53,17 @@ export interface RunResult {
 
 /**
  * Threshold secret parser: rejects missing (undefined -> not a string), empty
- * / whitespace, and non-finite values. Coerces the trimmed string to a number.
+ * / whitespace, non-finite, and out-of-range values. `z.coerce.number()` uses
+ * `Number()` (accepts hex/scientific), so `.gt(0).lte(1)` — NOT the string
+ * `.min(1)` length check — is what actually bounds the VALUE to (0, 1]. A
+ * threshold > 1 would make every claim PAYOUT; 0 would make every claim
+ * CLEAN_CLOSE. Out of range -> parse fails -> REFUSE (fail-closed). (todo 045)
  */
-const thresholdSchema = z.string().trim().min(1).pipe(z.coerce.number().finite());
+const thresholdSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .pipe(z.coerce.number().finite().gt(0).lte(1));
 
 function refused(reason: RefuseReason): RunResult {
   return { action: "REFUSED", verdict: { kind: "REFUSE", reason } };

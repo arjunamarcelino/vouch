@@ -29,6 +29,26 @@ test("NaN threshold -> REFUSE SECRET_MISSING (never CLEAN_CLOSE)", () => {
   assert.deepEqual(v, { kind: "REFUSE", reason: "SECRET_MISSING" });
 });
 
+test("threshold > 1 -> REFUSE SECRET_MISSING (never all-PAYOUT)", () => {
+  // A misprovisioned threshold of 90 (meant as 90%) would otherwise make every
+  // passRate <= 1 a covered PAYOUT. Must fail closed. (todo 045)
+  assert.deepEqual(decideVerdict(base({ threshold: 90 })), {
+    kind: "REFUSE",
+    reason: "SECRET_MISSING",
+  });
+});
+
+test("threshold <= 0 -> REFUSE SECRET_MISSING (never all-CLEAN_CLOSE)", () => {
+  assert.deepEqual(decideVerdict(base({ threshold: 0 })), {
+    kind: "REFUSE",
+    reason: "SECRET_MISSING",
+  });
+  assert.deepEqual(decideVerdict(base({ threshold: -0.5 })), {
+    kind: "REFUSE",
+    reason: "SECRET_MISSING",
+  });
+});
+
 test("non-finite passRate -> REFUSE MALFORMED_RESPONSE", () => {
   const v = decideVerdict(base({ passRate: Number.POSITIVE_INFINITY }));
   assert.deepEqual(v, { kind: "REFUSE", reason: "MALFORMED_RESPONSE" });
