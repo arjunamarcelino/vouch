@@ -1,5 +1,6 @@
-import { Controller, Get, ServiceUnavailableException } from "@nestjs/common";
+import { Controller, Get, ServiceUnavailableException, UseGuards } from "@nestjs/common";
 import { HealthService } from "./health.service";
+import { AuthGuard } from "../auth/guards/auth.guard";
 
 /**
  * `GET /health` — liveness (pure process check). `GET /health/integrations` — readiness: probes Arc
@@ -16,6 +17,7 @@ export class HealthController {
   }
 
   @Get("integrations")
+  @UseGuards(AuthGuard) // readiness (topology/latency) is authed; liveness above stays public (review 055)
   async integrations(): Promise<unknown> {
     const result = await this.health.integrations();
     if (result.status === "degraded") throw new ServiceUnavailableException(result);

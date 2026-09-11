@@ -29,6 +29,14 @@ export interface IntegrationsHealth {
 
 const log = createLogger("api:health");
 
+/** Reduce a probe error to a coarse, non-sensitive category (never the raw message/URL — review 055). */
+export function sanitizeProbeError(message: string): string {
+  if (/timeout|timed out|ETIMEDOUT|AbortError/i.test(message)) return "timeout";
+  if (/ECONNREFUSED|ENOTFOUND|EAI_AGAIN|fetch failed|unreachable|connect/i.test(message)) return "unreachable";
+  if (/\b(4\d\d|5\d\d)\b/.test(message)) return "unhealthy";
+  return "error";
+}
+
 @Injectable()
 export class HealthService {
   private readonly env = loadEnv();
@@ -83,13 +91,14 @@ export class HealthService {
       return { name, status: "up", critical, latencyMs: Date.now() - start, detail };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      log.warn({ probe: name, err: message }, "health probe failed");
+      log.warn({ probe: name, err: message }, "health probe failed"); // full detail server-side only
       return {
         name,
         status: critical ? "down" : "degraded",
         critical,
         latencyMs: Date.now() - start,
-        error: message,
+        // Coarse category ONLY — never the raw message/URL (a keyed RPC/subgraph URL would leak; review 055).
+        error: sanitizeProbeError(message),
       };
     }
   }
