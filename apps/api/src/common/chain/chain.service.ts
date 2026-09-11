@@ -99,6 +99,11 @@ export class ChainService {
     return getAddress(this.env.VOUCH_CORE_ADDRESS);
   }
 
+  /** The hub (AssuranceHub) address — the `to` for every job/claim action. */
+  hubAddress(): Address {
+    return this.hub();
+  }
+
   private opts() {
     return { timeoutMs: this.env.RPC_TIMEOUT_MS, retries: this.env.RPC_MAX_RETRIES };
   }

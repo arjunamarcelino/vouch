@@ -303,6 +303,63 @@ export async function updateTrackedTx(
   return prisma.trackedTransaction.update({ where: { txHash: txHash.toLowerCase() }, data });
 }
 
+// ---------------- job metadata (provisional + mirror) ----------------
+
+export async function createProvisionalJob(data: {
+  clientRequestId: string;
+  clientAddress: string;
+  providerAddress?: string;
+  uiTitle?: string;
+  repoRef?: string;
+}) {
+  return prisma.jobMetadata.create({
+    data: {
+      clientRequestId: data.clientRequestId,
+      clientAddress: data.clientAddress.toLowerCase(),
+      providerAddress: data.providerAddress?.toLowerCase() ?? null,
+      uiTitle: data.uiTitle ?? "",
+      repoRef: data.repoRef ?? null,
+    },
+  });
+}
+
+export async function getJobMetaByRequestId(clientRequestId: string) {
+  return prisma.jobMetadata.findUnique({ where: { clientRequestId } });
+}
+
+export async function getJobMetaByJobId(jobId: string) {
+  return prisma.jobMetadata.findUnique({ where: { jobId } });
+}
+
+/** Reconcile the provisional row to its onchain jobId (idempotent; @unique(jobId) catches dup-fund). */
+export async function reconcileJobId(clientRequestId: string, jobId: string) {
+  return prisma.jobMetadata.update({ where: { clientRequestId }, data: { jobId } });
+}
+
+/**
+ * One-directional status mirror (display only — never read for decisions). Monotonic guard: a stale
+ * poll can't regress the mirror over a newer observation.
+ */
+export async function mirrorJobStatus(clientRequestId: string, cachedStatus: string, syncedBlock: bigint) {
+  return prisma.jobMetadata.updateMany({
+    where: {
+      clientRequestId,
+      OR: [{ lastSyncedBlock: null }, { lastSyncedBlock: { lte: syncedBlock } }],
+    },
+    data: { cachedStatus, lastSyncedBlock: syncedBlock, lastSyncedAt: new Date() },
+  });
+}
+
+/** Jobs where the address is client or provider (backs GET /jobs/mine). */
+export async function listJobsForAddress(address: string, limit = 100) {
+  const addr = address.toLowerCase();
+  return prisma.jobMetadata.findMany({
+    where: { OR: [{ clientAddress: addr }, { providerAddress: addr }] },
+    orderBy: { createdAt: "desc" },
+    take: Math.min(limit, 200),
+  });
+}
+
 // ---------------- feed ----------------
 
 export async function appendFeedEvent(e: {
