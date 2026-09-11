@@ -128,30 +128,38 @@ function makePort(
       return { ok: true, body: json(res) };
     },
     async getJob(jobId) {
-      const reply = evmClient
-        .callContract(donRt, {
-          call: encodeCallMsg({
-            from: zeroAddress,
-            to: cfg.contractAddress,
-            data: encodeFunctionData({
-              abi: GETJOB_ABI,
-              functionName: "getJob",
-              args: [jobId],
+      // Honor the `JobView | null` port contract: any RPC failure / revert /
+      // malformed reply returns null so the pure core emits REFUSE("READ_FAILED")
+      // (a graceful, observable refuse) rather than throwing an unhandled
+      // rejection. Mirrors the getSecret adapter above. (todo 047)
+      try {
+        const reply = evmClient
+          .callContract(donRt, {
+            call: encodeCallMsg({
+              from: zeroAddress,
+              to: cfg.contractAddress,
+              data: encodeFunctionData({
+                abi: GETJOB_ABI,
+                functionName: "getJob",
+                args: [jobId],
+              }),
             }),
-          }),
-          blockNumber: LAST_FINALIZED_BLOCK_NUMBER,
-        })
-        .result();
-      const job = decodeFunctionResult({
-        abi: GETJOB_ABI,
-        functionName: "getJob",
-        data: bytesToHex(reply.data),
-      });
-      return {
-        status: job.status,
-        guaranteeAmount: job.guaranteeAmount,
-        submissionCommitment: job.submissionCommitment,
-      };
+            blockNumber: LAST_FINALIZED_BLOCK_NUMBER,
+          })
+          .result();
+        const job = decodeFunctionResult({
+          abi: GETJOB_ABI,
+          functionName: "getJob",
+          data: bytesToHex(reply.data),
+        });
+        return {
+          status: job.status,
+          guaranteeAmount: job.guaranteeAmount,
+          submissionCommitment: job.submissionCommitment,
+        };
+      } catch {
+        return null;
+      }
     },
     async emitReport(payload) {
       // prepareReportRequest base64-encodes internally — pass HEX, not base64.
