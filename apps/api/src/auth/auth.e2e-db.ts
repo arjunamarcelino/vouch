@@ -64,6 +64,17 @@ test("SIWE round-trip: nonce → verify → authenticated /auth/me", async () =>
   assert.equal(me.body.address, account.address.toLowerCase());
 });
 
+test("verify?bearer=1 returns a token usable as Authorization: Bearer (agent parity, 067)", async () => {
+  const server = app.getHttpServer();
+  const { message, signature } = await signedSiwe();
+  const verify = await request(server).post("/auth/verify?bearer=1").send({ message, signature }).expect(201);
+  const token = verify.body.token as string;
+  assert.ok(token, "bearer token returned in the body");
+
+  const me = await request(server).get("/auth/me").set("Authorization", `Bearer ${token}`).expect(200);
+  assert.equal(me.body.address, account.address.toLowerCase());
+});
+
 test("nonce is single-use: replaying the same message+signature is rejected", async () => {
   const server = app.getHttpServer();
   const { message, signature } = await signedSiwe();

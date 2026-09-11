@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req, Res, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Post, Query, Req, Res, UseGuards } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
 import { z } from "zod";
 import { parseOrThrow } from "@vouch/shared/schemas";
@@ -35,13 +35,22 @@ export class AuthController {
     return this.siwe.issueNonce();
   }
 
+  /**
+   * Verify a SIWE message → set the session cookie (browsers). When `?bearer=1` is passed, ALSO return
+   * the JWT in the body so a headless agent gets a first-class token to send as `Authorization: Bearer`
+   * (agent-native parity — review 067) without scraping the httpOnly cookie.
+   */
   @Post("verify")
-  async verify(@Body() body: unknown, @Res({ passthrough: true }) res: CookieRes): Promise<{ address: string }> {
+  async verify(
+    @Body() body: unknown,
+    @Res({ passthrough: true }) res: CookieRes,
+    @Query("bearer") bearer?: string,
+  ): Promise<{ address: string; token?: string }> {
     const { message, signature } = parseOrThrow(verifyBodySchema, body, "SIWE verify body");
     const { address } = await this.siwe.verify(message, signature as `0x${string}`);
     const c = this.session.cookie(address);
     res.cookie(c.name, c.value, c.options);
-    return { address };
+    return bearer === "1" ? { address, token: c.value } : { address };
   }
 
   @Post("logout")
