@@ -10,6 +10,7 @@ const OTHER =
 function base(overrides: Partial<DecideInput> = {}): DecideInput {
   return {
     status: CLAIM_PENDING,
+    failureCode: "REGRESSION", // default: covered failure (passRate 0.4 < 0.9)
     passRate: 0.4,
     threshold: 0.9,
     commitHash: COMMIT,
@@ -78,19 +79,52 @@ test("commit compare is case-insensitive", () => {
   assert.notEqual(v.kind, "REFUSE");
 });
 
-test("definitive clean (passRate >= threshold) -> CLEAN_CLOSE (covered=false)", () => {
-  const v = decideVerdict(base({ passRate: 0.95, threshold: 0.9 }));
+test("NONE + definitive clean (passRate >= threshold) -> CLEAN_CLOSE (covered=false)", () => {
+  const v = decideVerdict(base({ failureCode: "NONE", passRate: 0.95, threshold: 0.9 }));
   assert.deepEqual(v, { kind: "CLEAN_CLOSE", covered: false });
 });
 
-test("boundary passRate == threshold -> CLEAN_CLOSE", () => {
-  const v = decideVerdict(base({ passRate: 0.9, threshold: 0.9 }));
+test("NONE + boundary passRate == threshold -> CLEAN_CLOSE", () => {
+  const v = decideVerdict(base({ failureCode: "NONE", passRate: 0.9, threshold: 0.9 }));
   assert.deepEqual(v, { kind: "CLEAN_CLOSE", covered: false });
 });
 
-test("confident covered failure (passRate < threshold) -> PAYOUT (covered=true)", () => {
-  const v = decideVerdict(base({ passRate: 0.42, threshold: 0.9 }));
+test("REGRESSION + confident covered failure (passRate < threshold) -> PAYOUT", () => {
+  const v = decideVerdict(base({ failureCode: "REGRESSION", passRate: 0.42, threshold: 0.9 }));
   assert.deepEqual(v, { kind: "PAYOUT", covered: true });
+});
+
+test("BUILD failure with low passRate -> PAYOUT (a build failure is a covered failure)", () => {
+  const v = decideVerdict(base({ failureCode: "BUILD", passRate: 0.1, threshold: 0.9 }));
+  assert.deepEqual(v, { kind: "PAYOUT", covered: true });
+});
+
+test("TIMEOUT -> REFUSE INCONCLUSIVE (degraded evaluation, regardless of passRate)", () => {
+  assert.deepEqual(decideVerdict(base({ failureCode: "TIMEOUT", passRate: 0.1 })), {
+    kind: "REFUSE",
+    reason: "INCONCLUSIVE",
+  });
+});
+
+test("OTHER -> REFUSE INCONCLUSIVE", () => {
+  assert.deepEqual(decideVerdict(base({ failureCode: "OTHER", passRate: 0.95 })), {
+    kind: "REFUSE",
+    reason: "INCONCLUSIVE",
+  });
+});
+
+test("NONE but passRate < threshold (contradiction) -> REFUSE INCONCLUSIVE (never burns claim silently)", () => {
+  assert.deepEqual(decideVerdict(base({ failureCode: "NONE", passRate: 0.1, threshold: 0.9 })), {
+    kind: "REFUSE",
+    reason: "INCONCLUSIVE",
+  });
+});
+
+test("REGRESSION but passRate >= threshold (contradiction) -> REFUSE INCONCLUSIVE (never bad PAYOUT)", () => {
+  assert.deepEqual(decideVerdict(base({ failureCode: "REGRESSION", passRate: 0.95, threshold: 0.9 })), {
+    kind: "REFUSE",
+    reason: "INCONCLUSIVE",
+  });
 });
 
 test("verdict never encodes an amount (amount is caller-set, secret-independent)", () => {

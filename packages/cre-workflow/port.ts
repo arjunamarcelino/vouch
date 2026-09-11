@@ -113,6 +113,7 @@ export async function runEvaluation(
   // 5. Fail-closed verdict.
   const verdict = decideVerdict({
     status: job.status,
+    failureCode: parsed.data.failureCode,
     passRate: parsed.data.passRate,
     threshold,
     commitHash: parsed.data.commitHash,

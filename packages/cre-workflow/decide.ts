@@ -21,6 +21,7 @@ export const FAILURE_CODES = [
   "TIMEOUT",
   "OTHER",
 ] as const;
+export type FailureCode = (typeof FAILURE_CODES)[number];
 
 /**
  * The untrusted confidential test-API response. Parsed with `safeParse`; any
@@ -55,6 +56,7 @@ export type Verdict =
 
 export interface DecideInput {
   readonly status: number;
+  readonly failureCode: FailureCode;
   readonly passRate: number;
   readonly threshold: number;
   readonly commitHash: `0x${string}`;
@@ -73,12 +75,20 @@ export interface DecideInput {
  *   threshold missing/NaN/out of (0,1]              -> REFUSE SECRET_MISSING
  *   passRate non-finite or out of [0,1]             -> REFUSE MALFORMED_RESPONSE
  *   commitHash != submissionCommitment              -> REFUSE COMMIT_MISMATCH
- *   definitive clean (passRate >= threshold)        -> CLEAN_CLOSE (covered=false)
- *   confident covered failure (passRate < threshold)-> PAYOUT (covered=true)
+ *   failureCode gate (see below)                     -> REFUSE INCONCLUSIVE | settle
  *
- * The fail-OPEN hazard: an invalid threshold or passRate must NEVER fall
- * through to CLEAN_CLOSE — that would burn the client's single claim on
- * degraded input. Any doubt is REFUSE.
+ * failureCode gate (todo 048) — the test API reports WHAT happened; passRate is
+ * a corroborating metric. The verdict fails closed on disagreement:
+ *   TIMEOUT | OTHER                    -> REFUSE INCONCLUSIVE (evaluation degraded)
+ *   NONE       & passRate >= threshold -> CLEAN_CLOSE (covered=false)
+ *   NONE       & passRate <  threshold -> REFUSE INCONCLUSIVE (contradiction)
+ *   REGRESSION | BUILD & passRate <  threshold -> PAYOUT (covered=true)
+ *   REGRESSION | BUILD & passRate >= threshold -> REFUSE INCONCLUSIVE (contradiction)
+ *
+ * The fail-OPEN hazard: an invalid threshold/passRate, a degraded run, or a
+ * failureCode/passRate contradiction must NEVER fall through to CLEAN_CLOSE or
+ * PAYOUT — CLEAN_CLOSE burns the client's single claim; a bad PAYOUT moves
+ * funds. Any doubt is REFUSE.
  */
 export function decideVerdict(input: DecideInput): Verdict {
   if (input.status !== CLAIM_PENDING) {
@@ -102,8 +112,24 @@ export function decideVerdict(input: DecideInput): Verdict {
   if (input.commitHash.toLowerCase() !== input.submissionCommitment.toLowerCase()) {
     return { kind: "REFUSE", reason: "COMMIT_MISMATCH" };
   }
-  if (input.passRate >= input.threshold) {
-    return { kind: "CLEAN_CLOSE", covered: false };
+
+  // failureCode gate. A degraded/inconclusive evaluation never settles.
+  const clean = input.passRate >= input.threshold;
+  switch (input.failureCode) {
+    case "NONE":
+      // Clean run: passRate must corroborate; otherwise the inputs disagree.
+      return clean
+        ? { kind: "CLEAN_CLOSE", covered: false }
+        : { kind: "REFUSE", reason: "INCONCLUSIVE" };
+    case "REGRESSION":
+    case "BUILD":
+      // Covered failure: passRate must corroborate (< threshold).
+      return clean
+        ? { kind: "REFUSE", reason: "INCONCLUSIVE" }
+        : { kind: "PAYOUT", covered: true };
+    case "TIMEOUT":
+    case "OTHER":
+      // Evaluation did not conclusively run — no report; timeout closes the claim.
+      return { kind: "REFUSE", reason: "INCONCLUSIVE" };
   }
-  return { kind: "PAYOUT", covered: true };
 }
