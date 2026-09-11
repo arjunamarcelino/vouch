@@ -91,8 +91,8 @@ export class OrchestrationService {
 
   async prepareOpenJob(ctx: PrepareCtx, body: unknown): Promise<TransactionRequest> {
     const input = parseOrThrow(openJobInputSchema, body, "openJob input");
-    await this.assertNotPaused();
 
+    // Validate the (sync) inputs BEFORE any RPC so a bad request never spends a round-trip.
     const provider = getAddress(input.provider);
     if (provider.toLowerCase() === ctx.address) throw new ApiError("STATE_CONFLICT", "provider must differ from client (SelfDealing)");
     const taskFee = BigInt(input.taskFee);
@@ -106,13 +106,15 @@ export class OrchestrationService {
     const deadline = BigInt(input.submissionDeadline);
     if (deadline <= BigInt(Math.floor(Date.now() / 1000))) throw new ApiError("STATE_CONFLICT", "submissionDeadline must be in the future");
 
-    // Client escrows taskFee + serviceFee on openJob — gate on sufficient USDC allowance to the hub.
-    const escrow = taskFee + serviceFee;
-    if ((await this.chain.allowance(ctx.address)) < escrow) {
-      throw new ApiError("STATE_CONFLICT", "Insufficient USDC allowance — approve the hub first");
-    }
-
-    const token = await this.chain.usdc();
+    // Independent reads issued together so viem's multicall batching coalesces them (review 072).
+    const escrow = taskFee + serviceFee; // client escrows taskFee + serviceFee on openJob
+    const [paused, allowance, token] = await Promise.all([
+      this.chain.paused(),
+      this.chain.allowance(ctx.address),
+      this.chain.usdc(),
+    ]);
+    if (paused) throw new ApiError("PAUSED", "Protocol is paused; try again later");
+    if (allowance < escrow) throw new ApiError("STATE_CONFLICT", "Insufficient USDC allowance — approve the hub first");
     const clientRequestId = randomUUID();
     await createProvisionalJob({
       clientRequestId,

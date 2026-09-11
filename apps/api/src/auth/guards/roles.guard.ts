@@ -48,6 +48,8 @@ export class RolesGuard implements CanActivate {
     } catch (err) {
       throw new ApiError("FORBIDDEN", "Role check unavailable", err); // fail-closed
     }
+    // Bound the cache (review 072): a distinct-caller flood can't grow it without limit.
+    if (this.cache.size >= 5_000) this.cache.clear();
     this.cache.set(address, { at: Date.now(), has });
     return has;
   }

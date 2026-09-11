@@ -38,6 +38,15 @@ DO $$ BEGIN
     ALTER TABLE "PreparedIntent" ADD CONSTRAINT prepared_intent_status_enum
       CHECK (status IN ('PREPARED','SUBMITTED','ABANDONED'));
   END IF;
+  -- Hex-shape the prepared/tracked address+selector columns (last-line-of-defence; app lowercases) — review 072.
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'prepared_intent_hex') THEN
+    ALTER TABLE "PreparedIntent" ADD CONSTRAINT prepared_intent_hex
+      CHECK ("to" ~ '^0x[0-9a-f]{40}$' AND selector ~ '^0x[0-9a-f]{8}$');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'tracked_tx_toaddr_hex') THEN
+    ALTER TABLE "TrackedTransaction" ADD CONSTRAINT tracked_tx_toaddr_hex
+      CHECK ("toAddress" ~ '^0x[0-9a-f]{40}$');
+  END IF;
 END $$;
 
 -- DB backstop for the openJob double-fund bind: one OPEN_JOB prepareKey → at most one tracked tx.

@@ -9,7 +9,8 @@ import { PrismaClient } from "./generated/prisma/client";
 // idempotency-claim + tracked-tx + feed writes don't starve the pool under concurrency.
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL ?? "",
-  max: process.env.DB_POOL_MAX ? Number(process.env.DB_POOL_MAX) : undefined,
+  // Explicit default (was the pg default of 10) sized for the concurrent write path — review 072.
+  max: process.env.DB_POOL_MAX ? Number(process.env.DB_POOL_MAX) : 20,
 });
 
 export const prisma = new PrismaClient({ adapter });

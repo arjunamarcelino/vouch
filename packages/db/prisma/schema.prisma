@@ -48,8 +48,9 @@ model JobMetadata {
   trackedTxs    TrackedTransaction[]
   feedEvents    FeedEvent[]
 
-  @@index([clientAddress])
-  @@index([providerAddress])
+  // Composite so GET /jobs/mine (WHERE address ORDER BY createdAt DESC) is index-ordered (review 072).
+  @@index([clientAddress, createdAt(sort: Desc)])
+  @@index([providerAddress, createdAt(sort: Desc)])
 }
 
 // =============================================================================
