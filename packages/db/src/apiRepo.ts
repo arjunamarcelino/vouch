@@ -313,9 +313,23 @@ export async function appendFeedEvent(e: {
   });
 }
 
-export async function listFeedEvents(jobRequestId: string | undefined, limit = 100) {
+/**
+ * Participant-scoped feed: only events for jobs where `address` is the client or provider (review 054 —
+ * closes the IDOR). Optionally narrowed to one `jobRequestId` (which must belong to the caller). Scoping
+ * by the operational client/provider addresses is a display-authz read, never a money/state decision.
+ */
+export async function listFeedEventsForAddress(
+  address: string,
+  jobRequestId: string | undefined,
+  limit = 100,
+) {
+  const addr = address.toLowerCase();
+  const participant = { OR: [{ clientAddress: addr }, { providerAddress: addr }] };
   return prisma.feedEvent.findMany({
-    where: jobRequestId ? { jobRequestId } : {},
+    where: {
+      job: participant,
+      ...(jobRequestId ? { jobRequestId } : {}),
+    },
     orderBy: [{ at: "desc" }, { id: "desc" }],
     take: Math.min(limit, 200),
   });

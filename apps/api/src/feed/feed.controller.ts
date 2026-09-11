@@ -1,6 +1,7 @@
-import { Controller, Get, Query, UseGuards } from "@nestjs/common";
-import { listFeedEvents } from "@vouch/db";
+import { Controller, Get, Query, Req, UseGuards } from "@nestjs/common";
+import { listFeedEventsForAddress } from "@vouch/db";
 import { AuthGuard } from "../auth/guards/auth.guard";
+import type { SessionUser } from "../auth/roles";
 
 interface FeedItem {
   id: string;
@@ -16,8 +17,9 @@ interface FeedItem {
 @UseGuards(AuthGuard)
 export class FeedController {
   @Get()
-  async list(@Query("jobId") jobId?: string): Promise<FeedItem[]> {
-    const rows = await listFeedEvents(jobId);
+  async list(@Req() req: { user: SessionUser }, @Query("jobId") jobId?: string): Promise<FeedItem[]> {
+    // Participant-scoped: only the caller's own jobs' events (closes the IDOR — review 054).
+    const rows = await listFeedEventsForAddress(req.user.address, jobId);
     return rows.map((r) => ({
       id: r.id,
       kind: r.kind,
