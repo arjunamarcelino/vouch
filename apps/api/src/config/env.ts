@@ -18,6 +18,46 @@ const envSchema = z
     // Base URL of the agent's REST core (apps/agent). The dashboard reads quotes / decision traces
     // via the agent, NOT by importing its DB repo (architecture P2 — no shared-DB coupling).
     AGENT_URL: z.string().url().default("http://localhost:3002"),
+
+    // ---- chain (chainId itself is derived from CHAIN_ENV via chainForEnv — no standalone env) ----
+    ARC_RPC_URL_FALLBACK: z.string().url().optional(),
+    // USDC ERC-20 (6-dec). Optional: ChainService reads usdc() from the hub when unset (trust-minimized).
+    ARC_USDC_ADDRESS: z
+      .string()
+      .regex(/^0x[a-fA-F0-9]{40}$/u)
+      .optional(),
+    CONFIRMATIONS_REQUIRED: z.coerce.number().int().positive().default(3),
+    RPC_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
+    RPC_MAX_RETRIES: z.coerce.number().int().nonnegative().default(3),
+    TX_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(4_000),
+    TX_POLL_MAX_ATTEMPTS: z.coerce.number().int().positive().default(60),
+
+    // ---- session / SIWE ----
+    SESSION_SECRET: z.string().min(32).optional(), // required outside development (superRefine)
+    SESSION_TTL_SECONDS: z.coerce.number().int().positive().default(3600),
+    SIWE_DOMAIN: z.string().optional(), // required outside development
+    SIWE_NONCE_TTL_SECONDS: z.coerce.number().int().positive().default(300),
+    WEB_ORIGIN: z.string().url().optional(), // required outside development (CORS credentials)
+    // Bearer key for system/agent callbacks (health/tx re-verify). No user.address ⇒ cannot pass @JobParty.
+    SYSTEM_API_KEY: z.string().optional(),
+
+    // ---- authorization / demo ----
+    ADMIN_ADDRESSES: z
+      .string()
+      .default("")
+      .transform((s) => s.split(",").map((a) => a.trim().toLowerCase()).filter(Boolean)),
+    DEMO_MODE: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((v) => v === "true"),
+
+    // ---- rate limiting (throttler) ----
+    THROTTLE_TTL_SECONDS: z.coerce.number().int().positive().default(60),
+    THROTTLE_LIMIT: z.coerce.number().int().positive().default(120),
+
+    // ---- db pool ----
+    DB_POOL_MAX: z.coerce.number().int().positive().optional(),
+    DB_STATEMENT_TIMEOUT_MS: z.coerce.number().int().positive().optional(),
   })
   .superRefine((e, ctx) => {
     // The block-lag freshness gate needs an RPC; no RPC ⇒ freshness unverifiable ⇒ must refuse.
@@ -34,6 +74,22 @@ const envSchema = z
         path: ["SUBGRAPH_DEPLOYMENT_ID"],
         message: "SUBGRAPH_DEPLOYMENT_ID is required when SUBGRAPH_URL is set (deployment trust-root pin)",
       });
+    }
+    // Outside development, session/SIWE/CORS material is mandatory (fail-closed, no dev fallbacks).
+    if (e.CHAIN_ENV !== "development") {
+      for (const [key, val] of [
+        ["SESSION_SECRET", e.SESSION_SECRET],
+        ["SIWE_DOMAIN", e.SIWE_DOMAIN],
+        ["WEB_ORIGIN", e.WEB_ORIGIN],
+      ] as const) {
+        if (!val) {
+          ctx.addIssue({
+            code: "custom",
+            path: [key],
+            message: `${key} is required when CHAIN_ENV is not "development"`,
+          });
+        }
+      }
     }
   });
 
