@@ -65,7 +65,7 @@ function main() {
     " * Regenerate: `pnpm --filter @vouch/contracts abi:sync`\n" +
     " *\n" +
     " * Emitted as `.ts as const` so viem keeps full function/arg type inference.\n" +
-    " * The CRE report is `abi.decode(report, (uint256 chainId, address hub, uint256 jobId, bool covered, uint256 amount))`.\n" +
+    " * The CRE report is `abi.decode(report, (uint256 chainId, address hub, uint256 jobId, bool covered, uint256 amount, bytes32 evidenceCommitment, uint64 evaluatedAt))`.\n" +
     " */\n";
   const tsBody = `export const assuranceHubAbi = ${JSON.stringify(abi, null, 2)} as const;\n`;
 

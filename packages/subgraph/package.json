@@ -7,8 +7,8 @@
   "scripts": {
     "codegen": "graph codegen",
     "build": "graph build",
-    "test": "graph test",
-    "test:coverage": "graph test -- -c",
+    "test": "graph test -v 0.6.0",
+    "test:coverage": "graph test -v 0.6.0 -- -c",
     "preflight": "node scripts/preflight.mjs",
     "deploy:studio": "node scripts/preflight.mjs && graph deploy",
     "create:local": "graph create --node http://localhost:8020/ vouch/vouch-subgraph",

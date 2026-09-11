@@ -45,6 +45,11 @@ contract AssuranceHub is ReceiverBase, AccessControl, Pausable, ReentrancyGuard 
     /// @notice Delay before a queued forwarder/workflow config change can be applied (finding 004):
     ///         stops a compromised admin from instantly repointing the settlement gate to force a payout.
     uint64 public constant CONFIG_TIMELOCK = 2 days;
+    /// @notice Tolerated skew between the enclave-stamped `evaluatedAt` (DON `runtime.now()`) and Arc
+    ///         `block.timestamp` at inclusion. The DON clock may lead Arc slightly; without a skew a
+    ///         legitimate covered payout would revert `BadTimestamp` and burn the claim. `evaluatedAt`
+    ///         is advisory provenance, NOT a replay guard (replay is blocked by settled/status latches).
+    uint64 public constant EVAL_TIMESTAMP_SKEW = 5 minutes;
 
     // ------------------------------------------------------------------ //
     //                              Types                                  //
@@ -146,7 +151,12 @@ contract AssuranceHub is ReceiverBase, AccessControl, Pausable, ReentrancyGuard 
     event InitialEvaluationResolved(uint256 indexed jobId, address indexed evaluator, bool approved);
     event CoverageStarted(uint256 indexed jobId, uint64 coverageEnd);
     event ClaimOpened(uint256 indexed jobId, address indexed client, bytes32 evidenceCommitment);
-    event ConfidentialEvaluationResolved(uint256 indexed jobId, bool covered, uint256 serviceCredit);
+    /// @param evidenceCommitment keccak256 binding of the confidential evaluation (public-safe, reveals no
+    ///        secret criteria); `bytes32(0)` on the permissionless `resolveClaimTimeout` path (no report).
+    /// @param evaluatedAt enclave-stamped evaluation time (seconds); `block.timestamp` on the timeout path.
+    event ConfidentialEvaluationResolved(
+        uint256 indexed jobId, bool covered, uint256 serviceCredit, bytes32 evidenceCommitment, uint64 evaluatedAt
+    );
     event GuaranteePaid(uint256 indexed jobId, address indexed client, uint256 amount);
     event CollateralReleased(uint256 indexed jobId, address indexed provider, uint256 amount);
     event JobExpired(
@@ -370,19 +380,37 @@ contract AssuranceHub is ReceiverBase, AccessControl, Pausable, ReentrancyGuard 
     /// @notice CRE receiver finalizes the confidential claim. ClaimPending -> ClaimPaid | InitiallyApproved.
     /// @dev NOT pausable (an already-earned claim must finalize). Gated by forwarder + workflow identity.
     /// @param metadata Packed Keystone metadata (bytes32 id | bytes10 name | address owner).
-    /// @param report   abi.encode(uint256 chainId, address hub, uint256 jobId, bool covered, uint256 amount).
+    /// @param report   abi.encode(uint256 chainId, address hub, uint256 jobId, bool covered, uint256 amount,
+    ///                 bytes32 evidenceCommitment, uint64 evaluatedAt).
     ///                 `chainId`+`hub` bind the report to THIS deployment (anti cross-chain replay, 003);
-    ///                 `amount` is the CRE's decided service credit, capped at the guarantee.
+    ///                 `amount` is the CRE's decided service credit, capped at the guarantee; the CRE passes
+    ///                 `amount == guaranteeAmount` on a covered verdict (secret-independent, plan D-I).
+    ///                 `evidenceCommitment` is a public-safe keccak binding of the confidential run and is
+    ///                 recorded onchain; `evaluatedAt` is advisory provenance (skew-tolerant, NOT a replay guard).
     function onReport(bytes calldata metadata, bytes calldata report) external override nonReentrant {
         _authorizeReport(metadata);
 
-        (uint256 reportChainId, address reportHub, uint256 jobId, bool covered, uint256 amount) =
-            abi.decode(report, (uint256, address, uint256, bool, uint256));
+        (
+            uint256 reportChainId,
+            address reportHub,
+            uint256 jobId,
+            bool covered,
+            uint256 amount,
+            bytes32 evidenceCommitment,
+            uint64 evaluatedAt
+        ) = abi.decode(report, (uint256, address, uint256, bool, uint256, bytes32, uint64));
         if (reportChainId != block.chainid || reportHub != address(this)) revert Errors.ReportDomainMismatch();
 
         AssuranceJob storage job = _jobs[jobId];
+        // Terminal conditions FIRST so a settled/wrong-state job always surfaces AlreadySettled/BadState
+        // (which the relay treats as a no-op), never a spurious BadCommitment/BadTimestamp retry (plan §5, M2).
         if (settled[jobId]) revert Errors.AlreadySettled();
         if (job.status != State.ClaimPending) revert Errors.BadState();
+        // Evidence validation (both branches carry real evidence; timeout path is the only zero-commitment exit).
+        if (evidenceCommitment == bytes32(0)) revert Errors.BadCommitment();
+        if (evaluatedAt == 0 || evaluatedAt > uint64(block.timestamp) + EVAL_TIMESTAMP_SKEW) {
+            revert Errors.BadTimestamp();
+        }
 
         if (covered) {
             uint256 guarantee = job.guaranteeAmount;
@@ -395,7 +423,7 @@ contract AssuranceHub is ReceiverBase, AccessControl, Pausable, ReentrancyGuard 
             totalLiabilities -= guarantee;
 
             // Effects phase: emit all events before any interaction (CEI, finding 009).
-            emit ConfidentialEvaluationResolved(jobId, true, amount);
+            emit ConfidentialEvaluationResolved(jobId, true, amount, evidenceCommitment, evaluatedAt);
             emit GuaranteePaid(jobId, job.client, amount);
             if (remainder > 0) emit CollateralReleased(jobId, job.provider, remainder);
 
@@ -408,7 +436,7 @@ contract AssuranceHub is ReceiverBase, AccessControl, Pausable, ReentrancyGuard 
             // verdict consumes coverage even if a different covered failure later occurs in-window.
             // Intentional MVP behavior; a rejected claim cannot be re-filed. No funds move.
             job.status = State.InitiallyApproved;
-            emit ConfidentialEvaluationResolved(jobId, false, 0);
+            emit ConfidentialEvaluationResolved(jobId, false, 0, evidenceCommitment, evaluatedAt);
         }
     }
 
@@ -422,7 +450,8 @@ contract AssuranceHub is ReceiverBase, AccessControl, Pausable, ReentrancyGuard 
 
         job.status = State.InitiallyApproved;
         emit ClaimTimedOut(jobId);
-        emit ConfidentialEvaluationResolved(jobId, false, 0);
+        // No confidential report on the timeout path: zero evidence commitment, block time as the stamp.
+        emit ConfidentialEvaluationResolved(jobId, false, 0, bytes32(0), uint64(block.timestamp));
     }
 
     // ------------------------------------------------------------------ //

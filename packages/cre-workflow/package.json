@@ -3,17 +3,18 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Chainlink CRE Confidential Workflow — runs the private regression verdict inside the enclave and writes a DON-signed report to AssuranceHub on Arc. See README for the @chainlink/cre-sdk wiring (intentionally NOT installed yet — see below).",
-  "//peerDependencies": "OPTIONAL peer (NOT installed to avoid version/type risk — plan §17.2, §17.11): '@chainlink/cre-sdk' provides ConfidentialHTTPClient, handler, Runner, EVMClient, prepareReportRequest, getNetwork. Pin the exact version once confirmed (npm view @chainlink/cre-sdk version), then wire workflow.ts per §17.2 and drop the local CreRuntime adapter.",
+  "description": "Chainlink CRE Confidential Workflow — runs the private regression verdict inside the enclave (handlerInTee + ConfidentialHTTPClient) and writes a DON-signed 7-tuple report to AssuranceHub on Arc.",
+  "//zod": "Pinned to 3.25.76 (NOT the workspace catalog v4): @chainlink/cre-sdk@1.20.1 depends on zod v3, and Runner.newRunner requires the config schema to be built with the SAME zod instance (plan §16, §17.11-7). Do not switch to catalog: here. Do NOT import @vouch/shared into this package either — it pins zod via catalog (v4) and would reintroduce the two-copies mismatch this pin guards against; keep any reused taxonomy (e.g. RefuseReason) local.",
   "scripts": {
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test '*.test.ts'",
-    "simulate": "echo 'Run: cre workflow simulate — install the CRE CLI first (see README)'"
+    "simulate": "echo 'Run: cre workflow simulate <name> --target staging-settings --non-interactive --trigger-index 0 --http-payload ./fixtures/<fixture>.json  (install the CRE CLI first — see README/docs)'"
   },
   "dependencies": {
+    "@chainlink/cre-sdk": "1.20.1",
     "viem": "catalog:",
-    "zod": "catalog:"
+    "zod": "3.25.76"
   },
   "devDependencies": {
     "@vouch/config": "workspace:*",

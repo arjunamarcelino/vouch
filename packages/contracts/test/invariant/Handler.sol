@@ -145,7 +145,12 @@ contract Handler is Test {
         // (payout to client + remainder to provider) is exercised (finding 006).
         uint256 amount = covered ? bound(amountSeed, 1, GUARANTEE) : 0;
         vm.prank(forwarder);
-        hub.onReport(_meta(), abi.encode(block.chainid, address(hub), jobId, covered, amount));
+        hub.onReport(
+            _meta(),
+            abi.encode(
+                block.chainid, address(hub), jobId, covered, amount, bytes32(uint256(1)), uint64(block.timestamp)
+            )
+        );
         if (covered) {
             // Total out == payout + remainder == GUARANTEE regardless of the split.
             ghost_paidOut += GUARANTEE;

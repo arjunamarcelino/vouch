@@ -166,11 +166,15 @@ export function confidentialEvaluationResolved(
   logIndex: i32,
   block: i32,
   ts: i32,
+  evidenceCommitment: Bytes,
+  evaluatedAt: i32,
 ): ConfidentialEvaluationResolved {
   let e = base(changetype<ConfidentialEvaluationResolved>(newMockEvent()), tx, logIndex, block, ts);
   e.parameters.push(pU("jobId", BigInt.fromI32(jobId)));
   e.parameters.push(pBool("covered", covered));
   e.parameters.push(pU("serviceCredit", BigInt.fromI32(serviceCredit)));
+  e.parameters.push(pBytes("evidenceCommitment", evidenceCommitment));
+  e.parameters.push(pU("evaluatedAt", BigInt.fromI32(evaluatedAt)));
   return e;
 }
 

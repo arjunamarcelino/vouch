@@ -49,7 +49,7 @@ dataSources:
           handler: handleCoverageStarted
         - event: ClaimOpened(indexed uint256,indexed address,bytes32)
           handler: handleClaimOpened
-        - event: ConfidentialEvaluationResolved(indexed uint256,bool,uint256)
+        - event: ConfidentialEvaluationResolved(indexed uint256,bool,uint256,bytes32,uint64)
           handler: handleConfidentialEvaluationResolved
         - event: ClaimTimedOut(indexed uint256)
           handler: handleClaimTimedOut

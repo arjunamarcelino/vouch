@@ -1,12 +1,14 @@
-# Chainlink CRE — workflow manifest (plan §17.2)
+# Chainlink CRE — workflow manifest (aligned to the current CLI schema).
 
-workflow-name: vouch-outcome-assurance
+staging-settings:
+  user-workflow:
+    workflow-name: vouch-outcome-assurance
 
-workflow-artifacts:
-  # Entry point compiled/run by the CRE runtime.
-  workflow-path: ./workflow.ts
-  # Non-secret runtime config validated by configSchema in workflow.ts.
-  config-path: ./config.staging.json
-  # Secret NAME -> env var mapping (values live in the Vault DON, never here).
-  # Copy secrets.yaml.example -> secrets.yaml (git-ignored) before provisioning.
-  secrets-path: ./secrets.yaml
+  workflow-artifacts:
+    # Entry point compiled to WASM and run by the CRE runtime.
+    workflow-path: ./workflow.ts
+    # Non-secret runtime config validated by configSchema in config.ts.
+    config-path: ./config.staging.json
+    # Secret NAME -> env var mapping (values live in the Vault DON, never here).
+    # Copy secrets.yaml.example -> secrets.yaml (git-ignored) before provisioning.
+    secrets-path: ./secrets.yaml

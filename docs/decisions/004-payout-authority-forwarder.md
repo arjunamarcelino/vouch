@@ -50,3 +50,27 @@ decision** because it defines the receiver's trust surface and the E8/E8b tests.
   gating on `msg.sender`; the DON key set and (if used) the KeystoneForwarder / verifier addresses
   must be resolved at build time. `ReceiverTemplate` is already `Ownable` — resolve the single
   `Ownable` lineage deliberately when adding admin setters for the expected-workflow bindings.
+
+## Post-review hardening (2026-09-11)
+
+**OWNER DECISION 2026-09-11 — accept the trusted-EOA-relay payout with LABEL-ONLY for hackathon
+scope.** The dispute-window / timelock fallback this ADR describes ("if onchain signature
+verification proves infeasible … gated behind a client dispute window + timelock") is **knowingly NOT
+implemented** in the hackathon build.
+
+- **Rationale.** The trust-minimized path (a real onchain DON-signature verifier or a canonical
+  KeystoneForwarder) is **blocked on external unknowns** — the DON key set on Arc and private-beta
+  enrollment — and a dispute-window/timelock is **disproportionate to a demo**. The build therefore
+  ships the trusted-EOA-relay path, labeled explicitly "trusted-relay, NOT trust-minimized" so judges
+  are not misled (README, `docs/chainlink-confidential-workflow.md` §5, ADR-005 §8).
+- **The lightweight dispute window is recorded as PRODUCTION HARDENING**, not built now. Production
+  still requires either a real `KeystoneForwarder` that verifies DON signatures or in-contract
+  signature verification inside `onReport`; the dispute window is the interim client/provider check on
+  a bad-input verdict.
+- **Honest blast radius.** Under this model a **malicious relay can force a full-guarantee payout to
+  the client on any `ClaimPending` job** — identity, domain, and commit are all public/forgeable, so
+  those onchain checks give **no** protection against a compromised relay. The payout is bounded only
+  by **client-recipient-binding** (funds route to `job.client`, never an arbitrary address) and
+  **`amount ≤ cap`**. A client colluding with the relay can extract a provider's collateral; a single
+  operator holding **both** the confidential test API and the relay reconstitutes agent-as-authority.
+  Exercised by `test_ForwarderIsEOA_CanForceCoveredPayout` (ADR-005 §8).

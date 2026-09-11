@@ -5,7 +5,7 @@
  * Regenerate: `pnpm --filter @vouch/contracts abi:sync`
  *
  * Emitted as `.ts as const` so viem keeps full function/arg type inference.
- * The CRE report is `abi.decode(report, (uint256 chainId, address hub, uint256 jobId, bool covered, uint256 amount))`.
+ * The CRE report is `abi.decode(report, (uint256 chainId, address hub, uint256 jobId, bool covered, uint256 amount, bytes32 evidenceCommitment, uint64 evaluatedAt))`.
  */
 export const assuranceHubAbi = [
   {
@@ -102,6 +102,19 @@ export const assuranceHubAbi = [
         "name": "",
         "type": "bytes32",
         "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "EVAL_TIMESTAMP_SKEW",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint64",
+        "internalType": "uint64"
       }
     ],
     "stateMutability": "view"
@@ -910,6 +923,18 @@ export const assuranceHubAbi = [
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
+      },
+      {
+        "name": "evidenceCommitment",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "evaluatedAt",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
       }
     ],
     "anonymous": false
@@ -1476,6 +1501,11 @@ export const assuranceHubAbi = [
   {
     "type": "error",
     "name": "BadState",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "BadTimestamp",
     "inputs": []
   },
   {

@@ -497,6 +497,8 @@ export function handleConfidentialEvaluationResolved(event: ConfidentialEvaluati
   record.provider = claim.provider;
   record.covered = event.params.covered;
   record.serviceCredit = event.params.serviceCredit;
+  record.evidenceCommitment = event.params.evidenceCommitment;
+  record.evaluatedAt = event.params.evaluatedAt;
   record.resolvedByTimeout = claim.resolvedByTimeout;
   record.blockNumber = event.block.number;
   record.timestamp = event.block.timestamp;

@@ -35,7 +35,9 @@ abstract contract AssuranceHubBase is AssuranceHubConstants {
     event InitialEvaluationResolved(uint256 indexed jobId, address indexed evaluator, bool approved);
     event CoverageStarted(uint256 indexed jobId, uint64 coverageEnd);
     event ClaimOpened(uint256 indexed jobId, address indexed client, bytes32 evidenceCommitment);
-    event ConfidentialEvaluationResolved(uint256 indexed jobId, bool covered, uint256 serviceCredit);
+    event ConfidentialEvaluationResolved(
+        uint256 indexed jobId, bool covered, uint256 serviceCredit, bytes32 evidenceCommitment, uint64 evaluatedAt
+    );
     event GuaranteePaid(uint256 indexed jobId, address indexed client, uint256 amount);
     event CollateralReleased(uint256 indexed jobId, address indexed provider, uint256 amount);
     event JobExpired(
@@ -70,9 +72,27 @@ abstract contract AssuranceHubBase is AssuranceHubConstants {
         return _metadata(WORKFLOW_ID, WORKFLOW_NAME, workflowOwner);
     }
 
+    /// @dev Default public-safe evidence commitment the CRE workflow would produce (plan §6.4).
+    bytes32 internal constant EVIDENCE_COMMITMENT = keccak256("vouch-evidence-commitment");
+
+    /// @dev Enclave-stamped evaluation time used in the happy-path report; matches `block.timestamp`
+    ///      within the test's block so `vm.expectEmit` assertions line up.
+    function _evalAt() internal view returns (uint64) {
+        return uint64(block.timestamp);
+    }
+
     function _report(uint256 jobId, bool covered, uint256 amount) internal view returns (bytes memory) {
-        // Domain-bound report (003): chainId + hub prefix the verdict tuple.
-        return abi.encode(block.chainid, address(hub), jobId, covered, amount);
+        // Domain-bound 7-tuple report (003 + plan §5): chainId + hub prefix, evidenceCommitment + evaluatedAt suffix.
+        return abi.encode(block.chainid, address(hub), jobId, covered, amount, EVIDENCE_COMMITMENT, _evalAt());
+    }
+
+    /// @dev Full-control report builder for negative tests (custom evidence / evaluatedAt).
+    function _reportEx(uint256 jobId, bool covered, uint256 amount, bytes32 evidenceCommitment, uint64 evaluatedAt)
+        internal
+        view
+        returns (bytes memory)
+    {
+        return abi.encode(block.chainid, address(hub), jobId, covered, amount, evidenceCommitment, evaluatedAt);
     }
 
     function _onReport(uint256 jobId, bool covered, uint256 amount) internal {

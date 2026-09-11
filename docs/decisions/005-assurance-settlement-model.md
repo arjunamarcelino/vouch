@@ -134,6 +134,28 @@ tracked in `todos/`):
 - **ABI single source enforced (002).** CI (`contracts.yml`) regenerates the shared + subgraph ABIs
   from the build and fails on drift.
 
+## Post-review hardening (2026-09-11)
+
+The confidential-workflow build (plan
+`docs/plans/2026-09-11-feat-confidential-post-completion-evaluation-plan.md`) migrates the report and
+records the evidence commitment onchain:
+
+- **The report is now a 7-tuple** (widened from the 5-tuple in §6 above):
+  `abi.encode(uint256 chainId, address hub, uint256 jobId, bool covered, uint256 amount,
+  bytes32 evidenceCommitment, uint64 evaluatedAt)`. The two NEW fields are validated **after** the
+  `settled[jobId]` + `status==ClaimPending` checks (so a settled/wrong-state job surfaces the terminal
+  `AlreadySettled`/`BadState`, never a spurious new-field error): `evidenceCommitment != bytes32(0)`
+  else `BadCommitment`; `evaluatedAt > 0 && <= block.timestamp + SKEW` else `BadTimestamp` (advisory
+  provenance, skew-tolerant, **not** a replay guard).
+- **`onReport` records the evidence commitment** + `evaluatedAt` and emits them on the widened
+  `ConfidentialEvaluationResolved` event (subgraph-indexed). `resolveClaimTimeout` supplies defaults
+  (`bytes32(0)`, `block.timestamp`) since it does not route through `onReport`.
+- **`amount ∈ {0, guaranteeAmount}`** — secret-independent by construction; the contract **reverts,
+  never clamps**, on a zero or over-cap amount (`ZeroPayout` / `AmountAboveCap`). The
+  covered-failure-code and evaluated-commit required outputs are bound in the evidence-commitment
+  preimage + off-chain opening JSON, not by widening the tuple further.
+- See `docs/chainlink-confidential-workflow.md` for the full walkthrough.
+
 ## Consequences
 
 - **Positive:** one canonical settlement contract with a clear, testable lifecycle; a clean split
