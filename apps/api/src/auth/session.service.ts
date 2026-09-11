@@ -1,5 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
+import { getProfile } from "@vouch/db";
+import { ChainService } from "../common/chain/chain.service";
 import { loadEnv } from "../config/env";
 import { SESSION_COOKIE } from "./guards/auth.guard";
 
@@ -26,7 +28,24 @@ export class SessionService {
   private readonly env = loadEnv();
   private readonly secret = this.env.SESSION_SECRET ?? "dev-insecure-secret-please-set-SESSION_SECRET";
 
-  constructor(private readonly jwt: JwtService) {}
+  constructor(
+    private readonly jwt: JwtService,
+    private readonly chain: ChainService,
+  ) {}
+
+  /** Resolve the session identity view: address + global roles + display name (review 065). */
+  async me(address: string): Promise<{ address: string; roles: string[]; displayName: string }> {
+    const roles: string[] = [];
+    if (this.env.ADMIN_ADDRESSES.includes(address)) roles.push("ADMIN");
+    try {
+      const role = await this.chain.evaluatorRole();
+      if (await this.chain.hasRole(role, address)) roles.push("EVALUATOR");
+    } catch {
+      // role lookup unavailable (no RPC / down) — omit EVALUATOR rather than fail the whole profile read
+    }
+    const profile = await getProfile(address);
+    return { address, roles, displayName: profile?.displayName ?? "" };
+  }
 
   sign(address: string): string {
     return this.jwt.sign(

@@ -2,12 +2,9 @@ import { Body, Controller, Get, Post, Req, Res, UseGuards } from "@nestjs/common
 import { Throttle } from "@nestjs/throttler";
 import { z } from "zod";
 import { parseOrThrow } from "@vouch/shared/schemas";
-import { getProfile } from "@vouch/db";
 import { SiweService } from "./siwe.service";
 import { SessionService } from "./session.service";
 import { AuthGuard } from "./guards/auth.guard";
-import { ChainService } from "../common/chain/chain.service";
-import { loadEnv } from "../config/env";
 import type { SessionUser } from "./roles";
 
 /** Minimal cookie surface (avoids a hard @types/express dependency). */
@@ -28,12 +25,9 @@ const verifyBodySchema = z.object({
 @Controller("auth")
 @Throttle({ default: { ttl: 60_000, limit: 20 } }) // tighter bucket on the public auth surface (review 056)
 export class AuthController {
-  private readonly env = loadEnv();
-
   constructor(
     private readonly siwe: SiweService,
     private readonly session: SessionService,
-    private readonly chain: ChainService,
   ) {}
 
   @Post("nonce")
@@ -59,17 +53,7 @@ export class AuthController {
 
   @Get("me")
   @UseGuards(AuthGuard)
-  async me(@Req() req: { user: SessionUser }): Promise<{ address: string; roles: string[]; displayName: string }> {
-    const address = req.user.address;
-    const roles: string[] = [];
-    if (this.env.ADMIN_ADDRESSES.includes(address)) roles.push("ADMIN");
-    try {
-      const role = await this.chain.evaluatorRole();
-      if (await this.chain.hasRole(role, address)) roles.push("EVALUATOR");
-    } catch {
-      // role lookup unavailable (no RPC / down) — omit EVALUATOR rather than fail the whole profile read
-    }
-    const profile = await getProfile(address);
-    return { address, roles, displayName: profile?.displayName ?? "" };
+  me(@Req() req: { user: SessionUser }): Promise<{ address: string; roles: string[]; displayName: string }> {
+    return this.session.me(req.user.address);
   }
 }

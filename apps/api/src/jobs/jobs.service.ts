@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { z } from "zod";
 import { parseOrThrow } from "@vouch/shared/schemas";
+import { listJobsForAddress } from "@vouch/db";
 import { GraphService } from "../graph/graph.service";
 
 const providerRowSchema = z.object({
@@ -78,5 +79,19 @@ export class JobsService {
     );
     if (data.provider === null || data.provider === undefined) return null;
     return parseOrThrow(providerRowSchema, data.provider, "provider row");
+  }
+
+  /** The caller's jobs (operational metadata; cachedStatus is a display-only mirror — review 065). */
+  async listMine(address: string): Promise<unknown[]> {
+    const rows = await listJobsForAddress(address);
+    const addr = address.toLowerCase();
+    return rows.map((r) => ({
+      clientRequestId: r.clientRequestId,
+      jobId: r.jobId,
+      uiTitle: r.uiTitle,
+      role: r.clientAddress === addr ? "client" : "provider",
+      cachedStatus: r.cachedStatus,
+      createdAt: r.createdAt,
+    }));
   }
 }

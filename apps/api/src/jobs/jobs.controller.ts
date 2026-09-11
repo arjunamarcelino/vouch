@@ -1,6 +1,5 @@
 import { Controller, Get, Param, Req, UseGuards } from "@nestjs/common";
 import { VouchError } from "@vouch/shared/errors";
-import { listJobsForAddress } from "@vouch/db";
 import { JobsService } from "./jobs.service";
 import { ChainService, type OnchainJob } from "../common/chain/chain.service";
 import { AuthGuard } from "../auth/guards/auth.guard";
@@ -27,16 +26,8 @@ export class JobsController {
 
   @Get("mine")
   @UseGuards(AuthGuard)
-  async mine(@Req() req: { user: SessionUser }): Promise<unknown> {
-    const rows = await listJobsForAddress(req.user.address);
-    return rows.map((r) => ({
-      clientRequestId: r.clientRequestId,
-      jobId: r.jobId,
-      uiTitle: r.uiTitle,
-      role: r.clientAddress === req.user.address ? "client" : "provider",
-      cachedStatus: r.cachedStatus, // display-only mirror
-      createdAt: r.createdAt,
-    }));
+  mine(@Req() req: { user: SessionUser }): Promise<unknown[]> {
+    return this.jobs.listMine(req.user.address);
   }
 
   @Get(":id")

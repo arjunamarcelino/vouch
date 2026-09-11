@@ -14,7 +14,7 @@ test("session JWT roundtrips: SessionService.sign → AuthGuard accepts → req.
   const { AuthGuard } = await import("./guards/auth.guard");
 
   const jwt = new JwtService({});
-  const session = new SessionService(jwt);
+  const session = new SessionService(jwt, {} as never);
   const token = session.sign(ADDR);
   assert.match(token, /^[\w-]+\.[\w-]+\.[\w-]+$/u); // JWT shape
 
@@ -31,7 +31,7 @@ test("session JWT roundtrips: SessionService.sign → AuthGuard accepts → req.
 test("cookie is httpOnly + SameSite=Strict; secure off in development", async () => {
   const { JwtService } = await import("@nestjs/jwt");
   const { SessionService } = await import("./session.service");
-  const c = new SessionService(new JwtService({})).cookie(ADDR);
+  const c = new SessionService(new JwtService({}), {} as never).cookie(ADDR);
   assert.equal(c.options.httpOnly, true);
   assert.equal(c.options.sameSite, "strict");
   assert.equal(c.options.secure, false); // development
