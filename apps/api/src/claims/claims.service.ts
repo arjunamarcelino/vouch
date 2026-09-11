@@ -51,12 +51,23 @@ export class ClaimsService {
     return this.build(ctx, jobId, "resolveClaimTimeout", [BigInt(jobId)]);
   }
 
-  async getClaimStatus(jobId: string): Promise<ClaimStatusView> {
+  /**
+   * `job` is the chain-authoritative record (reused from the JobPartyGuard — no second getJob; review
+   * 057). The expensive `confidentialResolution` (eth_getLogs) runs ONLY when a verdict can exist —
+   * ClaimPaid, or a consumed latch — so PENDING / NONE answer with zero log scans.
+   */
+  async getClaimStatus(jobId: string, job: OnchainJob): Promise<ClaimStatusView> {
     const id = BigInt(jobId);
-    const job = await this.chain.getJob(id);
 
-    // The CRE verdict (may throw CRE_RESULT_MALFORMED — fail-closed, never fabricated).
-    const resolution = await this.chain.confidentialResolution(id);
+    // Awaiting the DON verdict — no event yet, skip the log scan.
+    if (job.status === "ClaimPending") return { jobId, status: "PENDING" };
+
+    // A verdict event can only exist once the job is settled (ClaimPaid) or the latch was consumed
+    // (returned to InitiallyApproved with claimFiled). Otherwise there's nothing to look up.
+    const consumed = job.status === "InitiallyApproved" && (await this.chain.claimFiled(id));
+    if (job.status !== "ClaimPaid" && !consumed) return { jobId, status: "NONE" };
+
+    const resolution = await this.chain.confidentialResolution(id); // may throw CRE_RESULT_MALFORMED
     if (resolution) {
       if (resolution.evidenceCommitment.toLowerCase() === ZERO_BYTES32) {
         return { jobId, status: "TIMED_OUT", evaluatedAt: resolution.evaluatedAt.toString() };
@@ -66,14 +77,8 @@ export class ClaimsService {
       }
       return { jobId, status: "REJECTED_CONSUMED", evaluatedAt: resolution.evaluatedAt.toString() };
     }
-
-    // No verdict event yet — derive from job state + the claim latch.
-    if (job.status === "ClaimPending") return { jobId, status: "PENDING" };
-    if (job.status === "ClaimPaid") return { jobId, status: "COVERED_PAID" };
-    if (job.status === "InitiallyApproved" && (await this.chain.claimFiled(id))) {
-      return { jobId, status: "REJECTED_CONSUMED" };
-    }
-    return { jobId, status: "NONE" };
+    // Latch/settlement present but the event isn't indexable — derive from state (still fail-closed).
+    return { jobId, status: job.status === "ClaimPaid" ? "COVERED_PAID" : "REJECTED_CONSUMED" };
   }
 
   private async build(ctx: PrepareCtx, jobId: string, functionName: "openClaim" | "resolveClaimTimeout", args: readonly unknown[]): Promise<TransactionRequest> {

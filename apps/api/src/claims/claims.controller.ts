@@ -56,7 +56,8 @@ export class ClaimsController {
   @Get(":jobId/status")
   @JobParty("any")
   @UseGuards(JobPartyGuard)
-  status(@Param("jobId") id: string): Promise<ClaimStatusView> {
-    return this.claims.getClaimStatus(jobId(id));
+  status(@Req() req: ClaimReq, @Param("jobId") id: string): Promise<ClaimStatusView> {
+    // Reuse the job the guard already loaded (one getJob per request — review 057).
+    return this.claims.getClaimStatus(jobId(id), req.job!);
   }
 }

@@ -29,6 +29,8 @@ const envSchema = z
       .regex(/^0x[a-fA-F0-9]{40}$/u)
       .optional(),
     CONFIRMATIONS_REQUIRED: z.coerce.number().int().positive().default(3),
+    // Contract deploy block — the fromBlock floor for event scans (bounds eth_getLogs; review 057).
+    VOUCH_DEPLOY_BLOCK: z.coerce.number().int().nonnegative().optional(),
     RPC_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
     RPC_MAX_RETRIES: z.coerce.number().int().nonnegative().default(3),
     TX_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(4_000),

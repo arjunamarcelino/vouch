@@ -23,13 +23,14 @@ function stubChain(over: Record<string, unknown> = {}) {
 }
 
 const ctx = { address: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", idempotencyKey: "k" };
+const jobWith = (status: string) => ({ status }) as OnchainJob;
 
 test("getClaimStatus: covered verdict → COVERED_PAID with serviceCredit", async () => {
   const { ClaimsService } = await import("./claims.service");
   const svc = new ClaimsService(
     stubChain({ confidentialResolution: async () => ({ covered: true, serviceCredit: 100n, evidenceCommitment: NONZERO, evaluatedAt: 5n }) }),
   );
-  assert.deepEqual(await svc.getClaimStatus("1"), { jobId: "1", status: "COVERED_PAID", serviceCredit: "100", evaluatedAt: "5" });
+  assert.deepEqual(await svc.getClaimStatus("1", jobWith("ClaimPaid")), { jobId: "1", status: "COVERED_PAID", serviceCredit: "100", evaluatedAt: "5" });
 });
 
 test("getClaimStatus: zero commitment → TIMED_OUT (legitimate, not malformed)", async () => {
@@ -37,7 +38,7 @@ test("getClaimStatus: zero commitment → TIMED_OUT (legitimate, not malformed)"
   const svc = new ClaimsService(
     stubChain({ confidentialResolution: async () => ({ covered: false, serviceCredit: 0n, evidenceCommitment: ZERO, evaluatedAt: 9n }) }),
   );
-  assert.equal((await svc.getClaimStatus("1")).status, "TIMED_OUT");
+  assert.equal((await svc.getClaimStatus("1", jobWith("ClaimPaid"))).status, "TIMED_OUT");
 });
 
 test("getClaimStatus: covered=false → REJECTED_CONSUMED", async () => {
@@ -45,21 +46,29 @@ test("getClaimStatus: covered=false → REJECTED_CONSUMED", async () => {
   const svc = new ClaimsService(
     stubChain({ confidentialResolution: async () => ({ covered: false, serviceCredit: 0n, evidenceCommitment: NONZERO, evaluatedAt: 3n }) }),
   );
-  assert.equal((await svc.getClaimStatus("1")).status, "REJECTED_CONSUMED");
+  assert.equal((await svc.getClaimStatus("1", jobWith("ClaimPaid"))).status, "REJECTED_CONSUMED");
 });
 
-test("getClaimStatus: no verdict + ClaimPending → PENDING", async () => {
-  const { ClaimsService } = await import("./claims.service");
-  const svc = new ClaimsService(stubChain());
-  assert.equal((await svc.getClaimStatus("1")).status, "PENDING");
-});
-
-test("getClaimStatus: no verdict + latched on InitiallyApproved → REJECTED_CONSUMED", async () => {
+test("getClaimStatus: ClaimPending → PENDING without any log scan", async () => {
   const { ClaimsService } = await import("./claims.service");
   const svc = new ClaimsService(
-    stubChain({ getJob: async () => ({ status: "InitiallyApproved" }) as OnchainJob, claimFiled: async () => true }),
+    stubChain({ confidentialResolution: async () => { throw new Error("should not scan logs for a pending claim"); } }),
   );
-  assert.equal((await svc.getClaimStatus("1")).status, "REJECTED_CONSUMED");
+  assert.equal((await svc.getClaimStatus("1", jobWith("ClaimPending"))).status, "PENDING");
+});
+
+test("getClaimStatus: latched on InitiallyApproved → REJECTED_CONSUMED", async () => {
+  const { ClaimsService } = await import("./claims.service");
+  const svc = new ClaimsService(stubChain({ claimFiled: async () => true, confidentialResolution: async () => null }));
+  assert.equal((await svc.getClaimStatus("1", jobWith("InitiallyApproved"))).status, "REJECTED_CONSUMED");
+});
+
+test("getClaimStatus: InitiallyApproved + no latch → NONE without a log scan", async () => {
+  const { ClaimsService } = await import("./claims.service");
+  const svc = new ClaimsService(
+    stubChain({ claimFiled: async () => false, confidentialResolution: async () => { throw new Error("should not scan"); } }),
+  );
+  assert.equal((await svc.getClaimStatus("1", jobWith("InitiallyApproved"))).status, "NONE");
 });
 
 test("prepareOpenClaim rejects a job not InitiallyApproved", async () => {

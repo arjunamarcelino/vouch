@@ -233,13 +233,16 @@ export class ChainService {
     const event = (assuranceHubAbi as readonly { type: string; name?: string }[]).find(
       (x) => x.type === "event" && x.name === "ConfidentialEvaluationResolved",
     );
+    // Bound the scan to the configured deploy block (falls back to earliest only if unset) so hosted
+    // RPCs don't reject the range as the chain grows (review 057).
+    const fromBlock = this.env.VOUCH_DEPLOY_BLOCK !== undefined ? BigInt(this.env.VOUCH_DEPLOY_BLOCK) : "earliest";
     const logs = (await resilient(
       () =>
         this.rpc().getLogs({
           address: this.hub(),
           event: event as never,
           args: { jobId } as never,
-          fromBlock: "earliest",
+          fromBlock,
           toBlock: "latest",
         }),
       this.opts(),
