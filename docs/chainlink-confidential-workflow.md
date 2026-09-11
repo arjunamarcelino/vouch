@@ -171,46 +171,158 @@ submission does **not** claim a Nitro attestation. The externally-verifiable pro
 **DON-signature-gated `onReport`** executed under the **pinned workflow identity**, plus (if enrolled)
 the **Workflow Registry confidential attribute**.
 
-## 6. Simulation / deployment
+## 6. End-to-end deployment runbook (follow top to bottom)
 
+> **Living runbook.** These are the exact, ordered steps to stand up the confidential-evaluation path
+> end to end. Legend: **✅ verified working now** (run it as-is) · **⚠️ needs external access** (Arc RPC
+> + funds / a CRE account / a Graph Studio key) · **🔁 repeat per fixture**. Do the ✅ steps to validate
+> locally today; the ⚠️ steps are the live deploy once access is granted. Nothing here fabricates a
+> result — if a step needs access you don't have, use its documented fallback.
+
+### 6.0 Toolchain setup (one-time) — ✅
 ```bash
-# 1. Install the CRE CLI and confirm flags/version
-curl -sSL https://app.chain.link/cre/install.sh | bash && cre --version
+# Node 22 (matches .nvmrc) + pnpm 10 + Foundry
+nvm install && nvm use                 # reads .nvmrc (22)
+corepack enable && corepack prepare pnpm@10.29.2 --activate
+curl -L https://foundry.paradigm.xyz | bash && foundryup
+pnpm install                           # root; installs @chainlink/cre-sdk@1.20.1 (zod v3) for cre-workflow
 
-# 2. Install deps (pins @chainlink/cre-sdk@1.20.1) + local sim env (SENTINEL_<uuid> values only)
-pnpm --filter @vouch/cre-workflow install
-cp packages/cre-workflow/.env.example packages/cre-workflow/.env
+# Sanity: everything green before you deploy anything
+pnpm typecheck && pnpm lint && pnpm test && pnpm build
+pnpm --filter @vouch/contracts test:contracts      # 60 forge tests
+pnpm --filter @vouch/subgraph test                 # 14 matchstick tests
+forge --version
+```
+```bash
+# CRE CLI — needed only for `cre workflow simulate` / secrets (⚠️ install + `cre login` need a CRE account).
+curl -sSL https://app.chain.link/cre/install.sh | bash && cre --version   # docs cite v1.32.0
+# No CLI/account yet? Skip to the harness in 6.6 — it validates the full logic path locally today.
+```
+
+### 6.1 Environment & secrets — ✅ (files) / ⚠️ (real values)
+```bash
+cp .env.arc-testnet.example .env.arc-testnet          # root: chain/USDC/RPC/deploy + subgraph vars
+cp packages/cre-workflow/.env.example packages/cre-workflow/.env          # local-sim ONLY (SENTINELs)
 cp packages/cre-workflow/secrets.yaml.example packages/cre-workflow/secrets.yaml
-
-# 3. Dry-run simulate (PRIMARY EVIDENCE — proves report generation + encoding; onchain writes are
-#    dry-run by default). Repeat per fixture.
-cre workflow simulate vouch-outcome-assurance --target staging-settings --non-interactive \
-  --trigger-index 0 --http-payload ./fixtures/valid-failure.json | tee docs/evidence/simulate-valid-failure.txt
-
-# 4. Normalize volatile fields (log timestamps, dry-run 0x000… hashes) + write docs/evidence/MANIFEST
-#    (command, cre --version, sdk version, per-file sha256) + run the blocking grep gate.
-
-# 5. OPTIONAL broadcast (enrolled + funded relay + seeded ClaimPending job) → a real Arc tx.
-cre workflow simulate ... --broadcast   # prefer NOT committing raw broadcast output; if committed, gate for real secrets
+# Confirm both are git-ignored BEFORE putting any real value in them:
+git check-ignore packages/cre-workflow/.env packages/cre-workflow/secrets.yaml .env.arc-testnet
 ```
+Fill `.env.arc-testnet`: `ARC_RPC_URL` (confirm host — `.network` vs `.io`, plan §17.1),
+`USDC_ADDRESS` (`0x3600…0000`, verify at docs.arc.io), and a funded deployer key
+(prefer an encrypted keystore over a raw `PRIVATE_KEY`). For local sim only, put high-entropy
+`SENTINEL_<uuid>` values in `packages/cre-workflow/.env` — **never** a real credential or private test.
 
-**Deterministic local harness (runnable fallback).** When the CRE CLI or a CRE account is
-unavailable, the deterministic harness is the runnable stand-in — it exercises the same handler
-through the `EvalPort` seam with a fixed clock and sentinel secrets:
-
+### 6.2 Decide the CRE identity BEFORE deploying the contract — ✅ (choose) / decisions
+The AssuranceHub constructor bakes in the forwarder + workflow identity, and the workflow's config must
+reuse the SAME values, so choose them first and export them for the deploy:
 ```bash
-node --import tsx harness.ts fixtures/valid-failure.json
+export ARC_USDC_ADDRESS=0x3600000000000000000000000000000000000000
+export CRE_FORWARDER_ADDRESS=<forwarder>     # ⚠️ Arc testnet has NO canonical KeystoneForwarder →
+                                             #    this is your TRUSTED EOA relay address (ADR-004/§5 caveat)
+export CRE_WORKFLOW_ID=$(cast keccak "vouch-assurance-v1")     # bytes32 (matches the contract tests)
+export CRE_WORKFLOW_NAME=$(cast format-bytes32-string "vouchclaim")  # bytes10 = leading 10 bytes of this
+export CRE_WORKFLOW_OWNER=<workflow-owner-address>
+export ADMIN_ADDRESS=<admin> EVALUATOR_ADDRESS=<evaluator> FEE_RECIPIENT_ADDRESS=<feeRecipient>
+export PRIVATE_KEY=<deployer-pk>             # or use --account <keystore>
+export ARC_TESTNET_RPC_URL=$ARC_RPC_URL
+```
+> The workflow's report metadata is `abi.encodePacked(workflowId, workflowName, workflowOwner)`; the
+> receiver rejects any report whose identity ≠ these. Reuse the exact same three values in 6.5.
+
+### 6.3 Deploy the settlement contract to Arc testnet — ⚠️ needs RPC + funds
+```bash
+cd packages/contracts
+forge build                                        # ✅
+forge script script/Deploy.s.sol:Deploy \
+  --rpc-url arc_testnet --broadcast \
+  --verify --verifier blockscout \
+  --verifier-url https://testnet.arcscan.app/api/  # Arcscan is Blockscout; the key is ignored
+# Record the deployed AssuranceHub address from the broadcast output:
+export ASSURANCE_HUB=<deployed-address>
+# (optional Track-D escrow) forge script script/DeployEscrow.s.sol:DeployEscrow --rpc-url arc_testnet --broadcast
+pnpm --filter @vouch/contracts abi:sync            # ✅ keep shared + subgraph ABIs in lockstep
 ```
 
-**Blocking grep gate (must pass before committing any evidence):** a pattern scan (`Bearer `, long
-hex, `api_key=`, the real test-API host) over **source and `docs/evidence/*`** — the gate is
-pattern-based, not sentinel-only, so it also catches real secrets in any `--broadcast` output — **AND**
-a positive assertion that **the run exercised the secret path** (a PAYOUT/CLEAN_CLOSE occurred).
-"No sentinel found" is meaningless unless the secret path actually ran, so both conditions block.
+### 6.4 Deploy the subgraph — ⚠️ needs Graph Studio key OR a local graph-node
+```bash
+cd packages/subgraph
+# Point the manifest at the deployed hub + its deploy block (networks.json → address/startBlock).
+pnpm codegen && pnpm build && pnpm test            # ✅ (test is local)
+# Studio:
+graph auth $GRAPH_DEPLOY_KEY && pnpm deploy:studio --version-label "$SUBGRAPH_VERSION"
+# …or fully local:  pnpm create:local && pnpm deploy:local
+# Then record SUBGRAPH_URL + SUBGRAPH_DEPLOYMENT_ID (Qm…) in .env.arc-testnet and:
+pnpm health-check                                  # asserts synced / no indexing errors / lag budget
+```
 
-Other gates: `pnpm --filter @vouch/cre-workflow lint|typecheck|test`;
-`pnpm --filter @vouch/contracts test:contracts && abi:sync`;
-`pnpm --filter @vouch/subgraph test`; then repo-wide `pnpm lint && typecheck && test && build`.
+### 6.5 Configure the CRE workflow — ✅ (edit) / verify
+Edit `packages/cre-workflow/config.staging.json` (all `0x0…0` placeholders are REJECTED at startup by
+the non-zero refine, so real values are mandatory):
+```jsonc
+{
+  "chainSelectorName": "arc-testnet",       // must resolve via getNetwork() (selector 3034092155422581607)
+  "chainId": "5042002",                     // must equal arc-testnet block.chainid (config refine checks this)
+  "assuranceHubAddress": "<ASSURANCE_HUB>", // the 6.3 address (log trigger + getJob + report hub + writeReport)
+  "owner": "<CRE_WORKFLOW_OWNER>",          // Vault secret-owner scope for {{.token}}
+  "gasLimit": "500000",
+  "testApiUrl": "https://<your-confidential-test-api>/evaluate",
+  "workflowId": "<CRE_WORKFLOW_ID>"         // the SAME bytes32 baked into the contract in 6.2
+}
+```
+Set `project.yaml` rpcs → `${ARC_TESTNET_RPC_URL}`; set `workflow.yaml` workflow-name. Provision the
+runtime secrets into the Vault DON (⚠️ needs `cre login`):
+```bash
+cd packages/cre-workflow
+cre secrets create secrets.yaml --target staging-settings   # token, PASS_THRESHOLD, PRIVATE_TEST_REF
+pnpm typecheck && pnpm test && pnpm lint                     # ✅ 46 tests
+```
+
+### 6.6 Simulate — primary evidence — ✅ logic (harness) / ⚠️ CLI needs account
+```bash
+cd packages/cre-workflow
+# A) Deterministic local harness — WORKS NOW, no CLI/account. Proves the full decision+encode path.
+node --import tsx harness.ts fixtures/valid-failure.json      # PAYOUT
+node --import tsx harness.ts fixtures/valid-pass.json         # CLEAN_CLOSE
+node --import tsx harness.ts fixtures/timeout-error.json      # REFUSE
+# B) Official CRE CLI dry-run (⚠️ needs cre login) — the submission evidence. 🔁 per fixture.
+cre workflow simulate vouch-outcome-assurance --target staging-settings --non-interactive \
+  --trigger-index 0 --http-payload ./fixtures/valid-failure.json | tee ../../docs/evidence/simulate-valid-failure.txt
+```
+Then **sanitize** (normalize log timestamps + the dry-run `0x000…` hashes), write
+`docs/evidence/MANIFEST` (exact command, `cre --version`, `@chainlink/cre-sdk` version, per-file
+sha256), and run the **blocking grep gate** before committing any evidence: a pattern scan
+(`Bearer `, long hex, `api_key=`, the real test-API host) over **source and `docs/evidence/*`** — not
+sentinel-only, so it also catches real secrets in `--broadcast` output — **AND** a positive assertion
+that the run exercised the secret path (a PAYOUT/CLEAN_CLOSE occurred). Both conditions must pass.
+
+### 6.7 Live settlement (optional bonus) — ⚠️ needs enrollment/relay + a seeded job
+A report can only settle a job that is already `ClaimPending`. Seed one, then deliver the report:
+```bash
+# Seed the lifecycle with cast (client & provider must approve USDC to $ASSURANCE_HUB first):
+cast send $ASSURANCE_HUB "openJob(address,address,uint256,uint256,uint256,uint64,uint64,bytes32,bytes32)" \
+  <provider> $ARC_USDC_ADDRESS <taskFee> <guarantee> <serviceFee> <submitDeadline> <coverageDur> \
+  <publicHash> <privateCommit> --rpc-url arc_testnet --private-key <client-pk>
+cast send $ASSURANCE_HUB "acceptJob(uint256)" <jobId> --private-key <provider-pk> --rpc-url arc_testnet
+cast send $ASSURANCE_HUB "submitDeliverable(uint256,bytes32)" <jobId> <submissionCommitment> --private-key <provider-pk> --rpc-url arc_testnet
+cast send $ASSURANCE_HUB "resolveInitialEvaluation(uint256,bool)" <jobId> true --private-key <evaluator-pk> --rpc-url arc_testnet
+cast send $ASSURANCE_HUB "openClaim(uint256,bytes32)" <jobId> <evidenceCommitment> --private-key <client-pk> --rpc-url arc_testnet
+# Now the ClaimOpened log fires the workflow. Deliver the DON-signed report:
+#  (a) enrolled + real forwarder: `cre workflow simulate … --broadcast` → writeReport → forwarder → onReport
+#  (b) trusted EOA relay (Arc today): the relay calls
+#      onReport(abi.encodePacked(CRE_WORKFLOW_ID,CRE_WORKFLOW_NAME,CRE_WORKFLOW_OWNER), <7-tuple report bytes>)
+cast call $ASSURANCE_HUB "getJob(uint256)" <jobId> --rpc-url arc_testnet   # expect status 6 = ClaimPaid
+```
+> `submissionCommitment` (6.7) MUST equal the `commitHash` the test API returns, or the workflow REFUSEs
+> (and, if you enabled the optional onchain check, `onReport` reverts `CommitMismatch`). If the DON never
+> reports, anyone may call `resolveClaimTimeout(jobId)` after the 3-day grace to release the claim.
+
+### 6.8 Verify end-to-end — ⚠️ (post-broadcast)
+- Arcscan (`$ARC_EXPLORER_URL/tx/<hash>`): `ConfidentialEvaluationResolved(jobId, covered, credit,
+  evidenceCommitment, evaluatedAt)` + `GuaranteePaid` emitted; USDC moved to the client.
+- Subgraph: the `ConfidentialEvaluation` entity carries `evidenceCommitment` + `evaluatedAt`; the job
+  status is `CLAIM_PAID`. Confirm with `pnpm --filter @vouch/subgraph health-check`.
+- Reproduce the `evidenceCommitment` off-chain from the opening JSON (§7) and confirm it matches the
+  onchain value.
 
 ## 7. Evidence required by the Chainlink submission
 
