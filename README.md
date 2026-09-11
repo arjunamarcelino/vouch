@@ -75,7 +75,7 @@ requirement-by-requirement mapping in [`docs/prize-requirements.md`](docs/prize-
 |---|---|---|
 | **The Graph** — Best AI Tooling / AI Use Case (From Scratch) | $5,000 | `packages/subgraph` indexes Vouch events from scratch; `apps/agent` consumes **live** GraphQL reputation data to make risk-quotation decisions. |
 | **Arc** — Best Agentic Economy App w/ Circle Agent Stack | $3,500 ($2,500 conditional on Arc **mainnet**) | `apps/agent` (Circle Agent Stack wallet + USDC), `apps/web` (FE) + `apps/api` (BE), `packages/contracts` on Arc testnet. |
-| **Chainlink** — Best Confidential Workflow | $2,000 | `packages/cre-workflow` runs the private regression test inside a TEE (`handlerInTee`); the DON-signed enclave verdict is the sole gate on the guarantee payout. Walkthrough + honest trust model: [`docs/chainlink-confidential-workflow.md`](docs/chainlink-confidential-workflow.md). |
+| **Chainlink** — Best Confidential Workflow | $2,000 | `packages/cre-workflow` runs the private regression test inside a TEE (`handlerInTee`); the DON-signed enclave verdict is the sole **authorization** gate on the guarantee payout (settlement _outcome_ is API/relay-trusted — see the honest trust model). Walkthrough + honest trust model: [`docs/chainlink-confidential-workflow.md`](docs/chainlink-confidential-workflow.md). |
 
 > These integrations are **scaffolded**, not complete. This README does not claim any sponsor
 > integration is finished.
