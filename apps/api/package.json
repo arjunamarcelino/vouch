@@ -9,6 +9,7 @@
     "build": "tsc --noEmit -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "node --import @swc-node/register/esm-register --test 'src/**/*.test.ts'",
+    "test:db": "node test/db-harness.mjs",
     "demo": "node --import @swc-node/register/esm-register scripts/demo.ts",
     "lint": "eslint ."
   },
