@@ -43,7 +43,7 @@ import {
   toEventSelector,
   zeroAddress,
 } from "viem";
-import { configSchema, type Config, type ConfigInput } from "./config";
+import { configWithChainCheck, type Config, type ConfigInput } from "./config";
 import { runEvaluation, type EvalPort } from "./port";
 
 // Re-export the encode seam so external consumers (and prior imports) resolve
@@ -137,7 +137,7 @@ function makePort(
           .callContract(donRt, {
             call: encodeCallMsg({
               from: zeroAddress,
-              to: cfg.contractAddress,
+              to: cfg.assuranceHubAddress,
               data: encodeFunctionData({
                 abi: GETJOB_ABI,
                 functionName: "getJob",
@@ -166,7 +166,7 @@ function makePort(
       const report = rt.reportFromDon(prepareReportRequest(payload)).result();
       const w = new EVMClient(selector)
         .writeReport(donRt, {
-          receiver: cfg.consumerAddress,
+          receiver: cfg.assuranceHubAddress,
           report,
           gasConfig: { gasLimit: cfg.gasLimit },
         })
@@ -225,7 +225,7 @@ function initWorkflow(cfg: Config) {
     handlerInTee<EVMLog, EVMLog, Config, string>(
       evmClient.logTrigger(
         logTriggerConfig({
-          addresses: [cfg.contractAddress],
+          addresses: [cfg.assuranceHubAddress],
           topics: [[CLAIM_OPENED_TOPIC0]],
           confidence: "FINALIZED",
         }),
@@ -238,7 +238,9 @@ function initWorkflow(cfg: Config) {
 }
 
 export async function main(): Promise<void> {
-  const runner = await Runner.newRunner<Config, ConfigInput>({ configSchema });
+  const runner = await Runner.newRunner<Config, ConfigInput>({
+    configSchema: configWithChainCheck,
+  });
   await runner.run(initWorkflow);
 }
 

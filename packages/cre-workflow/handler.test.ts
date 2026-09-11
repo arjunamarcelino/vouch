@@ -26,8 +26,7 @@ const THRESHOLD = "0.9"; // numeric threshold secret (must parse finite)
 const CFG: Config = configSchema.parse({
   chainSelectorName: "arc-testnet",
   chainId: "5042002",
-  consumerAddress: "0x00000000000000000000000000000000000000a1",
-  contractAddress: "0x00000000000000000000000000000000000000a1",
+  assuranceHubAddress: "0x00000000000000000000000000000000000000a1",
   owner: "0x00000000000000000000000000000000000000b2",
   gasLimit: "500000",
   testApiUrl: "https://example.invalid/private-test",
@@ -138,7 +137,7 @@ test("replay fixture: verdict is bound to the DERIVED jobId, not the response", 
   assert.equal(r.action, "REPORTED");
   const d = decode(payloadOf(r.payload));
   assert.equal(d.jobId, otherJobId);
-  assert.equal((d.hub as string).toLowerCase(), CFG.contractAddress.toLowerCase());
+  assert.equal((d.hub as string).toLowerCase(), CFG.assuranceHubAddress.toLowerCase());
   assert.equal(d.chainId, BigInt(CFG.chainId));
 });
 

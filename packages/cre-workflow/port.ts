@@ -130,7 +130,7 @@ export async function runEvaluation(
   const amount = covered ? job.guaranteeAmount : 0n;
 
   const chainId = BigInt(cfg.chainId);
-  const hub = cfg.contractAddress;
+  const hub = cfg.assuranceHubAddress;
   const evaluatedAt = port.now();
 
   const commitment = evidenceCommitment({

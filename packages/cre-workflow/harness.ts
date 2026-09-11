@@ -33,8 +33,7 @@ const SENTINEL = {
 const CFG: Config = configSchema.parse({
   chainSelectorName: "arc-testnet",
   chainId: "5042002",
-  consumerAddress: "0x00000000000000000000000000000000000000a1",
-  contractAddress: "0x00000000000000000000000000000000000000a1",
+  assuranceHubAddress: "0x00000000000000000000000000000000000000a1",
   owner: "0x00000000000000000000000000000000000000b2",
   gasLimit: "500000",
   testApiUrl: "https://example.invalid/private-test",
