@@ -131,8 +131,12 @@ export class TransactionsService {
     if (eventName) {
       const events = this.chain.eventsFromLogs(eventName, receipt.logs) as { args?: { jobId?: bigint } }[];
       if (events.length < 1) return mismatch(`missing ${eventName}`);
-      if (action === "OPEN_JOB" && events[0]?.args?.jobId !== undefined) {
-        onchainJobId = events[0].args.jobId.toString();
+      if (action === "OPEN_JOB") {
+        // A valid JobCreated MUST carry an indexed jobId; a missing one is a malformed/foreign event —
+        // fail loud rather than silently confirming without reconciling the provisional row (review 070).
+        const emitted = events[0]?.args?.jobId;
+        if (emitted === undefined) return mismatch("JobCreated missing jobId");
+        onchainJobId = emitted.toString();
       }
     }
 

@@ -12,7 +12,9 @@ export function hashCallArgs(args: readonly unknown[]): string {
       if (typeof a === "bigint") return `i:${a.toString()}`;
       if (typeof a === "boolean") return `x:${a ? 1 : 0}`;
       if (typeof a === "string") return `s:${a.toLowerCase()}`;
-      return `?:${String(a)}`;
+      // No preparable function takes array/tuple/struct args today. Rather than stringify an unexpected
+      // kind ambiguously (which would silently WEAKEN the TX_MISMATCH gate), fail loud — review 070.
+      throw new Error(`hashCallArgs: unsupported arg kind ${typeof a} (${String(a)})`);
     })
     .join("|");
   return keccak256(toBytes(canonical));
