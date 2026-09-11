@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
-import { VouchError } from "@vouch/shared/errors";
 import { z } from "zod";
+import { ApiError } from "../common/errors";
 import { parseOrThrow, quoteCommitmentSchema, decisionTraceSchema } from "@vouch/shared/schemas";
 import { correlationId } from "../common/correlation/correlation";
 import { loadEnv } from "../config/env";
@@ -32,10 +32,11 @@ export class AgentService {
         body: init ? JSON.stringify(init.body) : undefined,
       });
     } catch (err) {
-      throw new VouchError("SUBGRAPH_UNAVAILABLE", "Agent service unreachable", err);
+      // An AGENT outage is not a SUBGRAPH outage — use the dedicated API-local code (review 071).
+      throw new ApiError("AGENT_UNAVAILABLE", "Agent service unreachable", err);
     }
-    if (res.status === 404) throw new VouchError("VALIDATION_FAILED", "Not found");
-    if (!res.ok) throw new VouchError("SUBGRAPH_UNAVAILABLE", `Agent responded ${res.status}`);
+    if (res.status === 404) throw new ApiError("NOT_FOUND", "Not found"); // 404, not 400
+    if (!res.ok) throw new ApiError("AGENT_UNAVAILABLE", `Agent responded ${res.status}`);
     return res.json();
   }
 

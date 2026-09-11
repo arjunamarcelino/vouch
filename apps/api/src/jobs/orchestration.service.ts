@@ -3,6 +3,7 @@ import { Injectable } from "@nestjs/common";
 import { getAddress, type Hex } from "viem";
 import type { TransactionRequest, PreparableFunction, TxAction } from "@vouch/shared/schemas";
 import { upsertPreparedIntent, createProvisionalJob } from "@vouch/db";
+import { VouchError } from "@vouch/shared/errors";
 import { ApiError } from "../common/errors";
 import { ChainService, type OnchainJob } from "../common/chain/chain.service";
 import { hashCallArgs } from "../common/chain/args-hash";
@@ -80,7 +81,7 @@ export class OrchestrationService {
   async prepareApprove(ctx: PrepareCtx, body: unknown): Promise<TransactionRequest> {
     const { amount } = parseOrThrow(approveInputSchema, body, "approve input");
     const value = BigInt(amount);
-    if (value === 0n) throw new ApiError("STATE_CONFLICT", "Approve amount must be > 0");
+    if (value === 0n) throw new VouchError("VALIDATION_FAILED", "Approve amount must be > 0");
     const token = await this.chain.usdc();
     // approve(spender=hub, amount) — `to` is USDC (not the hub); spender is bound to the hub server-side.
     return this.build(ctx, "APPROVE", "approve", token, [this.chain.hubAddress(), value]);
@@ -97,7 +98,7 @@ export class OrchestrationService {
     const taskFee = BigInt(input.taskFee);
     const guaranteeAmount = BigInt(input.guaranteeAmount);
     const serviceFee = BigInt(input.serviceFee);
-    if (taskFee === 0n || guaranteeAmount === 0n) throw new ApiError("STATE_CONFLICT", "taskFee and guarantee must be > 0 (ZeroAmount)");
+    if (taskFee === 0n || guaranteeAmount === 0n) throw new VouchError("VALIDATION_FAILED", "taskFee and guarantee must be > 0 (ZeroAmount)");
     const coverage = BigInt(input.coverageDuration);
     if (coverage < MIN_COVERAGE || coverage > MAX_COVERAGE) {
       throw new ApiError("STATE_CONFLICT", `coverageDuration must be within [${MIN_COVERAGE}, ${MAX_COVERAGE}] seconds`);

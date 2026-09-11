@@ -42,8 +42,6 @@ const envSchema = z
     SIWE_DOMAIN: z.string().optional(), // required outside development
     SIWE_NONCE_TTL_SECONDS: z.coerce.number().int().positive().default(300),
     WEB_ORIGIN: z.string().url().optional(), // required outside development (CORS credentials)
-    // Bearer key for system/agent callbacks (health/tx re-verify). No user.address ⇒ cannot pass @JobParty.
-    SYSTEM_API_KEY: z.string().optional(),
 
     // ---- authorization / demo ----
     ADMIN_ADDRESSES: z

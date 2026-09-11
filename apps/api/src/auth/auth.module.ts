@@ -4,7 +4,6 @@ import { loadEnv, sessionSecret } from "../config/env";
 import { AuthGuard } from "./guards/auth.guard";
 import { RolesGuard } from "./guards/roles.guard";
 import { JobPartyGuard } from "./guards/job-party.guard";
-import { AgentKeyGuard } from "./guards/agent-key.guard";
 import { AuthController } from "./auth.controller";
 import { SiweService } from "./siwe.service";
 import { SessionService } from "./session.service";
@@ -24,7 +23,7 @@ import { SessionService } from "./session.service";
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthGuard, RolesGuard, JobPartyGuard, AgentKeyGuard, SiweService, SessionService],
-  exports: [AuthGuard, RolesGuard, JobPartyGuard, AgentKeyGuard, JwtModule],
+  providers: [AuthGuard, RolesGuard, JobPartyGuard, SiweService, SessionService],
+  exports: [AuthGuard, RolesGuard, JobPartyGuard, JwtModule],
 })
 export class AuthModule {}

@@ -3,8 +3,8 @@ import { prisma } from "@vouch/db";
 import { createLogger } from "@vouch/shared/logger";
 import { ChainService } from "../common/chain/chain.service";
 import { GraphService } from "../graph/graph.service";
+import { AgentService } from "../agent/agent.service";
 import { withTimeout } from "../common/retry";
-import { loadEnv } from "../config/env";
 
 /**
  * Hand-rolled integration-health aggregator (no @nestjs/terminus dependency — simplicity review). Each
@@ -39,12 +39,12 @@ export function sanitizeProbeError(message: string): string {
 
 @Injectable()
 export class HealthService {
-  private readonly env = loadEnv();
   private readonly probeTimeoutMs = 3_000;
 
   constructor(
     private readonly chain: ChainService,
     private readonly graph: GraphService,
+    private readonly agent: AgentService,
   ) {}
 
   /** Liveness — process is up. No downstream calls (so an orchestrator won't kill us on a slow dep). */
@@ -71,8 +71,7 @@ export class HealthService {
         };
       }),
       this.probe("agent", false, async () => {
-        const res = await fetch(`${this.env.AGENT_URL.replace(/\/$/u, "")}/health`);
-        if (!res.ok) throw new Error(`agent responded ${res.status}`);
+        await this.agent.health(); // reuse the single proxy (base URL + correlation) — review 071
         return {};
       }),
     ]);

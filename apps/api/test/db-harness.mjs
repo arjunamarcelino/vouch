@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * DB-backed e2e harness. Provisions a throwaway Postgres database on a reachable server, pushes the
- * Prisma schema + manual constraints, runs the `*.e2e-db.test.ts` suite against it, then drops it.
+ * Prisma schema + manual constraints, runs the `*.e2e-db.ts` suite against it, then drops it.
  *
  * Connection: TEST_PG_ADMIN_URL (a maintenance DB the runner can CREATE/DROP from), default the local
  * homebrew Postgres. If no server is reachable, the harness SKIPS (exit 0) so `pnpm test` stays green

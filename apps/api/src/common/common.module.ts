@@ -1,16 +1,15 @@
 import { Global, Module } from "@nestjs/common";
 import { ChainService } from "./chain/chain.service";
 import { IdempotencyInterceptor } from "./idempotency/idempotency.interceptor";
-import { LoggingInterceptor } from "./logging/logging.interceptor";
 
 /**
- * Shared substrate available app-wide (Global so it isn't re-imported per feature module — the
- * pattern-consistency fix for the previous per-module provider duplication). ChainService is a
- * singleton (one viem client). The interceptors are provided here and applied per-route or globally.
+ * Shared substrate available app-wide (Global so it isn't re-imported per feature module). ChainService
+ * is a singleton (one viem client); IdempotencyInterceptor is applied per-route. (LoggingInterceptor is
+ * registered globally via APP_INTERCEPTOR in AppModule — not here; review 071.)
  */
 @Global()
 @Module({
-  providers: [ChainService, IdempotencyInterceptor, LoggingInterceptor],
-  exports: [ChainService, IdempotencyInterceptor, LoggingInterceptor],
+  providers: [ChainService, IdempotencyInterceptor],
+  exports: [ChainService, IdempotencyInterceptor],
 })
 export class CommonModule {}
