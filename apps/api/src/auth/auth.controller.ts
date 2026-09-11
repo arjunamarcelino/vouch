@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Post, Req, Res, UseGuards } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 import { z } from "zod";
 import { parseOrThrow } from "@vouch/shared/schemas";
 import { getProfile } from "@vouch/db";
@@ -25,6 +26,7 @@ const verifyBodySchema = z.object({
  * session. On verify, the session JWT is set as an httpOnly+Strict cookie.
  */
 @Controller("auth")
+@Throttle({ default: { ttl: 60_000, limit: 20 } }) // tighter bucket on the public auth surface (review 056)
 export class AuthController {
   private readonly env = loadEnv();
 
