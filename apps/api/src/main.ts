@@ -1,5 +1,6 @@
 import "reflect-metadata";
 import { NestFactory } from "@nestjs/core";
+import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import cookieParser from "cookie-parser";
 import { prisma } from "@vouch/db";
 import { AppModule } from "./app.module";
@@ -21,6 +22,15 @@ async function bootstrap(): Promise<void> {
   process.once("beforeExit", () => {
     void prisma.$disconnect();
   });
+
+  // OpenAPI: Swagger UI at /docs + raw spec at /openapi.json (gated off mainnet — attack-surface).
+  if (env.CHAIN_ENV !== "arc-mainnet") {
+    const config = new DocumentBuilder().setTitle("Vouch API").setVersion("1.0").build();
+    const doc = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup("docs", app, doc);
+    app.getHttpAdapter().get("/openapi.json", (_req: unknown, res: { json(body: unknown): void }) => res.json(doc));
+  }
+
   await app.listen(env.PORT);
   log.info({ port: env.PORT, chainEnv: env.CHAIN_ENV }, "vouch api listening");
 }

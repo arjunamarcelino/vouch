@@ -385,3 +385,45 @@ export async function listFeedEvents(jobRequestId: string | undefined, limit = 1
     take: Math.min(limit, 200),
   });
 }
+
+// ---------------- demo tooling (offchain operational state ONLY) ----------------
+
+/**
+ * Truncate ONLY the API-owned offchain operational tables. NEVER touches the agent-owned financial
+ * store (Quote / PaymentIntent / DecisionTrace / UsedNonce) or any onchain state. NOTE: if the
+ * FeedEvent UPDATE/DELETE revoke (002-api-constraints.sql) is applied, this must run as the table owner.
+ */
+export async function resetOperationalData(): Promise<void> {
+  // Order: dependents first, then JobMetadata (cascades its children), then standalone tables.
+  await prisma.trackedTransaction.deleteMany({});
+  await prisma.preparedIntent.deleteMany({});
+  await prisma.feedEvent.deleteMany({});
+  await prisma.notificationState.deleteMany({});
+  await prisma.agentRunLog.deleteMany({});
+  await prisma.jobMetadata.deleteMany({});
+  await prisma.idempotencyRecord.deleteMany({});
+  await prisma.siweNonce.deleteMany({});
+  await prisma.userProfile.deleteMany({});
+}
+
+/** Seed non-financial demo metadata (profiles + a provisional job + a feed event). */
+export async function seedDemoData(seed: {
+  client: string;
+  provider: string;
+  clientRequestId: string;
+  uiTitle: string;
+}): Promise<void> {
+  await upsertProfile(seed.client, "Demo Client", "CLIENT");
+  await upsertProfile(seed.provider, "Demo Provider", "PROVIDER");
+  await createProvisionalJob({
+    clientRequestId: seed.clientRequestId,
+    clientAddress: seed.client,
+    providerAddress: seed.provider,
+    uiTitle: seed.uiTitle,
+  });
+  await appendFeedEvent({
+    kind: "JOB_CREATED",
+    jobRequestId: seed.clientRequestId,
+    payload: { seeded: true, uiTitle: seed.uiTitle },
+  });
+}
