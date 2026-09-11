@@ -76,7 +76,9 @@ export class TransactionsService {
       await startTracking({
         txHash,
         preparedId: prepared.preparedId,
-        prepareKey: prepared.idempotencyKey,
+        // Scope the double-fund prepareKey by caller so two callers reusing the same key can't collide
+        // on the partial-unique(prepareKey) WHERE OPEN_JOB index (review 053).
+        prepareKey: `${prepared.scope}:${prepared.idempotencyKey}`,
         action,
         chainId: prepared.chainId,
         toAddress: prepared.to,

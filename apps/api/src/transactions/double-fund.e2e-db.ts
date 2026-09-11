@@ -54,3 +54,23 @@ test("second distinct txHash for the same OPEN_JOB prepareKey is rejected by the
   // Re-binding the SAME txHash is a benign no-op (idempotent on txHash), not a conflict.
   await startTracking({ ...common, txHash: hash("b") });
 });
+
+test("prepared intents are caller-scoped: same key + different callers → distinct intents (053)", async () => {
+  const key = `shared-key-${randomUUID()}`;
+  const mk = (scope: string) => ({
+    idempotencyKey: key,
+    scope,
+    action: "OPEN_JOB",
+    functionName: "openJob",
+    to: HUB,
+    selector: SELECTOR,
+    argsHash: hash("a"),
+    chainId: 5042002,
+  });
+  const a = await upsertPreparedIntent(mk("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
+  const b = await upsertPreparedIntent(mk("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"));
+  assert.notEqual(a.preparedId, b.preparedId); // caller B does NOT get caller A's intent
+  // Same caller + same key → the SAME row (deterministic upsert).
+  const a2 = await upsertPreparedIntent(mk("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
+  assert.equal(a2.preparedId, a.preparedId);
+});

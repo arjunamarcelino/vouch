@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { prisma } from "./index";
 import { Prisma } from "./generated/prisma/client";
 
@@ -55,89 +56,21 @@ export async function pruneExpiredNonces(): Promise<number> {
 
 // ---------------- idempotency ----------------
 
-export type IdempotencyOutcome<T> =
-  | { kind: "run"; value: T }
-  | { kind: "replay"; statusCode: number; body: unknown }
-  | { kind: "conflict" } // same key, different request fingerprint (or in-flight)
-  | { kind: "in_flight" };
-
-export interface IdempotentResult {
-  statusCode: number;
-  body: unknown;
-}
-
-/**
- * Run `handler` exactly once per (scope, route, key). On a replay returns the memoized response; on a
- * fingerprint mismatch or an in-flight duplicate returns a conflict outcome (caller maps → 409). The
- * handler runs INSIDE the claim transaction and receives the tx client so its side-effects commit
- * atomically with the memo.
- */
-export async function withIdempotency(
-  args: {
-    scope: string;
-    route: string;
-    key: string;
-    requestHash: string;
-    lockKey: bigint;
-    expiresAt: Date;
-  },
-  handler: (tx: Prisma.TransactionClient) => Promise<IdempotentResult>,
-): Promise<IdempotencyOutcome<IdempotentResult>> {
-  return prisma.$transaction(async (tx) => {
-    // Serialize identical keys so the claim + branch can't race on the composite PK.
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${args.lockKey})`;
-
-    const claimed = await tx.$queryRaw<{ scope: string }[]>`
-      INSERT INTO "IdempotencyRecord" (scope, route, key, "requestHash", state, "lockedAt", "expiresAt", "createdAt")
-      VALUES (${args.scope}, ${args.route}, ${args.key}, ${args.requestHash}, 'LOCKED', now(), ${args.expiresAt}, now())
-      ON CONFLICT (scope, route, key) DO NOTHING
-      RETURNING scope`;
-
-    if (claimed.length === 0) {
-      const row = await tx.idempotencyRecord.findUnique({
-        where: { scope_route_key: { scope: args.scope, route: args.route, key: args.key } },
-      });
-      if (!row) return { kind: "conflict" as const }; // lost a race then vanished — treat as conflict
-      if (row.requestHash !== args.requestHash) return { kind: "conflict" as const };
-      if (row.state !== "COMPLETED") {
-        // A crashed LOCKED claim past its lease is reclaimable; otherwise it's genuinely in-flight.
-        if (row.expiresAt.getTime() > Date.now()) return { kind: "in_flight" as const };
-        // Reclaim: overwrite the stale lease and fall through to run.
-        await tx.idempotencyRecord.update({
-          where: { scope_route_key: { scope: args.scope, route: args.route, key: args.key } },
-          data: { state: "LOCKED", lockedAt: new Date(), expiresAt: args.expiresAt, requestHash: args.requestHash },
-        });
-      } else {
-        return { kind: "replay" as const, statusCode: row.statusCode ?? 200, body: row.response };
-      }
-    }
-
-    const result = await handler(tx);
-    await tx.idempotencyRecord.update({
-      where: { scope_route_key: { scope: args.scope, route: args.route, key: args.key } },
-      data: {
-        state: "COMPLETED",
-        statusCode: result.statusCode,
-        response: (result.body ?? null) as Prisma.InputJsonValue,
-        completedAt: new Date(),
-      },
-    });
-    return { kind: "run" as const, value: result };
-  });
-}
-
 export type ClaimResult =
-  | { kind: "claimed" }
+  | { kind: "claimed"; leaseToken: string }
   | { kind: "replay"; statusCode: number; body: unknown }
   | { kind: "conflict" } // same key, different fingerprint
-  | { kind: "in_flight" }; // a live claim under this key is still running
+  | { kind: "in_flight" }; // a live (unexpired) claim under this key is still running
 
 /**
- * Claim a key in a SHORT transaction (advisory lock + INSERT ON CONFLICT DO NOTHING). Does NOT run the
- * handler inside the tx — the interceptor runs the handler *outside* any tx and calls `completeKey`
- * after, so no DB transaction is held across RPC/agent calls (performance rule). Safe because prepare
- * side-effects are idempotent by their own unique key; a crash before `completeKey` leaves a reclaimable
- * lease. Use `withIdempotency` instead when the side-effect MUST commit atomically with the memo.
+ * Claim a key in a SHORT transaction (advisory lock + INSERT ON CONFLICT DO NOTHING). The handler runs
+ * OUTSIDE this tx (interceptor calls `completeKey`/`releaseKey` after), so no DB transaction is held
+ * across RPC/agent calls (performance rule).
+ *
+ * Every claim carries a random **lease token** (review 052): `completeKey`/`releaseKey` only act while
+ * the caller still owns the row, so a concurrent reclaimer (after a lease expiry) can never clobber
+ * another request's active claim → no spurious 500 / lost memo. An UNEXPIRED LOCKED duplicate returns
+ * `in_flight` (409); a reclaim after the lease horizon may legitimately re-run (advisory-only handlers).
  */
 export async function claimKey(args: {
   scope: string;
@@ -147,14 +80,15 @@ export async function claimKey(args: {
   lockKey: bigint;
   expiresAt: Date;
 }): Promise<ClaimResult> {
+  const leaseToken = randomUUID();
   return prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(${args.lockKey})`;
     const claimed = await tx.$queryRaw<{ scope: string }[]>`
-      INSERT INTO "IdempotencyRecord" (scope, route, key, "requestHash", state, "lockedAt", "expiresAt", "createdAt")
-      VALUES (${args.scope}, ${args.route}, ${args.key}, ${args.requestHash}, 'LOCKED', now(), ${args.expiresAt}, now())
+      INSERT INTO "IdempotencyRecord" (scope, route, key, "requestHash", state, "leaseToken", "lockedAt", "expiresAt", "createdAt")
+      VALUES (${args.scope}, ${args.route}, ${args.key}, ${args.requestHash}, 'LOCKED', ${leaseToken}, now(), ${args.expiresAt}, now())
       ON CONFLICT (scope, route, key) DO NOTHING
       RETURNING scope`;
-    if (claimed.length > 0) return { kind: "claimed" as const };
+    if (claimed.length > 0) return { kind: "claimed" as const, leaseToken };
 
     const row = await tx.idempotencyRecord.findUnique({
       where: { scope_route_key: { scope: args.scope, route: args.route, key: args.key } },
@@ -164,34 +98,35 @@ export async function claimKey(args: {
     if (row.state === "COMPLETED") {
       return { kind: "replay" as const, statusCode: row.statusCode ?? 200, body: row.response };
     }
-    // LOCKED: in-flight unless the lease expired (crashed claim) → reclaim.
+    // LOCKED: in-flight unless the lease expired (crashed claim) → reclaim with a fresh token.
     if (row.expiresAt.getTime() > Date.now()) return { kind: "in_flight" as const };
     await tx.idempotencyRecord.update({
       where: { scope_route_key: { scope: args.scope, route: args.route, key: args.key } },
-      data: { state: "LOCKED", lockedAt: new Date(), expiresAt: args.expiresAt },
+      data: { state: "LOCKED", leaseToken, lockedAt: new Date(), expiresAt: args.expiresAt },
     });
-    return { kind: "claimed" as const };
+    return { kind: "claimed" as const, leaseToken };
   });
 }
 
-/** Memoize the response for a completed key (short tx). */
+/** Memoize the response — only if THIS caller still owns the lease (else a reclaimer superseded us). */
 export async function completeKey(
   scope: string,
   route: string,
   key: string,
+  leaseToken: string,
   statusCode: number,
   body: unknown,
 ): Promise<void> {
-  await prisma.idempotencyRecord.update({
-    where: { scope_route_key: { scope, route, key } },
+  await prisma.idempotencyRecord.updateMany({
+    where: { scope, route, key, leaseToken },
     data: { state: "COMPLETED", statusCode, response: (body ?? null) as Prisma.InputJsonValue, completedAt: new Date() },
   });
 }
 
-/** Release a claim on handler failure so the key frees for a corrected retry (don't memoize 4xx/5xx). */
-export async function releaseKey(scope: string, route: string, key: string): Promise<void> {
+/** Release our own claim on handler failure (lease-fenced — never deletes a reclaimer's row). */
+export async function releaseKey(scope: string, route: string, key: string, leaseToken: string): Promise<void> {
   await prisma.idempotencyRecord.deleteMany({
-    where: { scope, route, key, state: "LOCKED" },
+    where: { scope, route, key, state: "LOCKED", leaseToken },
   });
 }
 
@@ -222,15 +157,19 @@ export interface NewPreparedIntent {
   jobId?: string;
 }
 
-/** Persist (or fetch existing) prepared intent — deterministic on the prepare's Idempotency-Key. */
+/**
+ * Persist (or fetch existing) prepared intent — deterministic on (scope, Idempotency-Key). Caller-scoped
+ * so one caller's key can never return another caller's intent (review 053).
+ */
 export async function upsertPreparedIntent(intent: NewPreparedIntent, tx?: Prisma.TransactionClient) {
   const db = tx ?? prisma;
+  const scope = intent.scope.toLowerCase();
   return db.preparedIntent.upsert({
-    where: { idempotencyKey: intent.idempotencyKey },
+    where: { scope_idempotencyKey: { scope, idempotencyKey: intent.idempotencyKey } },
     update: {},
     create: {
       idempotencyKey: intent.idempotencyKey,
-      scope: intent.scope.toLowerCase(),
+      scope,
       action: intent.action,
       functionName: intent.functionName,
       to: intent.to.toLowerCase(),
@@ -245,10 +184,6 @@ export async function upsertPreparedIntent(intent: NewPreparedIntent, tx?: Prism
 
 export async function getPreparedIntent(preparedId: string) {
   return prisma.preparedIntent.findUnique({ where: { preparedId } });
-}
-
-export async function getPreparedByKey(idempotencyKey: string) {
-  return prisma.preparedIntent.findUnique({ where: { idempotencyKey } });
 }
 
 /**

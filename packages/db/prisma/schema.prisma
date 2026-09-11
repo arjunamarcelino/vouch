@@ -90,6 +90,9 @@ model IdempotencyRecord {
   key         String
   requestHash String // keccak256 of canonical method+route+body
   state       String   @default("LOCKED") // LOCKED | COMPLETED
+  /// Random per-claim fence: complete/release only act when the caller's token still owns the row,
+  /// so a concurrent reclaimer can't clobber another request's active claim (review 052).
+  leaseToken  String?
   statusCode  Int?
   response    Json?
   lockedAt    DateTime @default(now())
@@ -107,8 +110,9 @@ model IdempotencyRecord {
 /// lifecycle lives here (PREPARED → SUBMITTED → ABANDONED); post-hash on TrackedTransaction.
 model PreparedIntent {
   preparedId   String   @id @default(uuid())
-  /// The prepare's Idempotency-Key — the openJob double-fund bind (one key → one txHash).
-  idempotencyKey String @unique
+  /// The prepare's Idempotency-Key. Caller-scoped (unique per (scope, key)) so one caller's key can
+  /// never return another caller's intent — the raw header is client-controlled (review 053).
+  idempotencyKey String
   scope        String // lowercased session address that prepared it
   action       String // TxAction
   functionName String
@@ -123,6 +127,8 @@ model PreparedIntent {
   updatedAt    DateTime @updatedAt
 
   trackedTx TrackedTransaction?
+
+  @@unique([scope, idempotencyKey])
 }
 
 /// A submitted onchain tx the API verifies + mirrors (one-directional). Keyed by the
