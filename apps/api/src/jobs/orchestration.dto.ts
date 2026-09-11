@@ -22,7 +22,6 @@ export const openJobInputSchema = z
     privateCriteriaCommitment: hex32, // COMMITMENT only — never a preimage
     uiTitle: z.string().max(200).default(""),
     repoRef: z.string().max(200).optional(), // opaque handle; never a URL/credential
-    quoteId: hex32.optional(), // re-verified with the agent when present
   })
   .strict();
 export type OpenJobInput = z.infer<typeof openJobInputSchema>;

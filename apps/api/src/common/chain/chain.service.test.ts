@@ -16,7 +16,6 @@ test("selectors + topic0 derive from the frozen ABI", async () => {
   assert.match(svc.functionSelector("openJob"), /^0x[0-9a-f]{8}$/u);
   assert.match(svc.functionSelector("acceptJob"), /^0x[0-9a-f]{8}$/u);
   assert.notEqual(svc.functionSelector("openJob"), svc.functionSelector("acceptJob"));
-  assert.match(svc.eventTopic0("JobCreated"), /^0x[0-9a-f]{64}$/u);
 });
 
 test("encode → calldata begins with the function selector", async () => {

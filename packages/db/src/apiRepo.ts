@@ -352,7 +352,8 @@ export async function listFeedEventsForAddress(
  * FeedEvent is app-level immutable (no update/delete endpoint) but NOT DB-revoked, so this DELETE runs
  * on the app role (review 060) — the reset and the append-only guard are no longer mutually exclusive.
  */
-export async function resetOperationalData(): Promise<void> {
+/** Returns the tables cleared (single source of truth — the caller echoes this, no hand-synced list). */
+export async function resetOperationalData(): Promise<string[]> {
   // Order: dependents first, then JobMetadata (cascades its children), then standalone tables.
   await prisma.trackedTransaction.deleteMany({});
   await prisma.preparedIntent.deleteMany({});
@@ -363,6 +364,17 @@ export async function resetOperationalData(): Promise<void> {
   await prisma.idempotencyRecord.deleteMany({});
   await prisma.siweNonce.deleteMany({});
   await prisma.userProfile.deleteMany({});
+  return [
+    "trackedTransaction",
+    "preparedIntent",
+    "feedEvent",
+    "notificationState",
+    "agentRunLog",
+    "jobMetadata",
+    "idempotencyRecord",
+    "siweNonce",
+    "userProfile",
+  ];
 }
 
 /** Seed non-financial demo metadata (profiles + a provisional job + a feed event). */

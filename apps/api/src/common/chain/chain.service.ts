@@ -5,7 +5,6 @@ import {
   http,
   encodeFunctionData,
   toFunctionSelector,
-  toEventSelector,
   isAddressEqual,
   getAddress,
   slice,
@@ -260,7 +259,7 @@ export class ChainService {
     };
   }
 
-  async getTransactionReceipt(hash: Hex) {
+  private async getTransactionReceipt(hash: Hex) {
     return resilient(() => this.rpc().getTransactionReceipt({ hash }), this.opts());
   }
 
@@ -295,14 +294,6 @@ export class ChainService {
     return toFunctionSelector(item as never);
   }
 
-  /** topic0 for an event on the hub ABI (drives the track-time event-signature check). */
-  eventTopic0(eventName: string): Hex {
-    const item = (assuranceHubAbi as readonly { type: string; name?: string }[]).find(
-      (x) => x.type === "event" && x.name === eventName,
-    );
-    if (!item) throw new VouchError("VALIDATION_FAILED", `Unknown event ${eventName}`);
-    return toEventSelector(item as never);
-  }
 
   // ---------------- receipt helpers (pure over fetched data) ----------------
 

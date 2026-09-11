@@ -26,11 +26,8 @@ export class DemoService {
 
   async reset(): Promise<{ ok: true; reset: string[] }> {
     this.assertAllowed();
-    await resetOperationalData();
-    return {
-      ok: true,
-      reset: ["jobMetadata", "notificationState", "agentRunLog", "userProfile", "siweNonce", "idempotencyRecord", "preparedIntent", "trackedTransaction", "feedEvent"],
-    };
+    const reset = await resetOperationalData(); // single source of the cleared-tables list (review 068)
+    return { ok: true, reset };
   }
 
   async seed(): Promise<{ ok: true; clientRequestId: string; client: string; provider: string }> {

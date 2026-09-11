@@ -143,5 +143,3 @@ export type TransactionRequest = z.infer<typeof transactionRequestSchema>;
 export const commitmentInputSchema = z.object({ commitment: hex32 }).strict();
 export type CommitmentInput = z.infer<typeof commitmentInputSchema>;
 
-/** Selector map — action ↔ 4-byte selector, exhaustive over TxAction (filled from the ABI in apps/api). */
-export type SelectorMap = Record<TxAction, z.infer<typeof selectorHex>>;

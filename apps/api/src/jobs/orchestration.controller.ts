@@ -1,12 +1,12 @@
 import { Body, Controller, Param, Post, Req, UseGuards, UseInterceptors } from "@nestjs/common";
-import { VouchError } from "@vouch/shared/errors";
 import type { TransactionRequest } from "@vouch/shared/schemas";
-import { OrchestrationService, type PrepareCtx } from "./orchestration.service";
+import { OrchestrationService } from "./orchestration.service";
 import { ChainService, type OnchainJob } from "../common/chain/chain.service";
 import { AuthGuard } from "../auth/guards/auth.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
 import { JobPartyGuard } from "../auth/guards/job-party.guard";
 import { IdempotencyInterceptor } from "../common/idempotency/idempotency.interceptor";
+import { prepareCtx, requireNumericJobId } from "../common/prepare";
 import { Roles, JobParty, type SessionUser } from "../auth/roles";
 
 interface PrepareReq {
@@ -14,16 +14,6 @@ interface PrepareReq {
   headers: Record<string, string | string[] | undefined>;
   job?: OnchainJob;
   params: Record<string, string | undefined>;
-}
-
-function ctxOf(req: PrepareReq): PrepareCtx {
-  const key = req.headers["idempotency-key"];
-  return { address: req.user.address, idempotencyKey: (Array.isArray(key) ? key[0] : key) ?? "" };
-}
-
-function requireJobId(id: string | undefined): string {
-  if (!id || !/^\d+$/u.test(id)) throw new VouchError("VALIDATION_FAILED", "Malformed jobId");
-  return id;
 }
 
 /**
@@ -42,7 +32,7 @@ export class OrchestrationController {
   @Post("prepare")
   @UseInterceptors(IdempotencyInterceptor)
   openJob(@Req() req: PrepareReq, @Body() body: unknown): Promise<TransactionRequest> {
-    return this.orchestration.prepareOpenJob(ctxOf(req), body);
+    return this.orchestration.prepareOpenJob(prepareCtx(req), body);
   }
 
   @Post(":id/accept/prepare")
@@ -50,7 +40,7 @@ export class OrchestrationController {
   @UseGuards(JobPartyGuard)
   @UseInterceptors(IdempotencyInterceptor)
   accept(@Req() req: PrepareReq, @Param("id") id: string): Promise<TransactionRequest> {
-    return this.orchestration.prepareAcceptJob(ctxOf(req), requireJobId(id), req.job!);
+    return this.orchestration.prepareAcceptJob(prepareCtx(req), requireNumericJobId(id), req.job!);
   }
 
   @Post(":id/deliverable/prepare")
@@ -58,7 +48,7 @@ export class OrchestrationController {
   @UseGuards(JobPartyGuard)
   @UseInterceptors(IdempotencyInterceptor)
   submit(@Req() req: PrepareReq, @Param("id") id: string, @Body() body: unknown): Promise<TransactionRequest> {
-    return this.orchestration.prepareSubmitDeliverable(ctxOf(req), requireJobId(id), req.job!, body);
+    return this.orchestration.prepareSubmitDeliverable(prepareCtx(req), requireNumericJobId(id), req.job!, body);
   }
 
   @Post(":id/evaluate/prepare")
@@ -66,9 +56,9 @@ export class OrchestrationController {
   @UseGuards(RolesGuard)
   @UseInterceptors(IdempotencyInterceptor)
   async evaluate(@Req() req: PrepareReq, @Param("id") id: string, @Body() body: unknown): Promise<TransactionRequest> {
-    const jobId = requireJobId(id);
+    const jobId = requireNumericJobId(id);
     const job = await this.chain.getJob(BigInt(jobId));
-    return this.orchestration.prepareResolveInitialEvaluation(ctxOf(req), jobId, job, body);
+    return this.orchestration.prepareResolveInitialEvaluation(prepareCtx(req), jobId, job, body);
   }
 
   @Post(":id/cancel/prepare")
@@ -76,15 +66,15 @@ export class OrchestrationController {
   @UseGuards(JobPartyGuard)
   @UseInterceptors(IdempotencyInterceptor)
   cancel(@Req() req: PrepareReq, @Param("id") id: string): Promise<TransactionRequest> {
-    return this.orchestration.prepareCancelJob(ctxOf(req), requireJobId(id), req.job!);
+    return this.orchestration.prepareCancelJob(prepareCtx(req), requireNumericJobId(id), req.job!);
   }
 
   @Post(":id/expire/prepare")
   @UseInterceptors(IdempotencyInterceptor)
   async expire(@Req() req: PrepareReq, @Param("id") id: string): Promise<TransactionRequest> {
-    const jobId = requireJobId(id);
+    const jobId = requireNumericJobId(id);
     const job = await this.chain.getJob(BigInt(jobId));
-    return this.orchestration.prepareExpireJob(ctxOf(req), jobId, job);
+    return this.orchestration.prepareExpireJob(prepareCtx(req), jobId, job);
   }
 
   @Post(":id/withdraw/prepare")
@@ -92,6 +82,6 @@ export class OrchestrationController {
   @UseGuards(JobPartyGuard)
   @UseInterceptors(IdempotencyInterceptor)
   withdraw(@Req() req: PrepareReq, @Param("id") id: string): Promise<TransactionRequest> {
-    return this.orchestration.prepareWithdrawCollateral(ctxOf(req), requireJobId(id), req.job!);
+    return this.orchestration.prepareWithdrawCollateral(prepareCtx(req), requireNumericJobId(id), req.job!);
   }
 }

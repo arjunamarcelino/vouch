@@ -17,10 +17,8 @@ import { parseOrThrow } from "@vouch/shared/schemas";
 const MIN_COVERAGE = 3_600n; // 1h  (AssuranceHub.MIN_COVERAGE)
 const MAX_COVERAGE = 2_592_000n; // 30d (AssuranceHub.MAX_COVERAGE)
 
-export interface PrepareCtx {
-  address: string; // lowercased session address
-  idempotencyKey: string; // == PreparedIntent.idempotencyKey (openJob double-fund bind)
-}
+import type { PrepareCtx } from "../common/prepare";
+export type { PrepareCtx }; // re-exported for existing importers (claims/controllers — review 068)
 
 /**
  * Builds validated, UNSIGNED calldata (the API never signs). Every prepare mirrors the contract's own
