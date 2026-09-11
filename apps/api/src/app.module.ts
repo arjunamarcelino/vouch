@@ -1,7 +1,9 @@
 import { Module, type MiddlewareConsumer, type NestModule } from "@nestjs/common";
 import { APP_GUARD, APP_INTERCEPTOR } from "@nestjs/core";
 import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
+import { ScheduleModule } from "@nestjs/schedule";
 import { AppController } from "./app.controller";
+import { MaintenanceService } from "./common/maintenance/maintenance.service";
 import { CommonModule } from "./common/common.module";
 import { AuthModule } from "./auth/auth.module";
 import { ProfilesModule } from "./profiles/profiles.module";
@@ -23,6 +25,7 @@ const env = loadEnv();
   imports: [
     // Global rate limit off the existing env (review 056). ttl in ms (throttler v6).
     ThrottlerModule.forRoot([{ ttl: env.THROTTLE_TTL_SECONDS * 1000, limit: env.THROTTLE_LIMIT }]),
+    ScheduleModule.forRoot(), // drives the operational-table GC (review 063)
     CommonModule,
     AuthModule,
     ProfilesModule,
@@ -39,6 +42,7 @@ const env = loadEnv();
   providers: [
     { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
+    MaintenanceService,
   ],
 })
 export class AppModule implements NestModule {

@@ -28,10 +28,11 @@ export class JobsService {
    * brand-new zero-history provider doesn't top the list; the phantom `regressions` field is gone.
    */
   async topProviders(): Promise<ProviderRow[]> {
-    // Fail closed: a lagging/stale index must 503, not serve stale reputation or read [] as clean (014).
-    await this.graph.assertFresh();
-    const data = await this.graph.query<{ providers: unknown[] }>(
+    // Fold _meta into the data query + one freshness check (review 063): data + freshness share a block
+    // in ONE round-trip. Fail closed — a lagging/stale index 503s, never serves stale reputation.
+    const data = await this.graph.queryFresh<{ providers: unknown[] }>(
       `query Top {
+        ${GraphService.META_SELECTION}
         providers(
           first: 20
           where: { jobsInitiallyApproved_gt: 0 }
@@ -58,10 +59,10 @@ export class JobsService {
    * provider has no indexed history yet.
    */
   async providerPerformance(address: string): Promise<ProviderRow | null> {
-    await this.graph.assertFresh();
     const id = address.toLowerCase();
-    const data = await this.graph.query<{ provider: unknown | null }>(
+    const data = await this.graph.queryFresh<{ provider: unknown | null }>(
       `query One($id: ID!) {
+        ${GraphService.META_SELECTION}
         provider(id: $id) {
           id
           jobsCompleted
