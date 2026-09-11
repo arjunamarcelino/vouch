@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Chainlink CRE Confidential Workflow — runs the private regression verdict inside the enclave (handlerInTee + ConfidentialHTTPClient) and writes a DON-signed 7-tuple report to AssuranceHub on Arc.",
-  "//zod": "Pinned to 3.25.76 (NOT the workspace catalog v4): @chainlink/cre-sdk@1.20.1 depends on zod v3, and Runner.newRunner requires the config schema to be built with the SAME zod instance (plan §16, §17.11-7). Do not switch to catalog: here.",
+  "//zod": "Pinned to 3.25.76 (NOT the workspace catalog v4): @chainlink/cre-sdk@1.20.1 depends on zod v3, and Runner.newRunner requires the config schema to be built with the SAME zod instance (plan §16, §17.11-7). Do not switch to catalog: here. Do NOT import @vouch/shared into this package either — it pins zod via catalog (v4) and would reintroduce the two-copies mismatch this pin guards against; keep any reused taxonomy (e.g. RefuseReason) local.",
   "scripts": {
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",

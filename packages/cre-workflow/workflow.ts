@@ -46,14 +46,6 @@ import {
 import { configWithChainCheck, type Config, type ConfigInput } from "./config";
 import { runEvaluation, type EvalPort } from "./port";
 
-// Re-export the encode seam so external consumers (and prior imports) resolve
-// through the SDK entry point too. Tests import from "./encoding" directly.
-export {
-  buildVerdictPayload,
-  VERDICT_ABI_PARAMS,
-  type VerdictPayload,
-} from "./encoding";
-
 /** Minimal `getJob` ABI — the AssuranceJob tuple field order is load-bearing
  *  (mirrors packages/contracts/src/AssuranceHub.sol AssuranceJob). */
 const GETJOB_ABI = [
@@ -96,11 +88,7 @@ const CLAIM_OPENED_TOPIC0 = toEventSelector(
  * Build the SDK-backed `EvalPort` for one evaluation. `donRt` routes calls
  * outside the enclave; `rt` provides secrets + `reportFromDon`.
  */
-function makePort(
-  rt: TeeRuntime<Config>,
-  evmClient: EVMClient,
-  selector: bigint,
-): EvalPort {
+function makePort(rt: TeeRuntime<Config>, evmClient: EVMClient): EvalPort {
   const cfg = rt.config;
   const donRt = rt.usingTheDons();
   return {
@@ -111,11 +99,11 @@ function makePort(
         return undefined;
       }
     },
-    async confidentialFetch() {
+    async confidentialFetch(req) {
       const res = new ConfidentialHTTPClient()
         .sendRequest(donRt, {
           request: {
-            url: cfg.testApiUrl,
+            url: req.url,
             method: "GET",
             multiHeaders: { Authorization: { values: ["Bearer {{.token}}"] } },
           },
@@ -164,7 +152,7 @@ function makePort(
     async emitReport(payload) {
       // prepareReportRequest base64-encodes internally — pass HEX, not base64.
       const report = rt.reportFromDon(prepareReportRequest(payload)).result();
-      const w = new EVMClient(selector)
+      const w = evmClient
         .writeReport(donRt, {
           receiver: cfg.assuranceHubAddress,
           report,
@@ -191,7 +179,6 @@ async function evalInTee(
   rt: TeeRuntime<Config>,
   log: EVMLog,
   evmClient: EVMClient,
-  selector: bigint,
 ): Promise<string> {
   const topic1 = log.topics[1];
   if (topic1 === undefined) {
@@ -199,7 +186,7 @@ async function evalInTee(
   }
   const jobId = hexToBigInt(bytesToHex(topic1));
 
-  const port = makePort(rt, evmClient, selector);
+  const port = makePort(rt, evmClient);
   const result = await runEvaluation(port, rt.config, jobId);
   if (result.action === "REPORTED") {
     return `REPORTED:${result.verdict.kind}`;
@@ -231,7 +218,7 @@ function initWorkflow(cfg: Config) {
         }),
       ),
       (rt: TeeRuntime<Config>, log: EVMLog) =>
-        evalInTee(rt, log, evmClient, selector),
+        evalInTee(rt, log, evmClient),
       [{ tee: "nitro", regions: ["us-west-2"] }],
     ),
   ];

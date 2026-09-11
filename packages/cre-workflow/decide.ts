@@ -40,14 +40,23 @@ export const evalResponseSchema = z.strictObject({
 });
 export type EvalResponse = z.infer<typeof evalResponseSchema>;
 
-export type RefuseReason =
-  | "READ_FAILED"
-  | "NOT_CLAIM_PENDING"
-  | "SECRET_MISSING"
-  | "FETCH_FAILED"
-  | "MALFORMED_RESPONSE"
-  | "COMMIT_MISMATCH"
-  | "INCONCLUSIVE";
+/**
+ * Machine-readable refuse reasons. `as const` array (matching the repo's
+ * reason-code convention, e.g. `@vouch/shared` reasonCodes + the sibling
+ * `FAILURE_CODES` above) so it is greppable, iterable, and length-assertable.
+ * Kept LOCAL, not in `@vouch/shared` — importing shared would pull zod v4
+ * alongside this package's pinned v3. (todo 049)
+ */
+export const REFUSE_REASONS = [
+  "READ_FAILED",
+  "NOT_CLAIM_PENDING",
+  "SECRET_MISSING",
+  "FETCH_FAILED",
+  "MALFORMED_RESPONSE",
+  "COMMIT_MISMATCH",
+  "INCONCLUSIVE",
+] as const;
+export type RefuseReason = (typeof REFUSE_REASONS)[number];
 
 export type Verdict =
   | { readonly kind: "PAYOUT"; readonly covered: true }
@@ -61,8 +70,6 @@ export interface DecideInput {
   readonly threshold: number;
   readonly commitHash: `0x${string}`;
   readonly submissionCommitment: `0x${string}`;
-  /** Present for interface fidelity; `amount` is NOT decided here. */
-  readonly guaranteeAmount: bigint;
 }
 
 /**

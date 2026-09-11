@@ -9,6 +9,7 @@ import { z } from "zod";
 import { buildVerdictPayload } from "./encoding";
 import { evidenceCommitment } from "./commitment";
 import {
+  CLAIM_PENDING,
   decideVerdict,
   evalResponseSchema,
   type RefuseReason,
@@ -86,7 +87,7 @@ export async function runEvaluation(
   if (job === null) {
     return refused("READ_FAILED");
   }
-  if (job.status !== 5 /* ClaimPending */) {
+  if (job.status !== CLAIM_PENDING) {
     return refused("NOT_CLAIM_PENDING");
   }
 
@@ -118,7 +119,6 @@ export async function runEvaluation(
     threshold,
     commitHash: parsed.data.commitHash,
     submissionCommitment: job.submissionCommitment,
-    guaranteeAmount: job.guaranteeAmount,
   });
   if (verdict.kind === "REFUSE") {
     // No report on any uncertainty — resolveClaimTimeout closes it onchain.

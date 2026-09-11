@@ -15,7 +15,6 @@ function base(overrides: Partial<DecideInput> = {}): DecideInput {
     threshold: 0.9,
     commitHash: COMMIT,
     submissionCommitment: COMMIT,
-    guaranteeAmount: 100_000_000n,
     ...overrides,
   };
 }
