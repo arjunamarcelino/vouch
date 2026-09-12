@@ -1,5 +1,8 @@
 # Vouch — Master Demo Script (≤ 5 minutes)
 
+> **Note:** The official 2–4 min submission video script is
+> [`demo-script-graph.md`](demo-script-graph.md); this is the extended deep-dive.
+
 > **The thesis (say this out loud at the close):**
 > **"The job was validly accepted and paid — but assurance still protected the client from a
 > later, covered failure."**
