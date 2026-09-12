@@ -81,17 +81,42 @@ const TOKEN_SHAPES = [
   ["aws-access-key", /\bAKIA[0-9A-Z]{16}\b/],
   ["slack-token", /\bxox[baprs]-[A-Za-z0-9-]{10,}/],
   ["pem-private-key", /-----BEGIN (?:RSA |EC |DSA |OPENSSH |PGP )?PRIVATE KEY-----/],
+  // Keyed provider RPC / gateway URLs (Alchemy/Infura style .../v2/<key>, .../v3/<key>) and
+  // ?api_key=/&apikey= query params — no token shape and not 64-hex, so the rules above miss them.
+  // Deliberately NOT matching `user:pass@host` userinfo (local DB defaults like vouch:vouch@localhost
+  // are expected in *.example templates; real DB URLs live only in gitignored .env files).
+  ["keyed-provider-url", /:\/\/[^/\s]+\/(?:v2|v3)\/[A-Za-z0-9_-]{20,}/],
+  ["url-apikey-param", /[?&]api[_-]?key=[A-Za-z0-9_-]{16,}/i],
 ];
 // A 64-hex VALUE that is obviously a placeholder (applied to the matched token, NOT the line).
 function isPlaceholderHex(v) {
   const h = v.replace(/^0x/i, "").toLowerCase();
   return /^(.)\1+$/.test(h); // all-same-char (0x000…, 0x1111…, 0xaaaa…); real keys are high-entropy
 }
+// A 32-hex value (Studio deploy keys are ~32 hex — below the 64-hex rule), non-placeholder.
+const HEX32 = /(?:0x)?(?![0]{32}\b)[0-9a-fA-F]{32}\b/;
+// Key-type vars that MUST be blank/placeholder in any committed *.example template (a real value
+// here would ship a live credential even though it isn't hex/token-shaped, e.g. a base64 session
+// secret). Thresholds/refs (PASS_THRESHOLD, PRIVATE_TEST_REF) are intentionally excluded.
+const EXAMPLE_MUST_BE_BLANK =
+  /\b(PRIVATE_KEY|DEPLOYER_PK|QUOTE_SIGNER_PK|CIRCLE_API_KEY|CIRCLE_ENTITY_SECRET|SESSION_SECRET|GRAPH_DEPLOY_KEY|AGENT_API_KEY)\b/i;
+// Is an env VALUE (right of `=`) a blank or obvious placeholder (never a real secret)?
+function isPlaceholderValue(v) {
+  const t = (v ?? "").trim().replace(/^["']|["']$/g, "");
+  if (!t) return true;
+  if (/^\$\{/.test(t)) return true; // ${VAR} interpolation
+  if (/^(<.*>|changeme|change-me|change_me|your[_-]|xxx+|todo|tbd|sentinel|placeholder|example|replace|set-a-|dev-review)/i.test(t)) return true;
+  return /^(.)\1+$/.test(t.replace(/^0x/i, "")); // all-same-char
+}
 
 const SKIP =
   /(^|\/)(node_modules|\.git|\.next|\.turbo|dist|build|out|generated|coverage)\//;
+// NOTE: `.example` is intentionally NOT skipped — example CONTENT is scanned (a forgotten real value
+// in a template is a leak). SVG is handled by a dedicated text pass below (see SVG scan). Raster
+// images (png/jpg/…) can't be text-scanned; screenshot secret-hygiene is an enforced capture
+// checklist (docs/deployment-hosting.md + docs/submission-checklist.md), not this gate.
 const SKIP_FILE =
-  /\.example$|pnpm-lock\.yaml$|\.(png|jpg|jpeg|gif|svg|ico|lock|wasm|map|pdf|zip|gz|woff2?|ttf|eot|jar)$/i;
+  /pnpm-lock\.yaml$|\.(png|jpg|jpeg|gif|svg|ico|lock|wasm|map|pdf|zip|gz|woff2?|ttf|eot|jar)$/i;
 // This scanner defines the token-shape patterns above as source; skip itself to avoid self-match.
 const SELF = /(^|\/)scripts\/secret-scan\.mjs$/;
 
@@ -106,6 +131,7 @@ for (const f of tracked) {
   }
   if (text.includes("\u0000")) continue; // binary sniff (NUL byte)
   scanned++;
+  const isExample = /\.example$/.test(f);
   const lines = text.split("\n");
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -126,10 +152,57 @@ for (const f of tracked) {
       if (m && !isPlaceholderHex(m[0])) {
         problems.push(`${f}:${i + 1}  secret-var hex value → ${line.trim().slice(0, 80)}`);
       }
+      // (c) a real 32-hex near a secret var (Studio GRAPH_DEPLOY_KEY etc. is ~32 hex, below HEX64).
+      //     Guard with the RHS value: a sentinel/placeholder (e.g. SENTINEL_TEST_REF_deadc0de…) that
+      //     merely embeds a 32-hex run is not a leak.
+      const rhs32 = (line.match(/=(.*)$/)?.[1] ?? "");
+      const m32 = line.match(HEX32);
+      if (m32 && !isPlaceholderHex(m32[0]) && !isPlaceholderValue(rhs32)) {
+        problems.push(`${f}:${i + 1}  secret-var 32-hex value → ${line.trim().slice(0, 80)}`);
+      }
+    }
+    // (d) in *.example templates, key-type vars MUST be blank/placeholder — a real value (even a
+    //     non-hex/non-token-shaped one, e.g. a base64 SESSION_SECRET) would ship a live credential.
+    if (isExample && EXAMPLE_MUST_BE_BLANK.test(line)) {
+      const eq = line.match(/^\s*(?:export\s+)?[A-Z0-9_]*(?:PRIVATE_KEY|DEPLOYER_PK|QUOTE_SIGNER_PK|CIRCLE_API_KEY|CIRCLE_ENTITY_SECRET|SESSION_SECRET|GRAPH_DEPLOY_KEY|AGENT_API_KEY)[A-Z0-9_]*\s*=(.*)$/i);
+      // Strip a trailing dotenv inline comment (` # …`) before judging the value.
+      const val = eq ? eq[1].replace(/\s+#.*$/, "") : "";
+      if (eq && !isPlaceholderValue(val)) {
+        problems.push(`${f}:${i + 1}  *.example key-type var has a non-placeholder value → ${line.trim().slice(0, 80)}`);
+      }
     }
   }
 }
-notes.push(`content-scanned ${scanned} tracked text files (token-shapes + secret-var hex)`);
+notes.push(`content-scanned ${scanned} tracked text files (token-shapes + secret-var hex + example blanks)`);
+
+// ---- 3b. SVG text pass (SVGs are XML text but skipped above to avoid hex-in-path false positives).
+// A browser-exported diagram can bake in absolute home paths (leaking a username), Bearer tokens, or
+// api keys. Scan tracked .svg for those specific markers + token shapes + non-blank key-type vars.
+let svgScanned = 0;
+const SVG_LEAK = [
+  ["home-path", /\/(?:Users|home)\/[A-Za-z0-9._-]+\//],
+  ["bearer", /Bearer\s+[A-Za-z0-9._-]{8,}/],
+  ["apikey", /[?&]api[_-]?key=[A-Za-z0-9_-]{8,}/i],
+];
+for (const f of tracked) {
+  if (!/\.svg$/i.test(f) || SKIP.test(f)) continue;
+  let text;
+  try {
+    text = readFileSync(join(ROOT, f), "utf8");
+  } catch {
+    continue;
+  }
+  if (text.includes("\u0000")) continue;
+  svgScanned++;
+  const lines = text.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    for (const [name, re] of [...SVG_LEAK, ...TOKEN_SHAPES]) {
+      if (re.test(line)) problems.push(`${f}:${i + 1}  svg ${name} → ${line.trim().slice(0, 80)}`);
+    }
+  }
+}
+notes.push(`scanned ${svgScanned} tracked .svg files (home-path / bearer / apikey / token-shapes)`);
 
 // ---- 4. positive control: the CRE secret path executes AND stays redacted ----
 // A static "no secret printed" line proves nothing on its own, so we assert three things that a
