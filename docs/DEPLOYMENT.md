@@ -48,7 +48,20 @@ This is the canonical "next quote is more expensive" step, proven end-to-end on 
 
 ## Chainlink CRE evidence
 
-Deterministic harness evidence for all fixtures in [`docs/evidence/`](evidence/index.md)
-(`simulate-*.txt` + `MANIFEST`, sha256-checksummed) — verdicts PAYOUT / CLEAN_CLOSE / REFUSE with **no
-secret in the output** (blocking `pnpm gate:secrets`). The live `cre workflow simulate` CLI evidence
-(EVM-log trigger: `--evm-tx-hash`/`--evm-event-index`) is the bonus tier, gated on a CRE account.
+Two layers, both in [`docs/evidence/`](evidence/index.md) (`simulate-*.txt` + `MANIFEST`,
+sha256-checksummed), all with **no secret in the output** (blocking `pnpm gate:secrets`; the
+credential stays a `{{.token}}` template):
+
+- **Deterministic harness** — all 5 fixtures: verdicts PAYOUT / CLEAN_CLOSE / REFUSE (SDK-free, runs
+  with no CRE account).
+- **Live `cre workflow simulate`** (official CLI, cli v1.33.0) — `docs/evidence/simulate-cli-payout.txt`:
+  **`REPORTED:PAYOUT`** end-to-end against the live Arc deployment — Nitro TEE simulator → `getJob`
+  (jobId 4, `ClaimPending`) → confidential HTTP fetch (200) → decide PAYOUT → consensus → **dry-run
+  `writeReport`**. EVM-log trigger via `--evm-tx-hash 0x029c4a58…988a57 --evm-event-index 0`. The
+  workflow also gates correctly fail-closed (`REFUSED:NOT_CLAIM_PENDING` on a settled job,
+  `REFUSED:FETCH_FAILED` on an unreachable test API).
+
+Two CRE-runtime bugs were found + fixed while getting the CLI simulate to run end-to-end: the config
+schema's `z.string().url()` (rejected by the javy/WASM zod) → `z.string().min(1)`, and `emitReport`
+throwing on a dry-run SUCCESS-without-txHash. A live enclave **deploy** (`--broadcast` on a DON) still
+needs private-beta enrollment; the simulate PAYOUT above is the accepted evidence.
