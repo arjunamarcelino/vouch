@@ -188,12 +188,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Footer / honesty note */}
-      <footer className="border-t border-border py-8 text-xs text-subtle-foreground">
-        Sponsor integrations surface an explicit state. When a testnet credential isn&apos;t
-        configured, the UI shows a clearly-labeled local simulation and never fabricates a
-        transaction or explorer link.
-      </footer>
     </div>
   );
 }

@@ -1,0 +1,40 @@
+# Vouch CRE — LIVE `cre workflow simulate` evidence (Chainlink track, bonus)
+# label: cre CLI (Nitro TEE simulator, us-west-2) · dry-run (no --broadcast)
+# trigger: AssuranceHub ClaimOpened, jobId=4 (ClaimPending), tx 0x029c4a58…988a57 (Arc testnet)
+# testApiUrl: local mock (returns job-4 covered-failure body; ignores the {{.token}} header)
+# secret note: the credential appears only as the template '{{.token}}' — never resolved in output.
+# cre-sdk 1.20.1 · cli v1.33.0 · commitHash matches job-4 submissionCommitment → covered failure.
+# --------------------------------------------------------------------------------------------
+Initializing...
+Loading settings...
+! Using default private key for chain write simulation. To use your own key, set CRE_ETH_PRIVATE_KEY in your .env file or system environment.
+Checking RPC connectivity...
+! Some RPCs in settings are not functioning properly, please check: RPC health check failed:       
+[arc-testnet] failed RPC health check: Post "https://rpc.testnet.arc.io": context deadline exceeded
+Compiling workflow...
+✓ Workflow compiled
+✓ Simulation limits enabled
+  HTTP: req=120kb resp=250kb timeout=10s | ConfHTTP: req=125kb resp=500kb timeout=1m30s | Consensus obs=25kb | ChainWrite evm_report=50kb evm_gas=10000000 solana_report=265b solana_cu=300000 | WASM binary=100mb compressed=20mb
+  Binary hash: c36b39ed0ef0a2b4675f8c661982b8aefa7eafd965d221632bca601cde376bd2
+  Config hash: 5e3181b1ed9b42f246c38d5fae8a187d690eedef9420a0ad853b81ba1db76e6b
+Fetching transaction receipt for 0x029c4a58e5d727e3433cda6c79a20aedb89ac6ce6e2ccfd516f941a2ed988a57...
+<ts> [SIMULATION] Simulator Initialized
+<ts> [SIMULATION] Running trigger trigger=evm:ChainSelector:3034092155422581607@1.0.0
+╭────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Trigger requested TEE Execution your trigger will run in one of the following Tees:                │
+│     - AWS Nitro in us-west-2                                                                       │
+│ The simulator is not a real TEE, and is meant to debug.                                            │
+│ Do not use it for sensitive information.                                                           │
+│ During real execution, user logs for this trigger will not be visible, and will not leave the TEE. │
+│ They are presented in the simulator for debugging only.                                            │
+│                                                                                                    │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────╯
+✓ Workflow Simulation Result:
+"REPORTED:PAYOUT"
+<ts> [SIMULATION] Execution finished signal received
+<ts> [SIMULATION] Skipping WorkflowEngineV2
+╭──────────────────────────────────────────────────────╮
+│ Simulation complete! Ready to deploy your workflow?  │
+│                                                      │
+│ Run cre account access to request deployment access. │
+╰──────────────────────────────────────────────────────╯

@@ -1,8 +1,8 @@
 {
   "arc-testnet": {
     "AssuranceHub": {
-      "address": "0x0000000000000000000000000000000000000000",
-      "startBlock": 0
+      "address": "0xB30e054557533f28753B4ACdf646B393E2072bf9",
+      "startBlock": 61747921
     }
   },
   "arc": {

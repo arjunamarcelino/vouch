@@ -28,6 +28,7 @@ see there. Every artifact in the table below must carry both axes.
 | `simulate-invalid-commit.txt` | `…/invalid-commit.json` | Commit mismatch → **REFUSE** (fail-closed) | harness/TEE · dry-run |
 | `simulate-replay.txt` | `…/replay.json` | Replay handled → no double action (idempotency) | harness/TEE · dry-run |
 | `simulate-timeout-error.txt` | `…/timeout-error.json` | Upstream timeout → **REFUSE** (fail-closed) | harness/TEE · dry-run |
+| `simulate-cli-payout.txt` | **live `cre workflow simulate`** (cli v1.33.0) | **`REPORTED:PAYOUT`** via the official CLI: Nitro TEE sim → getJob (jobId 4, ClaimPending) → confidential fetch 200 → decide PAYOUT → consensus → dry-run writeReport. Secret stays a `{{.token}}` template. | cre CLI/TEE-sim · dry-run |
 | `MANIFEST` | capture step | Exact command, `cre --version`, `@chainlink/cre-sdk` version, **per-file sha256** | — |
 
 **How to (re)generate** (runnable now, no CRE account):

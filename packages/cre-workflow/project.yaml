@@ -9,4 +9,4 @@ staging-settings:
       url: ${ARC_TESTNET_RPC_URL} # placeholder — set in your shell / .env for sim
 
   # The workflow owner (deployer) address. Placeholder — set before deploy.
-  workflow-owner-address: "0x0000000000000000000000000000000000000000"
+  workflow-owner-address: "0x9A39bC6C499C4f51336692871233164Ae621D52E"

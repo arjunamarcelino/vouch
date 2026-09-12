@@ -1,0 +1,18 @@
+# Vouch CRE confidential-workflow evidence — fixture: invalid-commit
+# label: harness (deterministic local, SDK-free) · dry-run (no on-chain write)
+# NOTE: no secret/credential/threshold appears below (verified by pnpm gate:secrets).
+# command: pnpm --filter @vouch/cre-workflow simulate:harness fixtures/invalid-commit.json
+# ----------------------------------------------------------------------------
+
+> @vouch/cre-workflow@0.0.0 simulate:harness /Users/arjuna/Documents/vouch/packages/cre-workflow
+> node --import tsx harness.ts fixtures/invalid-commit.json
+
+=== Vouch CRE confidential workflow — local harness (dry-run) ===
+fixture:      fixtures/invalid-commit.json
+jobId:        42
+fixed clock:  1700000000 (unix seconds)
+verdict:      REFUSE
+refuse reason:COMMIT_MISMATCH
+action:       REFUSED
+payload:      (none — no report on REFUSE)
+note: 1 secret(s) were consumed inside the eval and none printed above; the credential/threshold stay confidential.
