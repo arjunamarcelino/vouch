@@ -3,13 +3,12 @@ import { parseOrThrow, apiErrorEnvelopeSchema } from "@vouch/shared/schemas";
 import { API_BASE_URL } from "../env";
 
 /**
- * Typed REST client for `apps/api`. Two differences from the existing `lib/agentClient.ts` (security +
- * architecture review): (1) every request sends the SIWE cookie via `credentials: "include"`, and (2)
- * HTTP status + the `{ error, message }` envelope map to a typed `ApiClientError` so the UI renders
- * actionable states (401 session / 403 role-party / 404 / 409 conflict / 503 degraded) instead of a raw
- * status code. Responses are validated at the boundary with the shared Zod schemas (`parseOrThrow`) so
- * `z.infer` types flow through TanStack Query. The web app NEVER sends `?bearer=1` and NEVER stores a
- * token — the session is the httpOnly cookie only.
+ * Typed REST client for `apps/api`. (1) Every request sends the SIWE cookie via
+ * `credentials: "include"`, and (2) HTTP status + the `{ error, message }` envelope map to a typed
+ * `ApiClientError` so the UI renders actionable states (401 session / 403 role-party / 404 / 409
+ * conflict / 503 degraded) instead of a raw status code. Responses are validated at the boundary with
+ * the shared Zod schemas (`parseOrThrow`) so `z.infer` types flow through TanStack Query. The web app
+ * NEVER sends `?bearer=1` and NEVER stores a token — the session is the httpOnly cookie only.
  */
 
 /** A failed API call, carrying the HTTP status and the server's error code for typed UI branching. */
@@ -25,10 +24,6 @@ export class ApiClientError extends Error {
   /** No session / session expired — the UI should prompt SIWE re-auth. */
   get isUnauthorized(): boolean {
     return this.status === 401;
-  }
-  /** Wrong party/role for this action — pre-gating should usually prevent reaching here. */
-  get isForbidden(): boolean {
-    return this.status === 403;
   }
   get isNotFound(): boolean {
     return this.status === 404;
@@ -59,7 +54,7 @@ async function toError(res: Response): Promise<ApiClientError> {
 }
 
 async function request<T>(
-  method: "GET" | "POST" | "PUT",
+  method: "GET" | "POST",
   path: string,
   schema: z.ZodType<T>,
   what: string,
@@ -91,8 +86,4 @@ export function apiPost<T>(
   idempotencyKey?: string,
 ): Promise<T> {
   return request("POST", path, schema, what, { body, idempotencyKey });
-}
-
-export function apiPut<T>(path: string, schema: z.ZodType<T>, what: string, body?: unknown): Promise<T> {
-  return request("PUT", path, schema, what, { body });
 }

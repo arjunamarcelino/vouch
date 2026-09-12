@@ -204,11 +204,11 @@ Action-area "live / connect to act" badges now reflect session (`me.data`), not 
 **Dead / vestigial code**
 - `confirming` TxFlow stage is set then synchronously overwritten by `done` with no `await` → never
   renders. Drop it (`engine.ts:168-170`; union `:32`; `TxStatus.tsx:33-34`; `persistence.ts:16`). *(ts, simplicity, arch)* — **✅ removed** from the union, `TxStatus`, and the persistence enum.
-- `loadPendingTx` / whole persistence module unused if P2-1 is resolved by deletion (`persistence.ts`).
-- `useFeed` + `useAllowance` hooks never imported (allowance read imperatively; no feed UI) — `hooks.ts:144-159`. *(simplicity #3)*
-- `apiPut` + the `"PUT"` method branch unused — `client.ts:62,96-98`. *(simplicity #4, pattern #14)*
-- `ApiClientError.isForbidden` getter unused — `client.ts:29-32`. *(simplicity #9)*
-- `export { Clock }` re-export in `indicators.tsx:91` has no consumer (ClaimFlow imports from `lucide-react`). *(pattern #12, simplicity #9)*
+- `loadPendingTx` / whole persistence module — **✅ now wired** (P2-1 resolved by wiring, not deletion).
+- `useFeed` + `useAllowance` hooks never imported — **✅ removed** (+ pruned `feed` query key and the feed/allowance schema imports; `allowance` key retained for engine invalidation). *(simplicity #3)*
+- `apiPut` + the `"PUT"` method branch unused — **✅ removed** (method union narrowed to `GET | POST`). *(simplicity #4, pattern #14)*
+- `ApiClientError.isForbidden` getter unused — **✅ removed**. *(simplicity #9)*
+- `export { Clock }` re-export in `indicators.tsx:91` has no consumer — **✅ removed** (import dropped too). *(pattern #12, simplicity #9)*
 - Salt `setItem` (`jobs/new/page.tsx:80`, `ClaimFlow.tsx:66`) is never read back → dead writes; also no
   `try/catch` (can throw in private-mode/quota and break submit) and unbounded growth. *(security #4, simplicity #5, arch L5)*
 - `query.ts:13-17` `shouldDehydrateQuery: 'pending'` is dead — every route is `"use client"`, nothing prefetches to dehydrate. *(arch L6)*
@@ -225,7 +225,8 @@ Action-area "live / connect to act" badges now reflect session (`me.data`), not 
 - Hex/address regexes re-declared (`format.ts:40-41`, `JobDetail.tsx:32`, `jobs/new:69`) instead of
   reusing shared `hexAddress`/`HEX32_RE`. *(pattern #6)*
 - Two API clients: `lib/agentClient.ts` persists with its own slash-trim + an inline `agentHealthSchema`
-  (the one schema not centralized). Confirm it's still reachable; fold into shared views or delete. *(pattern #7)*
+  (the one schema not centralized). Confirm it's still reachable; fold into shared views or delete. *(pattern #7)* —
+  **✅ deleted** (`lib/agentClient.ts` was unreferenced; the inline `agentHealthSchema` went with it).
 - Raw `<button className={buttonVariants(...)}>` + duplicated `opacity-50 pointer-events-none` ~6× instead
   of the `<Button>` primitive. *(pattern #9)*
 

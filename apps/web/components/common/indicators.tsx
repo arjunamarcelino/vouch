@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ShieldCheck, ShieldAlert, Clock, Database, Activity } from "lucide-react";
+import { ShieldCheck, ShieldAlert, Database, Activity } from "lucide-react";
 import { Badge } from "@vouch/ui/components/badge";
 import { cn } from "@vouch/ui/lib/utils";
 import type { JobState } from "@vouch/shared/schemas";
@@ -87,5 +87,3 @@ export function FreshnessBadge({
     </span>
   );
 }
-
-export { Clock };

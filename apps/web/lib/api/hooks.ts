@@ -6,16 +6,12 @@ import {
   claimStatusViewSchema,
   providerPerformanceSchema,
   integrationsHealthSchema,
-  feedItemSchema,
-  allowanceViewSchema,
   authMeSchema,
   type JobView,
   type MyJob,
   type ClaimStatusView,
   type ProviderPerformance,
   type IntegrationsHealth,
-  type FeedItem,
-  type AllowanceView,
   type AuthMe,
 } from "@vouch/shared/schemas";
 import { apiGet, ApiClientError } from "./client";
@@ -35,7 +31,6 @@ export const queryKeys = {
   topProviders: ["providers", "top"] as const,
   provider: (address: string) => ["providers", address.toLowerCase()] as const,
   claimStatus: (jobId: string) => ["claims", jobId, "status"] as const,
-  feed: (jobId?: string) => ["feed", jobId ?? "all"] as const,
   allowance: ["allowance"] as const,
 };
 
@@ -143,22 +138,5 @@ export function useClaimStatus(
           return query.state.data && query.state.data.status !== "PENDING" ? false : 3_000;
         }
       : false,
-  });
-}
-
-export function useFeed(jobId?: string, enabled = true): UseQueryResult<FeedItem[]> {
-  const qs = jobId ? `?jobId=${encodeURIComponent(jobId)}` : "";
-  return useQuery({
-    queryKey: queryKeys.feed(jobId),
-    queryFn: () => apiGet(`/feed${qs}`, z.array(feedItemSchema), "feed"),
-    enabled,
-  });
-}
-
-export function useAllowance(enabled = true): UseQueryResult<AllowanceView> {
-  return useQuery({
-    queryKey: queryKeys.allowance,
-    queryFn: () => apiGet("/allowance", allowanceViewSchema, "allowance"),
-    enabled,
   });
 }
