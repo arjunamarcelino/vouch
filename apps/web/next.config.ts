@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Self-contained server output for containerized review (docker-compose) — `node server.js` with a
+  // minimal traced node_modules. Vercel ignores this and uses its own build.
+  output: "standalone",
   // Source-exported workspace packages must be transpiled by Next (plan §17.7-11).
   transpilePackages: ["@vouch/ui", "@vouch/shared"],
   // RainbowKit's connector graph statically references the Base Account / Coinbase Smart Wallet SDK
