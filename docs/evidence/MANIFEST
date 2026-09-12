@@ -1,0 +1,13 @@
+# Vouch CRE evidence MANIFEST
+generated: (deterministic harness; fixed clock 1700000000, sentinel secrets)
+node: v25.6.0
+@chainlink/cre-sdk: 1.20.1
+command: pnpm --filter @vouch/cre-workflow simulate:harness fixtures/<fixture>.json
+labels: harness (SDK-free, credential-only-fallback-equivalent) · dry-run
+
+sha256:
+7af4f4a85b53123aa1a7a676d2cbd672f6562f8d0270e0fc3bffcc2c6d9f1fa6  simulate-invalid-commit.txt
+4b7d741d4affcd99cdde10a262585b1a3d256cb2397a2690daf6a76e063dba72  simulate-replay.txt
+e426fd6c157a2963de0141191a820c93b1ff85fcd56ad087dd37e8ff1a177985  simulate-timeout-error.txt
+5f5c481ad495ad780a142fd5aa5b9d208403b6013c6d6aabf05232700130a8d8  simulate-valid-failure.txt
+b5507e8ebcb29bdb373ed98c9efc6e44cea9fe816a0b12e6173f85a299033931  simulate-valid-pass.txt

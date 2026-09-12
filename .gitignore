@@ -41,3 +41,6 @@ todos/
 .DS_Store
 *.log
 .claude/settings.local.json
+
+# Circle entity-secret recovery file (sensitive — keep safe, never commit)
+recovery/

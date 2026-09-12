@@ -9,11 +9,11 @@ dataSources:
     name: AssuranceHub
     network: arc-testnet
     source:
-      # TODO: replace with the deployed AssuranceHub address (also update networks.json).
-      address: "0x0000000000000000000000000000000000000000"
+      # Deployed AssuranceHub on Arc testnet (2026-09-12; keep in sync with networks.json).
+      address: "0xB30e054557533f28753B4ACdf646B393E2072bf9"
       abi: AssuranceHub
-      # TODO: set to the AssuranceHub deploy block (never 0 in production — forces a full scan).
-      startBlock: 0
+      # AssuranceHub deploy block — floors the scan to near chain head (fast sync).
+      startBlock: 61747921
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9

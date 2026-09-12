@@ -1,0 +1,19 @@
+# Vouch CRE confidential-workflow evidence — fixture: valid-failure
+# label: harness (deterministic local, SDK-free) · dry-run (no on-chain write)
+# NOTE: no secret/credential/threshold appears below (verified by pnpm gate:secrets).
+# command: pnpm --filter @vouch/cre-workflow simulate:harness fixtures/valid-failure.json
+# ----------------------------------------------------------------------------
+
+> @vouch/cre-workflow@0.0.0 simulate:harness /Users/arjuna/Documents/vouch/packages/cre-workflow
+> node --import tsx harness.ts fixtures/valid-failure.json
+
+=== Vouch CRE confidential workflow — local harness (dry-run) ===
+fixture:      fixtures/valid-failure.json
+jobId:        42
+fixed clock:  1700000000 (unix seconds)
+verdict:      PAYOUT
+action:       REPORTED
+payload hex:  0x00000000000000000000000000000000000000000000000000000000004cef5200000000000000000000000000000000000000000000000000000000000000a1000000000000000000000000000000000000000000000000000000000000002a00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000005f5e100f2cd2853600d00baadc78928fb5fef80a64dfd79faa27025c2897ca75cea65df000000000000000000000000000000000000000000000000000000006553f100
+payload b64:  AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABM71IAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAoQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAqAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABfXhAPLNKFNgDQC6rceJKPtf74CmTf15+qJwJcKJfKdc6mXfAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGVT8QA=
+payload bytes:224
+note: 1 secret(s) were consumed inside the eval and none printed above; the credential/threshold stay confidential.
