@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Lock, Cpu, Wrench } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@vouch/ui/components/card";
@@ -53,9 +53,18 @@ export function JobDetail({ id }: { id: string }) {
   const engine = useTxEngine();
   const [commitment, setCommitment] = useState("");
   const [commitFor, setCommitFor] = useState<JobActionId | null>(null);
+  // The lifecycle status captured when an action was dispatched; the post-tx poll runs until the
+  // authoritative chain read advances past it (the Arc read can lag the mined receipt — P2-4).
+  const statusAtActionStart = useRef<JobState | null>(null);
 
-  // Poll the chain read after a tx settles until the lifecycle advances.
-  const job = useJob(id, engine.flow.stage === "done" ? () => true : undefined);
+  // After a tx settles, poll the chain read until the lifecycle genuinely advances (bounded by the
+  // hook's error-stop). `pollUntil` returns true to STOP.
+  const job = useJob(
+    id,
+    engine.flow.stage === "done"
+      ? (jv) => statusAtActionStart.current === null || jv.status !== statusAtActionStart.current
+      : undefined,
+  );
   const claim = useClaimStatus(id, true);
 
   if (job.isLoading) {
@@ -83,6 +92,7 @@ export function JobDetail({ id }: { id: string }) {
   const actions = jobActions(j, viewer, nowSec);
   const currentOrdinal = JOB_STATES.indexOf(j.status);
   const run = (id_: JobActionId) => {
+    statusAtActionStart.current = j.status; // so the post-tx poll knows what "advanced" means
     const common = { jobId: id };
     switch (id_) {
       case "ACCEPT":
@@ -299,12 +309,12 @@ export function JobDetail({ id }: { id: string }) {
                 <button
                   key={a.id}
                   onClick={onClick}
-                  disabled={!a.available || engine.isBusy}
+                  disabled={blocked}
                   aria-disabled={blocked}
                   title={a.available ? undefined : a.reason}
                   className={cn(
                     buttonVariants({ variant: a.id === "EVAL_REJECT" || a.id === "CANCEL" ? "outline" : "default", size: "sm" }),
-                    (!a.available || engine.isBusy) && "pointer-events-none opacity-50",
+                    blocked && "pointer-events-none opacity-50",
                   )}
                 >
                   {a.label}
