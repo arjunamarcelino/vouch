@@ -8,8 +8,7 @@ import { buttonVariants } from "@vouch/ui/components/button";
 import { cn } from "@vouch/ui/lib/utils";
 import { computeCommitment, randomSalt } from "@vouch/shared/commitment";
 import type { ClaimStatus } from "@vouch/shared/schemas";
-import { useJob, useClaimStatus, useAuthMe, useIntegrationsHealth } from "../../lib/api/hooks";
-import { resolveMode } from "../../lib/mode";
+import { useJob, useClaimStatus, useAuthMe } from "../../lib/api/hooks";
 import { useTxEngine } from "../../lib/tx/engine";
 import { prepareClaim, prepareResolveTimeout } from "../../lib/api/prepare";
 import { formatUsdc } from "../../lib/format";
@@ -29,8 +28,6 @@ const CRE_STEPS: { key: ClaimStatus; label: string }[] = [
 
 export function ClaimFlow({ id }: { id: string }) {
   const me = useAuthMe();
-  const health = useIntegrationsHealth();
-  const mode = resolveMode(health.data);
   const engine = useTxEngine();
   const job = useJob(id);
   const claim = useClaimStatus(id, true);
@@ -64,7 +61,7 @@ export function ClaimFlow({ id }: { id: string }) {
     const salt = randomSalt();
     const commitment = computeCommitment(evidence, salt);
     if (typeof window !== "undefined") window.localStorage.setItem(`vouch:evidence-salt:${commitment}`, salt);
-    void engine.run({ action: "CLAIM", jobId: id, simulate: !mode.arc, prepare: (k) => prepareClaim(id, k, commitment) });
+    void engine.run({ action: "CLAIM", jobId: id, prepare: (k) => prepareClaim(id, k, commitment) });
   }
 
   return (
@@ -129,7 +126,7 @@ export function ClaimFlow({ id }: { id: string }) {
 
           {status === "PENDING" && isParty ? (
             <button
-              onClick={() => void engine.run({ action: "RESOLVE_TIMEOUT", jobId: id, simulate: !mode.arc, prepare: (k) => prepareResolveTimeout(id, k) })}
+              onClick={() => void engine.run({ action: "RESOLVE_TIMEOUT", jobId: id, prepare: (k) => prepareResolveTimeout(id, k) })}
               disabled={engine.isBusy}
               className={cn(buttonVariants({ variant: "outline", size: "sm" }), engine.isBusy && "pointer-events-none opacity-50")}
               title="Permissionless fallback once the resolution deadline passes (the contract enforces timing)"

@@ -13,7 +13,7 @@ export const persistedTxSchema = z.object({
   jobId: z.string().optional(),
   preparedId: z.string(),
   txHash: z.string().optional(),
-  stage: z.enum(["submitted", "tracking", "confirming"]),
+  stage: z.enum(["submitted", "tracking"]),
   updatedAt: z.number(),
 });
 export type PersistedTx = z.infer<typeof persistedTxSchema>;

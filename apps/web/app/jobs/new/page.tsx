@@ -11,8 +11,7 @@ import { cn } from "@vouch/ui/lib/utils";
 import { USDC_ADDRESS } from "@vouch/shared/chains";
 import { computeCommitment, randomSalt } from "@vouch/shared/commitment";
 import type { QuoteCommitment } from "@vouch/shared/schemas";
-import { useAuthMe, useTopProviders, useIntegrationsHealth } from "../../../lib/api/hooks";
-import { resolveMode } from "../../../lib/mode";
+import { useAuthMe, useTopProviders } from "../../../lib/api/hooks";
 import { useTxEngine } from "../../../lib/tx/engine";
 import { prepareOpenJob, prepareApprove, requestQuote, fetchAllowance } from "../../../lib/api/prepare";
 import { parseUsdcInput, formatUsdc, shortHex } from "../../../lib/format";
@@ -49,8 +48,6 @@ export default function CreateJobPage() {
   const router = useRouter();
   const me = useAuthMe();
   const providers = useTopProviders();
-  const health = useIntegrationsHealth();
-  const mode = resolveMode(health.data);
   const engine = useTxEngine();
 
   const [provider, setProvider] = useState("");
@@ -131,7 +128,6 @@ export default function CreateJobPage() {
     const escrow = BigInt(body.taskFee) + BigInt(body.serviceFee);
     void engine.run({
       action: "OPEN_JOB",
-      simulate: !mode.arc,
       prepare: (k) => prepareOpenJob(k, body),
       approval: {
         isNeeded: async () => BigInt((await fetchAllowance()).allowance) < escrow,
@@ -266,7 +262,7 @@ export default function CreateJobPage() {
           <button onClick={submit} disabled={!canSubmit} className={cn(buttonVariants({ size: "lg" }), !canSubmit && "opacity-50 pointer-events-none")}>
             Approve &amp; create job
           </button>
-          {mode.arc ? <Badge variant="success">live</Badge> : <Badge variant="warning">simulation</Badge>}
+          {me.data ? <Badge variant="success">live</Badge> : <Badge variant="warning">connect to act</Badge>}
         </div>
       </div>
     </div>

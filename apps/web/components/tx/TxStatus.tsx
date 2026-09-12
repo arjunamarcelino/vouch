@@ -30,8 +30,14 @@ function view(flow: TxFlow): { tone: Tone; title: string; detail?: string; hash?
       return { tone: "pending", title: "Submitted — waiting for confirmation…", hash: flow.hash, confirmed: false };
     case "tracking":
       return { tone: "pending", title: "Confirmed — verifying against the prepared intent…", hash: flow.hash, confirmed: true };
-    case "confirming":
-      return { tone: "pending", title: "Finalizing…", hash: flow.hash, confirmed: true };
+    case "timedOut":
+      return {
+        tone: "warning",
+        title: "Still pending — taking longer than expected",
+        detail: "The transaction hasn't confirmed in time. It may still mine; check the explorer, or retry.",
+        hash: flow.hash,
+        confirmed: false,
+      };
     case "done":
       return {
         tone: "success",
@@ -70,7 +76,7 @@ export function TxStatus({ flow, onReset }: { flow: TxFlow; onReset?: () => void
   const Icon =
     v.tone === "success" ? CheckCircle2 : v.tone === "error" ? (flow.stage === "trackMismatch" ? ShieldAlert : XCircle) : v.tone === "warning" ? AlertTriangle : Loader2;
   const link = explorerTxLink(v.hash, v.confirmed);
-  const terminal = ["done", "reverted", "trackMismatch", "rejected", "error"].includes(flow.stage);
+  const terminal = ["done", "reverted", "trackMismatch", "timedOut", "rejected", "error"].includes(flow.stage);
 
   return (
     <div role="status" aria-live="polite" className={cn("rounded-lg border px-4 py-3 text-sm", TONE_CLS[v.tone])}>

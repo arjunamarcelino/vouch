@@ -8,8 +8,7 @@ import { Badge } from "@vouch/ui/components/badge";
 import { buttonVariants } from "@vouch/ui/components/button";
 import { cn } from "@vouch/ui/lib/utils";
 import { JOB_STATES, type JobState } from "@vouch/shared/schemas";
-import { useJob, useClaimStatus, useAuthMe, useIntegrationsHealth } from "../../lib/api/hooks";
-import { resolveMode } from "../../lib/mode";
+import { useJob, useClaimStatus, useAuthMe } from "../../lib/api/hooks";
 import { jobActions, viewerFromAuth, type JobActionId } from "../../lib/roles";
 import { useTxEngine } from "../../lib/tx/engine";
 import {
@@ -51,8 +50,6 @@ function AddressCell({ role, address }: { role: string; address: string }) {
 
 export function JobDetail({ id }: { id: string }) {
   const me = useAuthMe();
-  const health = useIntegrationsHealth();
-  const mode = resolveMode(health.data);
   const engine = useTxEngine();
   const [commitment, setCommitment] = useState("");
   const [commitFor, setCommitFor] = useState<JobActionId | null>(null);
@@ -85,10 +82,8 @@ export function JobDetail({ id }: { id: string }) {
   const nowSec = Math.floor(Date.now() / 1000);
   const actions = jobActions(j, viewer, nowSec);
   const currentOrdinal = JOB_STATES.indexOf(j.status);
-  const simulate = !mode.arc;
-
   const run = (id_: JobActionId) => {
-    const common = { jobId: id, simulate };
+    const common = { jobId: id };
     switch (id_) {
       case "ACCEPT":
         return engine.run({
@@ -265,7 +260,7 @@ export function JobDetail({ id }: { id: string }) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <Wrench className="size-4 text-primary" aria-hidden /> Actions
-            {simulate ? <Badge variant="warning">simulation</Badge> : <Badge variant="success">live</Badge>}
+            {me.data ? <Badge variant="success">live</Badge> : <Badge variant="warning">connect to act</Badge>}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
