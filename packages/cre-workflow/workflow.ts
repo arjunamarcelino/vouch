@@ -163,8 +163,10 @@ function makePort(rt: TeeRuntime<Config>, evmClient: EVMClient): EvalPort {
         return { ok: false };
       }
       // A real broadcast returns a txHash; a dry-run (`cre workflow simulate` without --broadcast)
-      // returns SUCCESS with NO txHash. Accept both — never fabricate a zero hash. Downstream treats
-      // an empty txHash as "dry-run, not delivered".
+      // returns SUCCESS with NO txHash. Accept both — never fabricate a zero hash. txHash is currently
+      // informational: no consumer branches on it (runEvaluation checks `ok` only), so undefined is
+      // safe. (Trade-off: a real broadcast returning SUCCESS-without-hash is now accepted silently
+      // rather than throwing — acceptable to support simulate.)
       return { ok: true, txHash: w.txHash ? bytesToHex(w.txHash) : undefined };
     },
     now() {
