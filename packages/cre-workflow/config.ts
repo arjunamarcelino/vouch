@@ -49,11 +49,19 @@ export const configSchema = z.object({
   owner: hexAddress,
   /** Gas limit for `writeReport`, as a positive-int decimal string. */
   gasLimit: positiveIntString,
-  /** The confidential test-API endpoint (credential injected via `{{.token}}`).
-   *  NOTE: plain string, NOT `z.string().url()` — the CRE javy/WASM runtime's zod rejects the
-   *  `.url()` refinement for EVERY value ("Invalid url"), which blocks `cre workflow simulate`
-   *  (verified 2026-09-13). The runtime confidential fetch fails loud on a malformed URL anyway. */
-  testApiUrl: z.string().min(1),
+  /** The confidential test-API endpoint. The Vault-DON credential is injected via `{{.token}}` and
+   *  sent to THIS host, so it MUST be https — an `http://` typo would ship the live token in the
+   *  clear. NOT `z.string().url()`: the CRE javy/WASM runtime's zod rejects the `.url()` refinement
+   *  for EVERY value ("Invalid url"), which blocks `cre workflow simulate` (verified 2026-09-13). A
+   *  `.refine(startsWith("https://"))` DOES survive the WASM runtime, so it restores — and exceeds —
+   *  the scheme guarantee `.url()` never actually enforced (it accepts http://). */
+  testApiUrl: z
+    .string()
+    .trim()
+    .min(1)
+    .refine((s) => s.startsWith("https://"), {
+      message: "testApiUrl must be an https:// URL (the Vault credential is sent to this host)",
+    }),
   /** The pinned Keystone workflow identifier, bound in the commitment. */
   workflowId: bytes32,
 });
