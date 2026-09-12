@@ -66,12 +66,13 @@ export function TechStrip({
           key={m.name}
           href={m.href}
           target="_blank"
-          rel="noreferrer noopener"
+          rel="noopener noreferrer"
           aria-label={m.name}
           title={m.name}
           className="inline-flex items-center opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <img src={m.light} alt={m.name} className={cn(h, "w-auto", m.dark && "dark:hidden")} />
+          {/* Both variants are decorative; the anchor's aria-label is the sole accessible name. */}
+          <img src={m.light} alt="" aria-hidden className={cn(h, "w-auto", m.dark && "dark:hidden")} />
           {m.dark ? (
             <img src={m.dark} alt="" aria-hidden className={cn("hidden w-auto dark:block", h)} />
           ) : null}
