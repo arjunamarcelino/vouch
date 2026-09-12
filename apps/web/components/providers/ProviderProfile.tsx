@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowLeft, Briefcase, ShieldCheck, ShieldX, Coins, Gauge } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@vouch/ui/components/card";
+import { Card, CardContent } from "@vouch/ui/components/card";
 import { Badge } from "@vouch/ui/components/badge";
 import { useProviderPerformance } from "../../lib/api/hooks";
 import { formatUsdc, shortHex, explorerAddressLink } from "../../lib/format";

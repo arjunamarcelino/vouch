@@ -2,11 +2,17 @@ import {
   transactionRequestSchema,
   trackResultSchema,
   allowanceViewSchema,
+  quoteCommitmentSchema,
   type TransactionRequest,
   type TrackResult,
   type AllowanceView,
+  type QuoteCommitment,
 } from "@vouch/shared/schemas";
 import { apiPost, apiGet } from "./client";
+
+/** Request an autonomous risk quote (proxied to the agent). Idempotent; may 503 if the agent is down. */
+export const requestQuote = (key: string, body: unknown): Promise<QuoteCommitment> =>
+  apiPost("/quotes", quoteCommitmentSchema, "risk quote", body, key);
 
 /** Fresh allowance read for the engine's pre-funding re-check (not the cached hook). */
 export const fetchAllowance = (): Promise<AllowanceView> =>
@@ -29,11 +35,11 @@ export const prepareOpenJob = (key: string, body: unknown): Promise<TransactionR
 export const prepareAccept = (jobId: string, key: string): Promise<TransactionRequest> =>
   apiPost(`/jobs/${jobId}/accept/prepare`, R, "accept prepare", undefined, key);
 
-export const prepareSubmit = (jobId: string, key: string, commitment: string): Promise<TransactionRequest> =>
-  apiPost(`/jobs/${jobId}/deliverable/prepare`, R, "submit prepare", { commitment }, key);
+export const prepareSubmit = (jobId: string, key: string, submissionCommitment: string): Promise<TransactionRequest> =>
+  apiPost(`/jobs/${jobId}/deliverable/prepare`, R, "submit prepare", { submissionCommitment }, key);
 
-export const prepareEvaluate = (jobId: string, key: string, approve: boolean): Promise<TransactionRequest> =>
-  apiPost(`/jobs/${jobId}/evaluate/prepare`, R, "evaluate prepare", { approve }, key);
+export const prepareEvaluate = (jobId: string, key: string, approved: boolean): Promise<TransactionRequest> =>
+  apiPost(`/jobs/${jobId}/evaluate/prepare`, R, "evaluate prepare", { approved }, key);
 
 export const prepareCancel = (jobId: string, key: string): Promise<TransactionRequest> =>
   apiPost(`/jobs/${jobId}/cancel/prepare`, R, "cancel prepare", undefined, key);
