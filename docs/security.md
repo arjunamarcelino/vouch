@@ -104,21 +104,30 @@ therefore must never contain a secret): workflow **source/binary**, triggers, ch
 on-chain metadata, subgraph entities, IPFS, Postgres, logs. Private test **logic is fetched at
 runtime** inside the enclave — never inlined in source.
 
-| Secret | Never appears in | Enforced by |
+Enforcement is layered — each mechanism covers a specific surface. **`gate:secrets` covers tracked
+source/config only**; it does **not** scan the built web bundle, the DB, or runtime logs (those are
+logger redaction + the comprehensive-tier follow-ups below).
+
+| Secret | Never appears in | Enforced by (per surface) |
 |---|---|---|
-| Repo token / API bearer | source, DB, on-chain, subgraph, bundle, logs | Vault DON `{{.token}}` injection; logger redaction; `gate:secrets` |
+| Repo token / API bearer | source/config → `gate:secrets`; runtime logs → redaction; on-chain/subgraph → design | Vault DON `{{.token}}` injection (never in node memory); logger redaction (logs); `gate:secrets` (tracked source: token-shape + secret-var scan) |
 | Private test / criteria / `PASS_THRESHOLD` | anywhere outside the enclave | `getSecret` inside TEE; fetched at runtime; commitments-only on-chain |
-| `QUOTE_SIGNER_PK` / Circle / deployer keys | repo, web bundle, DB | `.gitignore`; `NEXT_PUBLIC_*` allowlist; `gate:secrets` |
+| `QUOTE_SIGNER_PK` / Circle / deployer keys | tracked repo → `gate:secrets` + `.gitignore`; web bundle → `NEXT_PUBLIC_*` allowlist (not auto-scanned — see follow-ups) | `.gitignore`; `NEXT_PUBLIC_*` allowlist convention; `gate:secrets` (tracked source) |
 
 On-chain events and subgraph entities carry **only** ids, amounts, addresses, booleans, and
 **`bytes32` commitments** — never preimages, criteria, or failure strings.
 
 ### Secret-leak gate (`pnpm gate:secrets` → [`scripts/secret-scan.mjs`](../scripts/secret-scan.mjs))
 Fails closed if a real secret file is tracked, if `.gitignore` misses `.env`/`secrets.yaml`, or if a
-tracked non-example file contains a real 64-hex key / Circle token assigned to a secret var
-(placeholders/sentinels allowed). It also runs the CRE harness as a **positive control** — proving
-the secret path executes and stays redacted ("no secret is printed"). Verified non-vacuous: it flags a
-planted key and passes clean otherwise.
+tracked non-example file contains (a) a self-identifying token shape (JWT / `ghp_` / `github_pat_` /
+`AKIA` / Slack / PEM `PRIVATE KEY` / Circle key — flagged even in test/fixture files) or (b) a real,
+high-entropy 64-hex value assigned near a secret-var name (all-same-char placeholders allowed; an
+auditable `secret-scan-allow` directive marks intentional public test vectors). It also runs the CRE
+harness as a **positive control** that asserts the harness *consumed* ≥1 secret, produced the
+threshold-driven `PAYOUT` verdict, and did **not** echo the sentinel value — a harness that throws is
+a failure, not a skip. **Scope:** tracked source/config only — not the built bundle, DB, or logs.
+Verified non-vacuous: it flags a planted key (incl. in a `.test.ts`), a GitHub PAT, and a JWT, and
+passes clean otherwise.
 
 **Comprehensive-tier follow-ups** (enumerated, not all automated in the lean gate): scan the **built**
 `.next` bundle for secret *values* (not just the allowlist file); confirm no sourcemaps ship original
