@@ -11,7 +11,8 @@ reviewers:
   - code-simplicity-reviewer
   - pattern-recognition-specialist
   - agent-native-reviewer
-verdict: No P1 merge-blockers. 9 P2 (should-fix) + cleanup. Findings only — nothing was changed.
+verdict: No P1 merge-blockers. 9 P2 (should-fix) + cleanup.
+resolution: "RESOLVED — all 9 P2 fixed; P3 fixed except 3 explicitly accepted (address links, wallet-stack-on-every-route, black scrim) and 2 deferred (Button asChild, claimResolutionDeadline in JobView → needs apps/api change). Committed per issue."
 ---
 
 # Code Review — PR #6 `feat: build outcome assurance product experience`
@@ -210,16 +211,22 @@ Action-area "live / connect to act" badges now reflect session (`me.data`), not 
 - `ApiClientError.isForbidden` getter unused — **✅ removed**. *(simplicity #9)*
 - `export { Clock }` re-export in `indicators.tsx:91` has no consumer — **✅ removed** (import dropped too). *(pattern #12, simplicity #9)*
 - Salt `setItem` (`jobs/new/page.tsx:80`, `ClaimFlow.tsx:66`) is never read back → dead writes; also no
-  `try/catch` (can throw in private-mode/quota and break submit) and unbounded growth. *(security #4, simplicity #5, arch L5)*
+  `try/catch` (can throw in private-mode/quota and break submit) and unbounded growth. *(security #4, simplicity #5, arch L5)* —
+  **✅ kept (per decision: future in-app CRE reveal) + guarded**: both writes are now wrapped in
+  `try/catch` so a storage throw can't break submit. (Key scoping/expiry to follow when the reveal lands.)
 - `query.ts:13-17` `shouldDehydrateQuery: 'pending'` is dead — every route is `"use client"`, nothing prefetches to dehydrate. *(arch L6)* — **✅ removed** the custom `dehydrate` override; also set `refetchOnWindowFocus: false` in the query defaults (P3 below).
 
 **Duplication (the PR's own "one X" goal invites these)**
 - Claim-status rendered two diverging ways: `JobDetail` `ClaimBadge` shows the **raw enum**; `ClaimFlow`
-  shows **human text**. Add `CLAIM_STATUS_META` + a shared `ClaimBadge` to `indicators.tsx`. *(pattern #1/#2, fixes the `as` cast at JobDetail.tsx:332)*
+  shows **human text**. Add `CLAIM_STATUS_META` + a shared `ClaimBadge` to `indicators.tsx`. *(pattern #1/#2)* —
+  **✅ fixed**: `CLAIM_STATUS_META` + exported `ClaimBadge` in `indicators.tsx`; `JobDetail` uses it (local
+  `ClaimBadge` + the `as` cast removed). `ClaimFlow` keeps its richer per-status sentences (a distinct UX).
 - Claim eligibility + reason strings re-implemented in `ClaimFlow.tsx:45-61` instead of reusing
-  `jobActions(...).find(a => a.id === "CLAIM")` — strings already drift from `roles.ts`. *(pattern #3, simplicity #6)*
+  `jobActions(...).find(a => a.id === "CLAIM")` — strings already drift from `roles.ts`. *(pattern #3, simplicity #6)* —
+  **✅ fixed**: `ClaimFlow` now derives `eligible`/`reason` from `jobActions(...).find(a => a.id === "CLAIM")`.
 - "Live / Local simulation" pill implemented 4 ways (`mode.modeLabel`, `PrizeEvidenceDrawer.StatusPill`,
-  `demo/page.RailPill`, inline `<Badge>`s). Extract one `<ModePill live>`. *(pattern #4)*
+  `demo/page.RailPill`, inline `<Badge>`s). Extract one `<ModePill live>`. *(pattern #4)* — **✅ fixed**:
+  one `ModePill` in `indicators.tsx` replaces `StatusPill` (drawer) and the non-CRE `RailPill` (demo).
 - URL trailing-slash-trim + join duplicated 4× (`agentClient.ts:20`, `client.ts:42`, `auth.ts:16`,
   `format.ts:39`) → one `joinUrl`. *(pattern #5)* — **✅ fixed**: one `apiUrl()` in `lib/env.ts`, used by
   `client.ts`, `auth.ts`, and `providers.tsx` (agentClient deleted).
@@ -230,14 +237,19 @@ Action-area "live / connect to act" badges now reflect session (`me.data`), not 
   (the one schema not centralized). Confirm it's still reachable; fold into shared views or delete. *(pattern #7)* —
   **✅ deleted** (`lib/agentClient.ts` was unreferenced; the inline `agentHealthSchema` went with it).
 - Raw `<button className={buttonVariants(...)}>` + duplicated `opacity-50 pointer-events-none` ~6× instead
-  of the `<Button>` primitive. *(pattern #9)*
+  of the `<Button>` primitive. *(pattern #9)* — **⏸ deferred**: the `<Button>` primitive has no
+  `asChild`, so action controls that must be `<Link>`s (CLAIM, nav CTAs) can't use it uniformly; migrating
+  only the `<button>` sites would split the pattern further. Low value; left for a `Button asChild` follow-up.
 
 **Correctness-adjacent nits**
 - Approval sub-step skips the `chainId`-match and `value === "0"` guards applied to the main tx, and is
   never tracked (`engine.ts:103-108`). Apply the same asserts. *(security #2, ts #7)* — **✅ fixed**: the
   approval prepared tx now asserts `chainId === arcTestnet.id` + `value === "0"` before signing.
 - `explorerAddressLink` is gated only by address-shape, not mode — simulated/seed addresses get real
-  Arcscan `/address/` links (honesty nit). Gate behind `mode.arc`. *(security #3)*
+  Arcscan `/address/` links (honesty nit). Gate behind `mode.arc`. *(security #3)* — **✓ accepted (no
+  change)**: address links are *not fabricated* — Arcscan resolves any real address (client/provider/USDC),
+  and in simulation the API is down so no address data renders. Only tx-hash links (which *can* be
+  fabricated) are provenance-gated. Threading `mode` into every address link wasn't worth the coupling.
 - `UsdcAmount` brand is bypassed at the two arithmetic sites (`jobs/new:131` escrow sum, `JobDetail:99`
   allowance compare) — raw `BigInt(str)` skips `toUsdc`'s validation. Add `addUsdc`/`gte` helpers. *(arch M3)* —
   **✅ fixed**: `addUsdc`/`gteUsdc` (validated, branded) added to `format.ts`; both sites route through them.
@@ -245,24 +257,37 @@ Action-area "live / connect to act" badges now reflect session (`me.data`), not 
   Add a `^\d` check in the parser. *(ts #9)* — **✅ fixed**: `parseUsdcInput` now rejects anything that
   isn't `^\d+(\.\d+)?$` (no sign/exponent).
 - Provider query key lowercases the address but the fetch sends the raw param → two cache entries + mixed
-  casing to the API (`hooks.ts:112-117`). Lowercase once. *(ts #8)*
+  casing to the API (`hooks.ts:112-117`). Lowercase once. *(ts #8)* — **✅ fixed**: the hook lowercases the
+  address once and uses it for both the query key and the fetched path.
 - `publicCriteriaHash` hashed inline (`jobs/new:89`, unsalted `keccak256`) rather than via
-  `@vouch/shared` — undercuts the agent-parity rationale that centralized `computeCommitment`. *(agent-native, arch L4)*
+  `@vouch/shared` — undercuts the agent-parity rationale that centralized `computeCommitment`. *(agent-native, arch L4)* —
+  **✅ fixed**: `computePublicCriteriaHash` added to `@vouch/shared/commitment`; Create uses it (no inline viem hashing).
 - `FreshnessBadge` hardcodes `confidence="FRESH"` (`ProviderProfile.tsx:58`) regardless of index lag; the
-  non-FRESH branches are dead. Wire real `dataConfidence` or drop the prop. *(ts #11, pattern #10, arch L3, simplicity #8)*
+  non-FRESH branches are dead. Wire real `dataConfidence` or drop the prop. *(ts #11, pattern #10, arch L3, simplicity #8)* —
+  **✅ fixed**: `ProviderProfile` no longer claims `FRESH` (the endpoint carries no confidence field); the
+  badge renders the neutral "Graph · indexed". The API still fails closed on a stale index.
 - `JobDetail` CLAIM action reuses the generic paste-a-bytes32 input; it should `Link` to
-  `/jobs/[id]/claim` (the real client-side-hash claim UX). Keeps `needsCommitment` for SUBMIT only. *(simplicity #7)*
+  `/jobs/[id]/claim` (the real client-side-hash claim UX). Keeps `needsCommitment` for SUBMIT only. *(simplicity #7)* —
+  **✅ fixed**: CLAIM now renders as a `<Link>` to `/jobs/[id]/claim`; `needsCommitment` is SUBMIT-only
+  (unreachable CLAIM run-case + `prepareClaim` import removed).
 - Role resolver encodes deadline preconditions the API delegates to the contract (`roles.ts:60,79`), and
   offers `RESOLVE_TIMEOUT` before its deadline (not in `JobView`). Safe-direction drift; consider adding
-  `claimResolutionDeadline` to `JobView`. *(arch L1/L2)*
+  `claimResolutionDeadline` to `JobView`. *(arch L1/L2)* — **⏸ deferred**: honestly gating `RESOLVE_TIMEOUT`
+  needs `claimResolutionDeadline` added to the `/jobs/:id` response + `jobViewSchema` (an apps/api change,
+  out of scope for this web-only review pass). The API enforces the deadline today (safe-direction drift).
 - `sheet.tsx:25` raw `bg-black/40` (use `bg-foreground/40`); `JobDetail.tsx:212` arbitrary `text-[10px]`
-  (use `text-xs`). *(pattern #11)*
+  (use `text-xs`). *(pattern #11)* — **✅ partial**: `text-[10px]` → `text-xs`. The overlay keeps
+  `bg-black/40` on purpose — a black scrim is correct in *both* themes; `bg-foreground/40` would invert
+  to a white scrim in dark mode.
 - Chain assertion skipped when `walletChainId === undefined` (`engine.ts:93`) — relies on
   `sendTransaction({chainId})` as backstop; prefer switching/erroring. *(ts #6, security, arch L7)* —
   **✅ fixed**: guard is now `walletChainId !== arcTestnet.id` (covers undefined → attempts a switch).
 - Full wallet stack (wagmi + RainbowKit + CSS) + a universal `/auth/me` call ship on every route incl.
-  the static landing page. Acceptable for a dApp; could defer behind a wallet-only layout segment. *(perf #4)*
-- Dashboard bucket filtering recomputed every render (incl. the 30s health poll) — `useMemo` it. *(perf #5)*
+  the static landing page. Acceptable for a dApp; could defer behind a wallet-only layout segment. *(perf #4)* —
+  **✓ accepted**: standard for a wallet-first dApp; a layout-segment split is a larger change with
+  marginal benefit at this scale. Left as a documented future optimization.
+- Dashboard bucket filtering recomputed every render (incl. the 30s health poll) — `useMemo` it. *(perf #5)* —
+  **✅ fixed**: bucketing is now a single `useMemo` keyed on `jobs.data`.
 - `refetchOnWindowFocus` left at the v5 default (on) for list/reputation reads → minor tab-refocus churn. *(perf #7)* — **✅ fixed**: set `refetchOnWindowFocus: false` in the query defaults.
 
 ---

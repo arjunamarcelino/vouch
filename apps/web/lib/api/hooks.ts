@@ -105,12 +105,14 @@ export function useTopProviders(): UseQueryResult<ProviderPerformance[]> {
 export function useProviderPerformance(
   address: string | undefined,
 ): UseQueryResult<ProviderPerformance | null> {
+  // Lowercase once so the cache key and the fetched path agree (no duplicate entries / mixed casing).
+  const id = address?.toLowerCase();
   return useQuery({
-    queryKey: queryKeys.provider(address ?? ""),
+    queryKey: queryKeys.provider(id ?? ""),
     queryFn: async () => {
       try {
         return await apiGet(
-          `/providers/${address}/performance`,
+          `/providers/${id}/performance`,
           providerPerformanceSchema,
           "provider performance",
         );

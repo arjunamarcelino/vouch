@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import Link from "next/link";
 import { Plus, Activity, CircleDot } from "lucide-react";
 import { Card, CardContent } from "@vouch/ui/components/card";
@@ -61,6 +62,20 @@ export default function DashboardPage() {
   const health = useIntegrationsHealth();
   const jobs = useMyJobs(!!me.data);
 
+  // Bucket once per jobs change (not on every render, incl. the 30s health poll tick).
+  const grouped = useMemo(() => {
+    const all = jobs.data ?? [];
+    const buckets = BUCKETS.map((b) => ({
+      ...b,
+      items: all.filter((j) => {
+        const s = asJobState(j.cachedStatus);
+        return s ? b.states.includes(s) : false;
+      }),
+    })).filter((b) => b.items.length > 0);
+    const syncing = all.filter((j) => !asJobState(j.cachedStatus));
+    return { buckets, syncing };
+  }, [jobs.data]);
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -114,41 +129,30 @@ export default function DashboardPage() {
         </Card>
       ) : (
         <div className="mt-6 space-y-6">
-          {BUCKETS.map((bucket) => {
-            const items = (jobs.data ?? []).filter((j) => {
-              const s = asJobState(j.cachedStatus);
-              return s ? bucket.states.includes(s) : false;
-            });
-            if (items.length === 0) return null;
-            return (
-              <section key={bucket.key} aria-labelledby={`b-${bucket.key}`}>
-                <h2 id={`b-${bucket.key}`} className="mb-2 text-sm font-medium uppercase tracking-wide text-subtle-foreground">
-                  {bucket.label} <span className="tabular-nums">({items.length})</span>
-                </h2>
-                <div className="space-y-2">
-                  {items.map((j) => (
-                    <JobRow key={j.clientRequestId} job={j} />
-                  ))}
-                </div>
-              </section>
-            );
-          })}
-          {(() => {
-            const syncing = (jobs.data ?? []).filter((j) => !asJobState(j.cachedStatus));
-            if (syncing.length === 0) return null;
-            return (
-              <section aria-labelledby="b-sync">
-                <h2 id="b-sync" className="mb-2 text-sm font-medium uppercase tracking-wide text-subtle-foreground">
-                  Syncing <span className="tabular-nums">({syncing.length})</span>
-                </h2>
-                <div className="space-y-2">
-                  {syncing.map((j) => (
-                    <JobRow key={j.clientRequestId} job={j} />
-                  ))}
-                </div>
-              </section>
-            );
-          })()}
+          {grouped.buckets.map((bucket) => (
+            <section key={bucket.key} aria-labelledby={`b-${bucket.key}`}>
+              <h2 id={`b-${bucket.key}`} className="mb-2 text-sm font-medium uppercase tracking-wide text-subtle-foreground">
+                {bucket.label} <span className="tabular-nums">({bucket.items.length})</span>
+              </h2>
+              <div className="space-y-2">
+                {bucket.items.map((j) => (
+                  <JobRow key={j.clientRequestId} job={j} />
+                ))}
+              </div>
+            </section>
+          ))}
+          {grouped.syncing.length > 0 ? (
+            <section aria-labelledby="b-sync">
+              <h2 id="b-sync" className="mb-2 text-sm font-medium uppercase tracking-wide text-subtle-foreground">
+                Syncing <span className="tabular-nums">({grouped.syncing.length})</span>
+              </h2>
+              <div className="space-y-2">
+                {grouped.syncing.map((j) => (
+                  <JobRow key={j.clientRequestId} job={j} />
+                ))}
+              </div>
+            </section>
+          ) : null}
         </div>
       )}
     </div>
