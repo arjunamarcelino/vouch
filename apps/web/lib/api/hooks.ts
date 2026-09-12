@@ -91,7 +91,10 @@ export function useJob(
     queryFn: () => apiGet(`/jobs/${id}`, jobViewSchema, "job"),
     enabled: !!id,
     refetchInterval: pollUntil
-      ? (query) => (query.state.data && pollUntil(query.state.data) ? false : 2_000)
+      ? (query) => {
+          if (query.state.status === "error") return false; // stop on error — never an unbounded loop
+          return query.state.data && pollUntil(query.state.data) ? false : 2_000;
+        }
       : false,
   });
 }
@@ -135,8 +138,10 @@ export function useClaimStatus(
     queryFn: () => apiGet(`/claims/${jobId}/status`, claimStatusViewSchema, "claim status"),
     enabled: !!jobId,
     refetchInterval: poll
-      ? (query) =>
-          query.state.data && query.state.data.status !== "PENDING" ? false : 3_000
+      ? (query) => {
+          if (query.state.status === "error") return false; // stop on error — never an unbounded loop
+          return query.state.data && query.state.data.status !== "PENDING" ? false : 3_000;
+        }
       : false,
   });
 }
