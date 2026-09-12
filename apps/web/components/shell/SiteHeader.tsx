@@ -21,8 +21,18 @@ export function SiteHeader() {
     <header className="sticky top-0 z-30 border-b border-border bg-surface/90 backdrop-blur supports-[backdrop-filter]:bg-surface/75">
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-4 sm:px-6">
         <Link href="/" aria-label="Vouch — home" className="flex items-center">
-          {/* Renewed Vouch wordmark (black on white); dark:invert flips it white-on-dark. */}
-          <img src="/logos/vouch/vouch.png" alt="Vouch" className="h-6 w-auto dark:invert" />
+          {/* Vouch wordmark: black ink on an opaque white PNG. The blend modes key the background
+              out against either theme so no white box shows on the zinc-50 (off-white) surface:
+              light → multiply drops the white bg, keeps black ink; dark → invert (black↔white)
+              then screen drops the now-black bg, keeps the white ink. Intrinsic w/h reserve the
+              box (prevents first-paint reflow); h-6 w-auto scales it. */}
+          <img
+            src="/logos/vouch/vouch.png"
+            alt="Vouch"
+            width={828}
+            height={285}
+            className="h-6 w-auto mix-blend-multiply dark:mix-blend-screen dark:invert"
+          />
         </Link>
         <nav className="hidden items-center gap-1 sm:flex" aria-label="Primary">
           {NAV.map((item) => {
