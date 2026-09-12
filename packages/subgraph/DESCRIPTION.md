@@ -48,6 +48,23 @@ rather than fabricate history.
 
 ---
 
+## Paste-ready blurb (single Studio "Description" field)
+
+Prose version of the above for pasting into the one Studio description field (kept here so the two
+never drift — do not maintain a separate file):
+
+```text
+Vouch is a confidential, post-completion outcome-assurance protocol for AI coding work: a provider locks a capped, self-funded guarantee, and during a coverage window after payment a confidential regression test can prove a covered failure and pay the client a service credit.
+
+Built from scratch, this subgraph indexes every AssuranceHub lifecycle event on Arc and derives each provider's performance history — the live signal an autonomous risk agent prices guarantees from. No reputation is stored on-chain and there is no DB mirror: stale the subgraph and the agent can only refuse, so The Graph is genuinely load-bearing.
+
+It exposes auditable, float-free risk features in basis points (upheld-claim rate, claim frequency, coverage ratio, payout-to-covered-value) across 13 entities. Only ids, amounts, addresses and bytes32 commitments are indexed — private tests, criteria and credentials stay inside the Chainlink CRE TEE.
+
+Network: Arc testnet (eip155:5042002).
+```
+
+---
+
 ## Suggested Studio metadata
 
 - **Categories:** DeFi · Analytics · AI (AI tooling / AI use case)
