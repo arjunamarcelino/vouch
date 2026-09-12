@@ -28,8 +28,9 @@ const MARKS: Mark[] = [
   {
     name: "The Graph",
     href: "https://thegraph.com",
-    light: "/logos/the-graph/the-graph-dark.svg",
-    dark: "/logos/the-graph/the-graph-light.svg",
+    // Named by ink color (like every other mark: dark slot → the *white* asset), not by theme.
+    light: "/logos/the-graph/the-graph-ink.svg",
+    dark: "/logos/the-graph/the-graph-white.svg",
   },
   {
     name: "Chainlink",
