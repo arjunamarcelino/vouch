@@ -69,6 +69,12 @@ flow; the orphaned blob is cleared only on the next completed tx.
 re-enter a reconciling stage that re-polls the receipt and re-runs `trackTx`), **or** delete the
 persistence layer and drop the claim from the docstrings. (Pick one — don't ship a disconnected
 abstraction that reads as done.)
+**Resolution:** ✅ Fixed (wired — chosen over deletion). `useTxEngine` now has a mount/account-change
+`useEffect` (guarded once-per-address via a ref) that calls `loadPendingTx`, then reconciles the
+persisted `txHash` against the chain: `getTransactionReceipt` (fall back to a bounded
+`waitForTransactionReceipt` if unmined) → `reverted` / re-run `trackTx` → `trackMismatch` or `done`, and
+clears the blob on resolution (a timeout re-enters `timedOut`). The persisted `stage` is treated as a
+hint only. (`engine.ts`)
 
 ### P2-2 · Post-tx `invalidateQueries()` is unfiltered AND awaited in the try — a confirmed tx can flip to "error"  `✓ verified`
 **File:** `apps/web/lib/tx/engine.ts:172`

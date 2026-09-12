@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAccount, usePublicClient, useSendTransaction, useSwitchChain } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
 import { BaseError, WaitForTransactionReceiptTimeoutError, type Hex } from "viem";
@@ -9,7 +9,7 @@ import type { TransactionRequest, TxAction } from "@vouch/shared/schemas";
 import { ApiClientError } from "../api/client";
 import { trackTx } from "../api/prepare";
 import { queryKeys } from "../api/hooks";
-import { savePendingTx, clearPendingTx } from "./persistence";
+import { savePendingTx, clearPendingTx, loadPendingTx } from "./persistence";
 import { createLiveTransport, SIMULATED_TRANSPORT, type TxTransport } from "./transport";
 
 /**
@@ -204,6 +204,59 @@ export function useTxEngine() {
     },
     [address, walletChainId, sendTransactionAsync, switchChainAsync, publicClient, queryClient],
   );
+
+  // P2-1: resume a pending tx after a refresh. On mount (and on account change) reconcile the persisted
+  // routing blob against the chain/API — the persisted `stage` is only a HINT. Runs once per address.
+  const resumedFor = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (!address || !publicClient) return;
+    if (resumedFor.current === address) return;
+    resumedFor.current = address;
+    const pending = loadPendingTx(address, arcTestnet.id);
+    if (!pending?.txHash) return;
+    const hash = pending.txHash as Hex;
+    const action = pending.action;
+    let cancelled = false;
+    const clear = () => clearPendingTx(address, arcTestnet.id);
+    void (async () => {
+      setFlow({ stage: "submitted", action, hash });
+      try {
+        const existing = await publicClient.getTransactionReceipt({ hash }).catch(() => null);
+        let status = existing?.status;
+        if (!existing) {
+          const r = await publicClient.waitForTransactionReceipt({ hash, timeout: RECEIPT_TIMEOUT_MS });
+          status = r.status;
+        }
+        if (cancelled) return;
+        if (status === "reverted") {
+          setFlow({ stage: "reverted", action, hash, reason: "The transaction reverted on-chain." });
+          clear();
+          return;
+        }
+        setFlow({ stage: "tracking", action, hash });
+        const track = await trackTx(hash, pending.preparedId);
+        if (cancelled) return;
+        if (track.status === "MISMATCH") {
+          setFlow({ stage: "trackMismatch", action, hash });
+          clear();
+          return;
+        }
+        setFlow({ stage: "done", action, hash, simulated: false });
+        clear();
+      } catch (err) {
+        if (cancelled) return;
+        if (err instanceof WaitForTransactionReceiptTimeoutError) {
+          setFlow({ stage: "timedOut", action, hash });
+          return;
+        }
+        clear();
+        setFlow({ stage: "idle" });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [address, publicClient]);
 
   const isBusy =
     flow.stage === "preparing" ||
