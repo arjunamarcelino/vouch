@@ -25,10 +25,14 @@ onlyBuiltDependencies:
 # Force patched versions of transitive deps flagged HIGH by `pnpm audit` (2026-09-12,
 # "verify end-to-end assurance lifecycle"). All are deep-transitive (wagmi/walletconnect,
 # NestJS, Prisma); none is a direct dependency, so these overrides pull the fix without an
-# app-code change. Verified: install + typecheck + build + all test suites stay green.
+# app-code change. Ranges are UPPER-BOUNDED to the vetted major so a future `pnpm update`
+# can't silently pull an untested major (esp. deepmerge-ts, which @prisma/config uses to merge
+# prisma.config.ts). Verified: install re-resolves to the same versions Prisma 7.10 expects,
+# `pnpm audit` stays 0 high/critical, AND the DB layer round-trips
+# (`pnpm --filter @vouch/db codegen` + `prisma validate`), plus typecheck/build/tests green.
 overrides:
-  ws: ">=8.21.0"
-  axios: ">=1.18.0"
-  multer: ">=2.3.0"
-  mysql2: ">=3.22.0"
-  deepmerge-ts: ">=8.0.0"
+  ws: ">=8.21.0 <9"
+  axios: ">=1.18.0 <2"
+  multer: ">=2.3.0 <3"
+  mysql2: ">=3.22.0 <4"
+  deepmerge-ts: ">=8.0.0 <9"
