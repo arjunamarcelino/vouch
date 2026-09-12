@@ -13,7 +13,7 @@ lifecycle once and ends on the thesis. Per-track deep-dives live in
 
 > **Honesty rule (non-negotiable):** show **real output only**. No faked transactions, no
 > hard-coded chain results. Any unconfigured leg shows its explicit **"not configured"** state — we
-> never stage around it. Run [`pnpm demo:health`](../scripts/preflight-demo.mjs) immediately before
+> never stage around it. Run [`pnpm demo:health`](../scripts/demo-health.mjs) immediately before
 > recording; every leg you intend to show must be 🟢 (unconfigured legs are honest, but don't narrate
 > them as live).
 

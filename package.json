@@ -19,7 +19,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,md,json,yaml,yml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,md,json,yaml,yml}\"",
     "gate:secrets": "node scripts/secret-scan.mjs",
-    "demo:health": "node scripts/preflight-demo.mjs"
+    "demo:health": "node scripts/demo-health.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",
