@@ -41,7 +41,14 @@ const envSchema = z
     SESSION_TTL_SECONDS: z.coerce.number().int().positive().default(3600),
     SIWE_DOMAIN: z.string().optional(), // required outside development
     SIWE_NONCE_TTL_SECONDS: z.coerce.number().int().positive().default(300),
-    WEB_ORIGIN: z.string().url().optional(), // required outside development (CORS credentials)
+    // CORS allowlist for cookie-credentialed requests. Comma-separated list of EXACT origins (a
+    // wildcard + credentials is rejected by browsers). Parsed to string[]; required outside dev.
+    // main.ts matches against an exact-match Set — never a regex/substring (an `includes` test would
+    // match `withvouch.xyz.evil.com`). Add Vercel preview origins explicitly if needed.
+    WEB_ORIGIN: z
+      .string()
+      .optional()
+      .transform((s) => (s ?? "").split(",").map((o) => o.trim()).filter(Boolean)),
 
     // ---- authorization / demo ----
     ADMIN_ADDRESSES: z
@@ -78,11 +85,13 @@ const envSchema = z
       });
     }
     // Outside development, session/SIWE/CORS material is mandatory (fail-closed, no dev fallbacks).
+    // AGENT_API_KEY is required too: the API presents it as the Bearer to the agent's signing routes,
+    // and the agent is fail-closed on the same key — both ends must be set and identical in prod.
     if (e.CHAIN_ENV !== "development") {
       for (const [key, val] of [
         ["SESSION_SECRET", e.SESSION_SECRET],
         ["SIWE_DOMAIN", e.SIWE_DOMAIN],
-        ["WEB_ORIGIN", e.WEB_ORIGIN],
+        ["AGENT_API_KEY", e.AGENT_API_KEY],
       ] as const) {
         if (!val) {
           ctx.addIssue({
@@ -91,6 +100,14 @@ const envSchema = z
             message: `${key} is required when CHAIN_ENV is not "development"`,
           });
         }
+      }
+      // WEB_ORIGIN is a parsed array — require at least one allowed origin (CORS credentials).
+      if (e.WEB_ORIGIN.length === 0) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["WEB_ORIGIN"],
+          message: 'WEB_ORIGIN is required when CHAIN_ENV is not "development"',
+        });
       }
     }
   });

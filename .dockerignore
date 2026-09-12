@@ -1,0 +1,25 @@
+# Keep build context small + prevent secret/artefact leakage into image layers.
+**/node_modules
+**/.next
+**/.turbo
+**/dist
+**/build
+**/out
+**/coverage
+**/generated
+.git
+**/*.log
+**/.DS_Store
+# never ship real env/secret files into an image layer (only *.example are safe, and unused in build)
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.*.example
+recovery
+packages/cre-workflow/secrets.yaml
+packages/contracts/out
+packages/contracts/cache
+packages/contracts/broadcast
+docs/plans
+docs/runbooks
+todos

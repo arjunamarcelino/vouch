@@ -19,11 +19,11 @@
     "@vouch/shared": "workspace:*",
     "fastify": "^5.12.3",
     "fastify-type-provider-zod": "^7.0.0",
+    "tsx": "^4.19.2",
     "viem": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@vouch/config": "workspace:*",
-    "tsx": "^4.19.2"
+    "@vouch/config": "workspace:*"
   }
 }

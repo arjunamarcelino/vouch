@@ -1,0 +1,51 @@
+flowchart TB
+    subgraph Client_Provider["Users"]
+        C["Client (browser)"]
+        P["Provider (browser)"]
+    end
+
+    subgraph Web["apps/web — Next.js 16 + Tailwind v4 + shadcn/ui"]
+        UI["Dashboard: jobs, guarantees,\nlive USDC balances, provider reputation,\ntx links to arcscan"]
+    end
+
+    subgraph API["apps/api — NestJS 11"]
+        REST["REST API (Zod-validated)"]
+        PG[("PostgreSQL via Prisma 7\n(offchain operational data ONLY)")]
+    end
+
+    subgraph Agent["apps/agent — autonomous risk & monitoring agent"]
+        RISK["Risk quotation (guarantee sizing)"]
+        MON["Job monitor + settlement trigger"]
+        WALLET["Circle Agent Stack wallet (USDC)"]
+    end
+
+    subgraph Chain["Circle Arc (Testnet 5042002) — AUTHORITATIVE financial state"]
+        CORE["AssuranceHub.sol\n(escrow, guarantee, coverage,\ncapped+idempotent payout,\nIReceiver.onReport)"]
+        USDC[["USDC (ERC-20, 6-dec)"]]
+    end
+
+    subgraph Graph["packages/subgraph — The Graph (AUTHORITATIVE performance history)"]
+        SG["Indexes Vouch events →\nJob, Guarantee, Payout, Provider(reputation)"]
+        GQL["GraphQL endpoint"]
+    end
+
+    subgraph CRE["packages/cre-workflow — Chainlink CRE Confidential Workflow"]
+        TEE["handlerInTee: private regression test\n+ private criteria + repo creds\n(secrets via Vault DON / enclave)"]
+        RPT["DON consensus → signed report"]
+    end
+
+    C --> UI
+    P --> UI
+    UI --> REST
+    REST --> PG
+    REST <-->|read/write via viem| CORE
+    Agent -->|risk quote, monitor| REST
+    RISK -->|queries reputation| GQL
+    WALLET -->|USDC ops| CORE
+    CORE -->|emits events| SG
+    SG --> GQL
+    GQL -->|live data for AI decisions| Agent
+    CORE -->|coverage window opens| TEE
+    TEE --> RPT
+    RPT -->|writeReport → KeystoneForwarder → onReport| CORE
+    USDC -. same-asset .- CORE

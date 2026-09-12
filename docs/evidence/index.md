@@ -54,24 +54,32 @@ the artifact must be labeled on both axes.
 
 ## The Graph evidence ($5,000)
 
-Not a static file — captured live in the demo + reproducible via the subgraph tooling:
+Not a static file — captured live in the demo + reproducible via the subgraph tooling. The subgraph is
+**live on Subgraph Studio**: slug `vouch`, v0.0.2, endpoint
+`https://api.studio.thegraph.com/query/1760065/vouch/v0.0.2` (deployment CID
+`QmaoAwseMjoD3EMFwhQf3KBqqyac7sa4anpUBxK7iwEM8p`, start block `61747921`, network `eip155:5042002`).
 - `pnpm --filter @vouch/subgraph health-check` → synced, no indexing errors, lag in budget.
 - `pnpm --filter @vouch/subgraph validate-endpoint -- <provider>` → every `risk-agent-input.graphql`
-  field present.
-- The agent quote **changing** after an upheld claim is indexed (before/after), and a **503** when
-  the index is stale. Runbook: [`../the-graph-demo.md`](../the-graph-demo.md).
+  field present against the live Studio endpoint.
+- The agent quote **changing** after the upheld claim on jobId 1 is indexed (`lastUpheldClaimRateBps`
+  `10000` → `5000`; next quote `premiumBps 2000`, reason `UPHELD_CLAIM_RISK`), and a **503** when the
+  index is stale. Runbook: [`../the-graph-demo.md`](../the-graph-demo.md).
 
 ## Arc / Circle Agent Stack evidence ($3,500)
 
-- The confirmed **`testnet.arcscan.app/tx/…`** link for the real USDC `postBond` (and the refund).
-  Capture the hashes into the deployment runbook §18. Callout: policy-capped Circle wallet,
-  contract-execution (not a bare transfer), agent never touches guarantee principal.
+- Confirmed **`testnet.arcscan.app/tx/…`** links (Arc testnet, chain `5042002`) for the real USDC
+  lifecycle: agent `postBond` `0x5d9d1af8…` and its refund `0xd668c466…` (Circle wallet
+  `0x482e0a53d97b0a9be1045f58cdbf9d244bd303be`); covered-claim payout on jobId 1 `0x9659db91…`
+  (`GuaranteePaid` → `ClaimPaid`); no-claim `withdrawCollateral` on jobId 3 `0x0edec39d…`. Callout:
+  policy-capped Circle wallet, contract-execution (not a bare transfer), agent never touches guarantee
+  principal (settlement is the CRE receiver path). Hashes are captured in the deployment runbook §18.
 
 ---
 
 ## Requirement → evidence crosswalk
 
 Full mapping in [`../prize-requirements.md`](../prize-requirements.md). In short: **Graph** →
-health-check + live query + re-quote + fail-closed; **Arc** → arcscan `postBond`/refund + FE/BE
-dashboard; **Chainlink** → the five `simulate-*.txt` + MANIFEST (`handlerInTee`, secret-never-leaks,
-7-tuple = sole `onReport` gate).
+health-check + live Studio query + re-quote + fail-closed; **Arc** → arcscan `postBond`/refund +
+lifecycle payout/withdraw txs + FE/BE dashboard; **Chainlink** → the live `simulate-cli-payout.txt`
+(`REPORTED:PAYOUT`, cli v1.33.0) + five deterministic `simulate-*.txt` harness captures + MANIFEST
+(`handlerInTee`, secret-never-leaks, 7-tuple = sole `onReport` gate).

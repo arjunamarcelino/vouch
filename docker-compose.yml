@@ -1,0 +1,106 @@
+# Vouch — one-command local review stack. `docker compose up --build` boots web + api + agent +
+# Postgres, pointed at the LIVE Arc testnet + LIVE Graph Studio subgraph, so judges can review WITHOUT
+# any local dev tooling beyond Docker.
+#
+# HONEST SCOPE: this delivers BROWSE + READ-LIVE-DATA + /health. Click-through mutation (openJob /
+# acceptJob / openClaim) is on-chain via the reviewer's own browser wallet + SIWE and needs a funded
+# Arc-testnet wallet — that path is shown in the demo video / screenshots, not required to review here.
+#
+# SETUP: `cp .env.review.example .env.review` and fill the (public) live coordinates. Review at
+# http://localhost:3000 ONLY (the __Host- session cookie needs a Secure context; localhost qualifies,
+# a LAN IP over http does not). See docs/deployment-hosting.md.
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: vouch
+      POSTGRES_PASSWORD: vouch
+      POSTGRES_DB: vouch
+    # Bound to localhost only — never expose Postgres publicly.
+    ports: ["127.0.0.1:5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vouch -d vouch"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # One-shot: apply schema (prisma db push — there are no migration files) + manual constraints, then
+  # exit. api/agent wait for this to complete. Uses the api image's `build` stage (has prisma + psql +
+  # the full workspace). NOTE: DATABASE_URL here is the BARE form (no ?schema=) so psql accepts it.
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: build
+    working_dir: /repo
+    command: ["sh", "-lc", "pnpm --filter @vouch/db db:push --skip-generate && pnpm --filter @vouch/db db:constraints"]
+    environment:
+      DATABASE_URL: postgresql://vouch:vouch@postgres:5432/vouch
+      APP_DB_ROLE: vouch_app
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    env_file: [.env.review]
+    environment:
+      PORT: 3001
+      # Prisma accepts the bare DSN; overrides any DATABASE_URL in .env.review for the in-cluster host.
+      DATABASE_URL: postgresql://vouch:vouch@postgres:5432/vouch
+      AGENT_URL: http://agent:3002
+    ports: ["127.0.0.1:3001:3001"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 25s
+
+  agent:
+    build:
+      context: .
+      dockerfile: apps/agent/Dockerfile
+    env_file: [.env.review]
+    environment:
+      AGENT_HTTP_PORT: 3002
+      DATABASE_URL: postgresql://vouch:vouch@postgres:5432/vouch
+    # Not published to the host by default — only the api (internal network) needs to reach it. Add a
+    # host port mapping only if you want to probe the agent directly during review.
+    expose: ["3002"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3002/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 25s
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        # NEXT_PUBLIC_* are inlined at BUILD time — the browser calls the api on the host-published
+        # port, so this is http://localhost:3001 (NOT http://api:3001, which only resolves in-cluster).
+        NEXT_PUBLIC_CHAIN_ENV: arc-testnet
+        NEXT_PUBLIC_API_BASE_URL: http://localhost:3001
+        NEXT_PUBLIC_ARC_RPC_URL: https://rpc.testnet.arc.io
+        NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID: ${NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID:-}
+    ports: ["127.0.0.1:3000:3000"]
+    depends_on:
+      api: { condition: service_healthy }
+
+volumes:
+  pgdata:

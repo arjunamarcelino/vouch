@@ -1,0 +1,17 @@
+stateDiagram-v2
+    [*] --> Funded: openJob (client escrows taskFee + serviceFee, auto jobId)
+    Funded --> AcceptedByProvider: acceptJob (provider locks guaranteeAmount collateral)
+    AcceptedByProvider --> Submitted: submitDeliverable (provider, before submissionDeadline)
+    Submitted --> InitiallyApproved: resolveInitialEvaluation(approve) [EVALUATOR_ROLE]\n taskFee->provider, serviceFee->feeRecipient, coverage opens
+    Submitted --> Cancelled: resolveInitialEvaluation(reject)\n refund client, collateral->provider
+    InitiallyApproved --> ClaimPending: openClaim (client, within coverage window)
+    ClaimPending --> ClaimPaid: onReport(covered=true) [CRE receiver]\n service credit->client, remainder->provider
+    ClaimPending --> InitiallyApproved: onReport(covered=false) or resolveClaimTimeout\n no funds move
+    InitiallyApproved --> Completed: withdrawCollateral (provider, after coverageEnd)
+    Funded --> Cancelled: cancelJob (client, provider never accepted)
+    AcceptedByProvider --> Expired: expireJob (past submissionDeadline)
+    Submitted --> Expired: expireJob (past submissionDeadline + resolution grace)
+    ClaimPaid --> [*]
+    Completed --> [*]
+    Cancelled --> [*]
+    Expired --> [*]

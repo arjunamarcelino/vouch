@@ -20,12 +20,28 @@ test("non-development requires session/SIWE/CORS material (fail-closed)", () => 
   assert.throws(() => loadEnv({ CHAIN_ENV: "arc-testnet" } as NodeJS.ProcessEnv), /Invalid api environment/);
 });
 
-test("non-development accepts full session config", () => {
+test("non-development requires AGENT_API_KEY (API presents it to the agent; fail-closed)", () => {
+  assert.throws(
+    () =>
+      loadEnv({
+        CHAIN_ENV: "arc-testnet",
+        SESSION_SECRET: "x".repeat(32),
+        SIWE_DOMAIN: "app.vouch.xyz",
+        WEB_ORIGIN: "https://app.vouch.xyz",
+        // AGENT_API_KEY intentionally omitted
+      } as NodeJS.ProcessEnv),
+    /Invalid api environment/,
+  );
+});
+
+test("non-development accepts full session config; WEB_ORIGIN parses to an allowlist", () => {
   const env = loadEnv({
     CHAIN_ENV: "arc-testnet",
     SESSION_SECRET: "x".repeat(32),
     SIWE_DOMAIN: "app.vouch.xyz",
-    WEB_ORIGIN: "https://app.vouch.xyz",
+    WEB_ORIGIN: "https://app.vouch.xyz, https://withvouch.xyz",
+    AGENT_API_KEY: "test-agent-key",
   } as NodeJS.ProcessEnv);
   assert.equal(env.SIWE_DOMAIN, "app.vouch.xyz");
+  assert.deepEqual(env.WEB_ORIGIN, ["https://app.vouch.xyz", "https://withvouch.xyz"]);
 });
