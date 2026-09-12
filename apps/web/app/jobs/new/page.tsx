@@ -14,7 +14,7 @@ import type { QuoteCommitment } from "@vouch/shared/schemas";
 import { useAuthMe, useTopProviders } from "../../../lib/api/hooks";
 import { useTxEngine } from "../../../lib/tx/engine";
 import { prepareOpenJob, prepareApprove, requestQuote, fetchAllowance } from "../../../lib/api/prepare";
-import { parseUsdcInput, formatUsdc, shortHex } from "../../../lib/format";
+import { parseUsdcInput, formatUsdc, shortHex, isAddress, addUsdc, gteUsdc } from "../../../lib/format";
 import { TxStatus } from "../../../components/tx/TxStatus";
 
 /**
@@ -63,7 +63,7 @@ export default function CreateJobPage() {
   const [quoteState, setQuoteState] = useState<"idle" | "loading" | "error">("idle");
   const [formError, setFormError] = useState<string | null>(null);
 
-  const addrOk = /^0x[a-fA-F0-9]{40}$/u.test(provider);
+  const addrOk = isAddress(provider);
   const deadlineSec = deadline ? Math.floor(new Date(deadline).getTime() / 1000) : 0;
   const canSubmit =
     !!me.data && addrOk && Number(taskFee) > 0 && Number(guarantee) > 0 && deadlineSec > Math.floor(Date.now() / 1000) && !engine.isBusy;
@@ -125,13 +125,13 @@ export default function CreateJobPage() {
       setFormError(e instanceof Error ? e.message : "Invalid input");
       return;
     }
-    const escrow = BigInt(body.taskFee) + BigInt(body.serviceFee);
+    const escrow = addUsdc(body.taskFee, body.serviceFee).toString();
     void engine.run({
       action: "OPEN_JOB",
       prepare: (k) => prepareOpenJob(k, body),
       approval: {
-        isNeeded: async () => BigInt((await fetchAllowance()).allowance) < escrow,
-        prepare: (k) => prepareApprove(k, { amount: escrow.toString() }),
+        isNeeded: async () => !gteUsdc((await fetchAllowance()).allowance, escrow),
+        prepare: (k) => prepareApprove(k, { amount: escrow }),
       },
     });
   }

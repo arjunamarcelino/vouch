@@ -211,7 +211,7 @@ Action-area "live / connect to act" badges now reflect session (`me.data`), not 
 - `export { Clock }` re-export in `indicators.tsx:91` has no consumer — **✅ removed** (import dropped too). *(pattern #12, simplicity #9)*
 - Salt `setItem` (`jobs/new/page.tsx:80`, `ClaimFlow.tsx:66`) is never read back → dead writes; also no
   `try/catch` (can throw in private-mode/quota and break submit) and unbounded growth. *(security #4, simplicity #5, arch L5)*
-- `query.ts:13-17` `shouldDehydrateQuery: 'pending'` is dead — every route is `"use client"`, nothing prefetches to dehydrate. *(arch L6)*
+- `query.ts:13-17` `shouldDehydrateQuery: 'pending'` is dead — every route is `"use client"`, nothing prefetches to dehydrate. *(arch L6)* — **✅ removed** the custom `dehydrate` override; also set `refetchOnWindowFocus: false` in the query defaults (P3 below).
 
 **Duplication (the PR's own "one X" goal invites these)**
 - Claim-status rendered two diverging ways: `JobDetail` `ClaimBadge` shows the **raw enum**; `ClaimFlow`
@@ -221,9 +221,11 @@ Action-area "live / connect to act" badges now reflect session (`me.data`), not 
 - "Live / Local simulation" pill implemented 4 ways (`mode.modeLabel`, `PrizeEvidenceDrawer.StatusPill`,
   `demo/page.RailPill`, inline `<Badge>`s). Extract one `<ModePill live>`. *(pattern #4)*
 - URL trailing-slash-trim + join duplicated 4× (`agentClient.ts:20`, `client.ts:42`, `auth.ts:16`,
-  `format.ts:39`) → one `joinUrl`. *(pattern #5)*
+  `format.ts:39`) → one `joinUrl`. *(pattern #5)* — **✅ fixed**: one `apiUrl()` in `lib/env.ts`, used by
+  `client.ts`, `auth.ts`, and `providers.tsx` (agentClient deleted).
 - Hex/address regexes re-declared (`format.ts:40-41`, `JobDetail.tsx:32`, `jobs/new:69`) instead of
-  reusing shared `hexAddress`/`HEX32_RE`. *(pattern #6)*
+  reusing shared `hexAddress`/`HEX32_RE`. *(pattern #6)* — **✅ fixed**: `isHash32`/`isAddress` in
+  `format.ts` wrap the shared `HEX32_RE`/`HEX_ADDRESS_RE`; JobDetail + Create + the explorer chokepoint use them.
 - Two API clients: `lib/agentClient.ts` persists with its own slash-trim + an inline `agentHealthSchema`
   (the one schema not centralized). Confirm it's still reachable; fold into shared views or delete. *(pattern #7)* —
   **✅ deleted** (`lib/agentClient.ts` was unreferenced; the inline `agentHealthSchema` went with it).
@@ -237,9 +239,11 @@ Action-area "live / connect to act" badges now reflect session (`me.data`), not 
 - `explorerAddressLink` is gated only by address-shape, not mode — simulated/seed addresses get real
   Arcscan `/address/` links (honesty nit). Gate behind `mode.arc`. *(security #3)*
 - `UsdcAmount` brand is bypassed at the two arithmetic sites (`jobs/new:131` escrow sum, `JobDetail:99`
-  allowance compare) — raw `BigInt(str)` skips `toUsdc`'s validation. Add `addUsdc`/`gte` helpers. *(arch M3)*
+  allowance compare) — raw `BigInt(str)` skips `toUsdc`'s validation. Add `addUsdc`/`gte` helpers. *(arch M3)* —
+  **✅ fixed**: `addUsdc`/`gteUsdc` (validated, branded) added to `format.ts`; both sites route through them.
 - `parseUsdcInput` accepts negatives (`parseUnits("-5",6)`) — only incidentally blocked by a form guard.
-  Add a `^\d` check in the parser. *(ts #9)*
+  Add a `^\d` check in the parser. *(ts #9)* — **✅ fixed**: `parseUsdcInput` now rejects anything that
+  isn't `^\d+(\.\d+)?$` (no sign/exponent).
 - Provider query key lowercases the address but the fetch sends the raw param → two cache entries + mixed
   casing to the API (`hooks.ts:112-117`). Lowercase once. *(ts #8)*
 - `publicCriteriaHash` hashed inline (`jobs/new:89`, unsalted `keccak256`) rather than via
@@ -259,7 +263,7 @@ Action-area "live / connect to act" badges now reflect session (`me.data`), not 
 - Full wallet stack (wagmi + RainbowKit + CSS) + a universal `/auth/me` call ship on every route incl.
   the static landing page. Acceptable for a dApp; could defer behind a wallet-only layout segment. *(perf #4)*
 - Dashboard bucket filtering recomputed every render (incl. the 30s health poll) — `useMemo` it. *(perf #5)*
-- `refetchOnWindowFocus` left at the v5 default (on) for list/reputation reads → minor tab-refocus churn. *(perf #7)*
+- `refetchOnWindowFocus` left at the v5 default (on) for list/reputation reads → minor tab-refocus churn. *(perf #7)* — **✅ fixed**: set `refetchOnWindowFocus: false` in the query defaults.
 
 ---
 

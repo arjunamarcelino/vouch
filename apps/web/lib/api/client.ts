@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { parseOrThrow, apiErrorEnvelopeSchema } from "@vouch/shared/schemas";
-import { API_BASE_URL } from "../env";
+import { apiUrl } from "../env";
 
 /**
  * Typed REST client for `apps/api`. (1) Every request sends the SIWE cookie via
@@ -34,10 +34,6 @@ export class ApiClientError extends Error {
   }
 }
 
-function url(path: string): string {
-  return `${API_BASE_URL.replace(/\/$/u, "")}${path}`;
-}
-
 async function toError(res: Response): Promise<ApiClientError> {
   let code = `HTTP_${res.status}`;
   let message = res.statusText || "Request failed";
@@ -63,7 +59,7 @@ async function request<T>(
   const headers: Record<string, string> = {};
   if (opts?.body !== undefined) headers["Content-Type"] = "application/json";
   if (opts?.idempotencyKey) headers["Idempotency-Key"] = opts.idempotencyKey;
-  const res = await fetch(url(path), {
+  const res = await fetch(apiUrl(path), {
     method,
     credentials: "include",
     cache: "no-store",

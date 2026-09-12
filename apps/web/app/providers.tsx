@@ -16,7 +16,7 @@ import { getConfig } from "../lib/wagmi";
 import { getQueryClient } from "../lib/query";
 import { makeAuthAdapter } from "../lib/auth";
 import { useAuthMe, queryKeys } from "../lib/api/hooks";
-import { API_BASE_URL } from "../lib/env";
+import { apiUrl } from "../lib/env";
 import { clearPendingTx } from "../lib/tx/persistence";
 
 /**
@@ -65,7 +65,7 @@ function AuthGate({ children }: { children: ReactNode }) {
     const prev = prevAddress.current;
     if (prev !== undefined && prev !== address) {
       if (prev) clearPendingTx(prev, arcTestnet.id);
-      void fetch(`${API_BASE_URL.replace(/\/$/u, "")}/auth/logout`, { method: "POST", credentials: "include" }).catch(() => {});
+      void fetch(apiUrl("/auth/logout"), { method: "POST", credentials: "include" }).catch(() => {});
       queryClient.clear();
     }
     prevAddress.current = address;

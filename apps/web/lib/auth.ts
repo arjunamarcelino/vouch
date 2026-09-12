@@ -1,7 +1,7 @@
 import { createAuthenticationAdapter } from "@rainbow-me/rainbowkit";
 import { createSiweMessage } from "viem/siwe";
 import { parseOrThrow, nonceSchema } from "@vouch/shared/schemas";
-import { API_BASE_URL } from "./env";
+import { apiUrl } from "./env";
 
 /**
  * RainbowKit SIWE adapter wired to our OWN cookie backend (NOT next-auth). The four callbacks hit
@@ -13,10 +13,6 @@ import { API_BASE_URL } from "./env";
  * `onAuthChange` lets the provider invalidate the `/auth/me` query after verify/sign-out so the
  * app's auth status (and role-gating) re-derives from the server, not from optimistic client state.
  */
-function apiUrl(path: string): string {
-  return `${API_BASE_URL.replace(/\/$/u, "")}${path}`;
-}
-
 export function makeAuthAdapter(
   onAuthChange: () => void,
 ): ReturnType<typeof createAuthenticationAdapter<string>> {

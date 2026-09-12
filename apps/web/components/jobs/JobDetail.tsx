@@ -23,12 +23,11 @@ import {
   prepareClaim,
   fetchAllowance,
 } from "../../lib/api/prepare";
-import { formatUsdc, shortHex, explorerAddressLink } from "../../lib/format";
+import { formatUsdc, shortHex, explorerAddressLink, isHash32, gteUsdc } from "../../lib/format";
 import { StateBadge, CoverageCountdown, FreshnessBadge } from "../common/indicators";
 import { TxStatus } from "../tx/TxStatus";
 import { ApiClientError } from "../../lib/api/client";
 
-const HEX32 = /^0x[a-fA-F0-9]{64}$/u;
 /** Happy-path lifecycle sequence shown in the timeline (terminal states rendered separately). */
 const TIMELINE: JobState[] = ["Funded", "AcceptedByProvider", "Submitted", "InitiallyApproved", "ClaimPaid"];
 
@@ -101,7 +100,7 @@ export function JobDetail({ id }: { id: string }) {
           action: "ACCEPT",
           prepare: (k) => prepareAccept(id, k),
           approval: {
-            isNeeded: async () => BigInt((await fetchAllowance()).allowance) < BigInt(j.guaranteeAmount),
+            isNeeded: async () => !gteUsdc((await fetchAllowance()).allowance, j.guaranteeAmount),
             prepare: (k) => prepareApprove(k, { amount: j.guaranteeAmount }),
           },
         });
@@ -125,7 +124,7 @@ export function JobDetail({ id }: { id: string }) {
   };
 
   const needsCommitment = (a: JobActionId) => a === "SUBMIT" || a === "CLAIM";
-  const commitmentValid = HEX32.test(commitment);
+  const commitmentValid = isHash32(commitment);
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
