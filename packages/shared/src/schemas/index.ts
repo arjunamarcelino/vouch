@@ -26,6 +26,7 @@ export {
   SELECTOR_RE,
 } from "./primitives";
 export * from "./api";
+export * from "./views";
 
 /** Parse at a boundary, mapping ZodError → typed VouchError (plan §5.1 D5). */
 export function parseOrThrow<T>(schema: z.ZodType<T>, value: unknown, what: string): T {
