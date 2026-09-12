@@ -62,6 +62,22 @@ credential stays a `{{.token}}` template):
   `REFUSED:FETCH_FAILED` on an unreachable test API).
 
 Two CRE-runtime bugs were found + fixed while getting the CLI simulate to run end-to-end: the config
-schema's `z.string().url()` (rejected by the javy/WASM zod) → `z.string().min(1)`, and `emitReport`
-throwing on a dry-run SUCCESS-without-txHash. A live enclave **deploy** (`--broadcast` on a DON) still
-needs private-beta enrollment; the simulate PAYOUT above is the accepted evidence.
+schema's `z.string().url()` (rejected by the javy/WASM zod) → `z.string().trim().min(1).refine(startsWith "https://")`
+(keeps an https guarantee on the credential destination without the WASM-incompatible `.url()`), and
+`emitReport` throwing on a dry-run SUCCESS-without-txHash. A live enclave **deploy** (`--broadcast` on a
+DON) still needs private-beta enrollment; the simulate PAYOUT above is the accepted evidence.
+
+## Redeploy checklist (update these in lockstep)
+
+When `AssuranceHub` is redeployed, the deployed coordinates live in several tracked files across two
+packages. Update **all** of them in the same commit — the subgraph preflight (`packages/subgraph/scripts/preflight.mjs`)
+will FAIL the deploy if `subgraph.yaml` and `networks.json` disagree, but the CRE files are not
+cross-checked, so they need manual care.
+
+1. **This file** — the `Contracts` table addresses + deploy-tx links, and the deploy block.
+2. `packages/subgraph/subgraph.yaml` — `dataSources[0].source.address` + `source.startBlock`.
+3. `packages/subgraph/networks.json` — `arc-testnet.AssuranceHub.address` + `.startBlock` (must equal #2; preflight enforces this).
+4. `packages/cre-workflow/config.staging.json` — `assuranceHubAddress`, `owner`, and `workflowId` (only if the workflow identity changes; `workflowId = keccak256("vouch-assurance-v1")`).
+5. `packages/cre-workflow/project.yaml` — `workflow-owner-address`.
+
+Then re-verify: `pnpm --filter @vouch/subgraph preflight` (green) → subgraph deploy → `cre workflow simulate` → regenerate `docs/evidence/` + its `MANIFEST` sha256 sums.
