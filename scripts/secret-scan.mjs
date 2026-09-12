@@ -21,9 +21,12 @@
 
 import { execSync } from "node:child_process";
 import { readFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const ROOT = process.cwd();
+// Anchor to the repo root relative to this script (scripts/ is at the repo root), so the gate
+// behaves identically regardless of the caller's cwd (house pattern; matches subgraph/scripts).
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const problems = [];
 const notes = [];
 
@@ -32,8 +35,10 @@ function sh(cmd, opts = {}) {
 }
 
 // ---- 1. no real secret files tracked ------------------------------------------------
-const tracked = sh("git ls-files").split("\n").filter(Boolean);
-const SECRET_FILE = /(^|\/)(\.env(\..+)?|secrets\.ya?ml)$|\.(pem|key)$|keystore/i;
+// -z + NUL split so paths with unusual bytes (git core.quotePath) never break the split.
+const tracked = sh("git ls-files -z").split("\u0000").filter(Boolean);
+const SECRET_FILE =
+  /(^|\/)(\.env(\..+)?|secrets\.ya?ml)$|\.(pem|key)$|(^|\/)[^/]*keystore[^/]*$/i;
 const secretFiles = tracked.filter(
   (f) => SECRET_FILE.test(f) && !/\.example$/.test(f),
 );
@@ -47,10 +52,18 @@ if (secretFiles.length) {
 const gi = existsSync(join(ROOT, ".gitignore"))
   ? readFileSync(join(ROOT, ".gitignore"), "utf8")
   : "";
-for (const need of [/^\.env$/m, /secrets\.ya?ml/m]) {
-  if (!need.test(gi)) problems.push(`.gitignore missing pattern: ${need}`);
+// Accept the common gitignore styles for env files (`.env`, `.env*`, `/.env`, `.env.*`).
+let giOk = true;
+for (const [label, need] of [
+  ["env", /^\/?\.env(\*|\.\*)?\s*$/m],
+  ["secrets.yaml", /secrets\.ya?ml/m],
+]) {
+  if (!need.test(gi)) {
+    problems.push(`.gitignore missing an ignore for ${label}`);
+    giOk = false;
+  }
 }
-if (!problems.length) notes.push(".gitignore ignores .env + secrets.yaml");
+if (giOk) notes.push(".gitignore ignores .env + secrets.yaml"); // gated on THIS check, not global
 
 // ---- 3. real-secret content scan ----------------------------------------------------
 // Secret variable names that, when set to a real hex value, indicate a leaked key.
