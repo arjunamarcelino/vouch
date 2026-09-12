@@ -66,10 +66,20 @@ async function main(): Promise<void> {
   };
   const body: unknown = mod.default;
 
+  // Track that the confidential secret path actually executed, so the closing marker
+  // below is evidence of execution (not an unconditional string). The secret-scan
+  // positive control asserts this marker AND the absence of the sentinel value.
+  let secretsConsumed = 0;
   const port: EvalPort = {
     async getSecret(id) {
-      if (id === "token") return SENTINEL.token;
-      if (id === "PASS_THRESHOLD") return SENTINEL.threshold;
+      if (id === "token") {
+        secretsConsumed++;
+        return SENTINEL.token;
+      }
+      if (id === "PASS_THRESHOLD") {
+        secretsConsumed++;
+        return SENTINEL.threshold;
+      }
       return undefined;
     },
     async confidentialFetch() {
@@ -105,7 +115,14 @@ async function main(): Promise<void> {
   } else {
     console.log("payload:      (none — no report on REFUSE)");
   }
-  console.log("note: no secret is printed above; the credential/threshold stay confidential.");
+  if (secretsConsumed > 0) {
+    console.log(
+      `note: ${secretsConsumed} secret(s) were consumed inside the eval and none printed above; ` +
+        "the credential/threshold stay confidential.",
+    );
+  } else {
+    console.log("note: no secret was consumed in this path.");
+  }
 }
 
 void main();

@@ -16,6 +16,7 @@ test("redacts the agent secret env keys, top-level and nested", () => {
   const secrets = {
     CIRCLE_API_KEY: "KEY:abc:def",
     CIRCLE_ENTITY_SECRET: "entity-secret-value",
+    // secret-scan-allow: PUBLIC Hardhat/anvil account #1 key — test data for redaction, not a secret.
     QUOTE_SIGNER_PK: "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d",
   };
   // top-level (logging the env object directly) and nested (logging { env })

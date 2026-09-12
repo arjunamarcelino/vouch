@@ -25,6 +25,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Fail fast on a leaked secret before doing any other work. Uses git ls-files +
+      # working-tree reads + the CRE harness positive control (all available post-install).
+      - name: Secret-leak gate
+        run: pnpm gate:secrets
+
       - name: Generate (Prisma client, subgraph types)
         run: pnpm codegen
 

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { hexAddress, baseUnits, hexData, hex32, selectorHex } from "./primitives";
+import { hexAddress, baseUnits, hexData, hex32 } from "./primitives";
 
 /**
  * Shared API-boundary contracts (Phase-0a freeze) consumed by BOTH `apps/api` and `apps/web`.

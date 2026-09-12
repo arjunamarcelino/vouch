@@ -23,11 +23,10 @@ runtime (never inlined in source, since the source/binary are *not* confidential
 regression, and declassifies only the minimal verdict `{jobId, regressed, amount}` for a DON-signed
 report.
 
-**TypeScript SDK reality (per plan §17.2):** the TS SDK has **no** `handlerInTee` / `TeeRuntime` /
-`usingTheDons`. In TypeScript, confidentiality is delivered by **`ConfidentialHTTPClient`** (secret
-injected inside the enclave via `{{.token}}` templating, never in node memory) within a normal
-`handler`. If the prize hard-requires the `HandlerInTee` symbol, write the confidential handler in
-**Go**, where `cre.HandlerInTee` exists.
+**TypeScript SDK reality:** ⚠️ **SUPERSEDED — see "Post-review hardening (2026-09-11)" below.** The
+TS SDK **does** expose `handlerInTee` / `TeeRuntime` / `reportFromDon` (`@chainlink/cre-sdk@1.20.1`),
+and `packages/cre-workflow/workflow.ts:212` uses the real `handlerInTee`. No Go path is needed. (The
+original claim that these symbols were absent applied only to pre-1.x betas.)
 
 ## Consequences
 

@@ -131,13 +131,18 @@ flowchart TB
     USDC -. same-asset .- CORE
 ```
 
-> **CRE TypeScript note (correction per plan §17.2):** the diagram labels the confidential step
-> `handlerInTee` for readability, but the **TypeScript** CRE SDK has **no** `handlerInTee` /
-> `TeeRuntime` / `usingTheDons`. In TypeScript, confidentiality is delivered by
-> **`ConfidentialHTTPClient`** (the request + secret injection run inside the enclave) within a
-> normal `handler`. Only the **Go** SDK exposes `cre.HandlerInTee`. See
-> [`docs/prize-requirements.md`](prize-requirements.md) and
-> [`docs/decisions/002-confidential-verification-cre.md`](decisions/002-confidential-verification-cre.md).
+> **CRE TypeScript note (correction verified 2026-09-11, ADR-002 §Post-review hardening):** the diagram's
+> `handlerInTee` label is **literal**. `@chainlink/cre-sdk@1.20.1` **does** export `handlerInTee` +
+> `TeeRuntime` (with `reportFromDon` / `usingTheDons`) — `packages/cre-workflow/workflow.ts:212`
+> registers the confidential handler with a real `handlerInTee<…>` call and a TEE constraint
+> (`[{ tee: "nitro", regions: ["us-west-2"] }]`; `us-west-2` is the only region the SDK accepts).
+> Credentials are injected inside the enclave via `ConfidentialHTTPClient` `{{.token}}` templating
+> (`vaultDonSecrets`); the private pass-threshold comes from `getSecret`. An **earlier** revision of
+> this doc claimed the TS SDK lacked the symbol (true of pre-1.x betas / a Go-only reading) — that is
+> stale; no Go rewrite is needed. Caveats: `confidential-http@1.0.0-alpha` is alpha, and response
+> confidentiality (`encryptOutput`) is opt-in (default off) — see
+> [`docs/decisions/002-confidential-verification-cre.md`](decisions/002-confidential-verification-cre.md)
+> and [`docs/security.md`](security.md).
 
 ---
 
@@ -167,10 +172,15 @@ This is the non-negotiable architectural constraint that governs where every pie
 `Ownable2Step`). Authority is split across two deliberately separated trust surfaces plus admin
 config:
 
-- **`DEFAULT_ADMIN_ROLE`** — config and role management only: `setForwarder`,
-  `setExpectedWorkflow`, `setFeeRecipient`, `pause` / `unpause`. It can **never** redirect principal
-  (task fee or collateral) to itself — every admin function is routing/config, machine-checked by
-  `test_NoAdminCanSeizeFunds`. Hold in a multisig for production (deployer EOA for the hackathon).
+- **`DEFAULT_ADMIN_ROLE`** — config and role management only: forwarder + expected-workflow changes
+  go through a **two-step timelock** (`queueForwarder` → `applyForwarder`, `queueExpectedWorkflow` →
+  `applyExpectedWorkflow`, applied only after `CONFIG_TIMELOCK = 2 days`; `AssuranceHub.sol:533-568`),
+  plus the immediate `setFeeRecipient` and `pause` / `unpause`. There is **no** unguarded
+  `setForwarder`/`setExpectedWorkflow` external — the setters are internal, reachable only via the
+  timelocked apply step. Admin can **never** redirect principal (task fee or collateral) to itself —
+  every admin function is routing/config, machine-checked by `test_NoAdminCanSeizeFunds`. Hold in a
+  multisig for production (deployer EOA for the hackathon); monitor the queue/apply config-change
+  events. (See [`security.md`](security.md) §1/§4.)
 - **`EVALUATOR_ROLE`** — the *public* trust surface: `resolveInitialEvaluation` only. It approves or
   rejects the public submission (off-chain judgement, on-chain call). It is a global role, not
   per-job. It cannot pay itself.

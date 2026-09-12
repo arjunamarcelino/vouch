@@ -50,14 +50,19 @@ Suggested narration arc (≈3 min): 0:00 problem framing → 0:30 steps 1–3 (f
   (load-bearing). Full runbook: `docs/the-graph-demo.md`.
 
 ### Chainlink — confidential workflow, secret never leaks
-- The `cre workflow simulate` command running the confidential regression test.
-- The **terminal output** proving the verdict was produced **inside the enclave** — and the
-  **secret (repo token / private test) never appears in the logs**. Pause on the log output to
-  make this explicit.
-- The verdict `{jobId, regressed, amount}` being the **sole gate** on the payout in the receiver
+- The **runnable-now proof:** `pnpm --filter @vouch/cre-workflow simulate:harness
+  fixtures/valid-failure.json` — the deterministic local harness that drives the real decide+encode
+  path (no CRE account/secrets). The npm `simulate` script itself is an **echo-only stub** that
+  prints the CLI command; the harness is what produces real output today.
+- The **terminal output** proving the verdict is produced from the enclave path — and the
+  **secret (repo token / private test / pass-threshold) never appears in the logs**. Pause on the
+  log output to make this explicit.
+- The verdict `{jobId, covered, amount}` being the **sole gate** on the payout in the receiver
   contract.
-- Callout: `cre workflow simulate` output is **accepted as evidence** — live deployment is not
-  required to qualify.
+- Callout: with the CRE CLI + a CRE account, `cre workflow simulate … --trigger-index 0
+  --evm-tx-hash <ClaimOpened-tx> --evm-event-index <n>` output is **accepted as submission
+  evidence** — live deployment is not required to qualify. (EVM-log trigger ⇒ `--evm-tx-hash`, not
+  `--http-payload`.) Honest note: simulate is a single local node — not proof of on-chain delivery.
 
 ---
 
@@ -85,20 +90,24 @@ others running.
    No Circle or CRE dependency.
 
 ### Chainlink standalone
-1. In `packages/cre-workflow`, provide local-sim secrets via `.env` (repo token, private test ref,
-   pass threshold).
-2. Run `cre workflow simulate <name> --target staging-settings --non-interactive
-   --trigger-index 0 --http-payload ./fixture.json`.
+1. **Runnable now (no CRE account):** `pnpm --filter @vouch/cre-workflow simulate:harness
+   fixtures/valid-failure.json` (PAYOUT), `…/valid-pass.json` (CLEAN_CLOSE), `…/invalid-commit.json`
+   (REFUSE). Show the decision + 7-tuple payload; confirm no secret in the output.
+2. **Submission evidence (needs the CRE CLI + a CRE account):** copy `.env`/`secrets.yaml` from the
+   `.example` files (SENTINEL values), then
+   `cre workflow simulate vouch-outcome-assurance --target staging-settings --non-interactive
+   --trigger-index 0 --evm-tx-hash <ClaimOpened-tx-hash> --evm-event-index <n>`.
+   ⚠️ EVM-log trigger ⇒ `--evm-tx-hash`/`--evm-event-index`, **not** `--http-payload`.
 3. Show the enclave verdict in the terminal and confirm the secret is absent from the logs.
-   *Requires only:* the CRE CLI + the workflow package. No Arc deploy or subgraph needed to prove
-   the confidential step (the receiver wiring is shown separately in `packages/contracts`).
+   *Requires only:* the workflow package (harness) — or additionally the CRE CLI + account for the
+   CLI evidence. No Arc deploy or subgraph needed to prove the confidential step (the receiver wiring
+   is shown separately in `packages/contracts`).
 
 ---
 
 ## Pre-record checklist
-- [ ] Env templates copied and real (non-committed) values set for whichever track(s) you record.
-- [ ] Arc wallet funded with **both** native (gas) and USDC from the faucet.
-- [ ] Subgraph deployed and `_meta` shows no indexing errors.
-- [ ] `cre workflow simulate` runs clean; scan the logs to confirm no secret leaks before recording.
-- [ ] arcscan tx link opens to a real, confirmed transaction.
+Single source of truth: the master **[`demo-script.md`](demo-script.md)** pre-record checklist —
+run `pnpm demo:health` (every leg you'll show must be 🟢) and `pnpm gate:secrets` (PASSED) first.
+Specific to this 2–4 min cut:
+- [ ] Record only the track(s) whose legs `demo:health` reports 🟢 — unconfigured legs stay off-camera.
 - [ ] Total runtime between 2 and 4 minutes.

@@ -51,23 +51,29 @@ The SDK-independent core is split out so tests never import the SDK:
   `secrets.yaml.example` only (`secrets.yaml` and `.env` are git-ignored).
 - Does not size guarantees or quote risk (that is `@vouch/agent`); does not hold funds.
 
-## Local harness (deterministic, no SDK, no secrets)
+## Local harness — the RUNNABLE-NOW proof (deterministic, no SDK, no CRE account, no secrets)
+This is the real local proof of the decision+encode path. The `simulate` npm script is an
+**echo-only stub** (it prints the CLI command below) — for actual local output run the harness:
 ```bash
-node --import tsx harness.ts fixtures/valid-failure.json   # PAYOUT   → prints the 7-tuple payload
-node --import tsx harness.ts fixtures/valid-pass.json      # CLEAN_CLOSE
-node --import tsx harness.ts fixtures/invalid-commit.json  # REFUSE (no payload)
+pnpm --filter @vouch/cre-workflow simulate:harness fixtures/valid-failure.json   # PAYOUT → 7-tuple payload
+pnpm --filter @vouch/cre-workflow simulate:harness fixtures/valid-pass.json      # CLEAN_CLOSE
+pnpm --filter @vouch/cre-workflow simulate:harness fixtures/invalid-commit.json  # REFUSE (no payload)
+# (equivalently: node --import tsx harness.ts fixtures/<f>.json)
 ```
 Fixed clock + sentinel secrets + seeded `getJob`; prints the decision and would-be payload
 (hex + base64) with **no** secret in the output.
 
-## Simulate (CRE CLI)
+## Simulate (CRE CLI — submission evidence; needs the CRE CLI + a CRE account)
 ```bash
 cp .env.example .env            # high-entropy SENTINEL values only
 cp secrets.yaml.example secrets.yaml
+# ⚠️ This workflow's trigger is an EVM LOG (AssuranceHub `ClaimOpened`), so the CLI takes
+#    --evm-tx-hash / --evm-event-index — NOT --http-payload (that flag is for HTTP-trigger workflows).
 cre workflow simulate vouch-outcome-assurance --target staging-settings --non-interactive \
-  --trigger-index 0 --http-payload ./fixtures/valid-failure.json
+  --trigger-index 0 --evm-tx-hash <claimOpened-tx-hash> --evm-event-index <n>
 ```
-Confirm no secret appears in the output before using it as evidence.
+Confirm no secret appears in the output before using it as evidence. `cre login` is interactive
+(CI uses `CRE_API_KEY`); a **live** enclave deploy needs private-beta enrollment — simulate does not.
 
 ## Checks
 ```bash
