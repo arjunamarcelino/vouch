@@ -73,7 +73,7 @@ action + wallet lifecycle are documented in `docs/arc-agent-stack.md`.
 | Confidential portion **meaningfully contributes to core functionality** | `packages/cre-workflow` + `packages/contracts` (`AssuranceHub` receiver) | The enclave verdict — `abi.encode(uint256 jobId, bool covered, uint256 amount)` — is the **sole trigger** for the guarantee payout via **`AssuranceHub.onReport`**, which finalizes a `ClaimPending` job. `onReport` is gated by both the **forwarder** address and the **workflow identity** decoded from packed Keystone metadata (`bytes32 workflowId \| bytes10 workflowName \| address workflowOwner`); the contract caps the payout at `min(amount, guaranteeAmount)` and returns the remainder to the provider. |
 | **Demonstrate via CRE CLI simulation or live deployment** | `packages/cre-workflow` | Evidence via `cre workflow simulate` terminal output (with the secret **never** appearing in logs) + the demo video. **Simulate-as-evidence is explicitly accepted** — private-beta live access is not required to qualify. |
 
-### CRE §17.2 — the TypeScript SDK reality (updated 2026-09-12, verified against the installed SDK)
+### CRE §17.2 — the TypeScript SDK reality (correction verified 2026-09-11, ADR-002 §Post-review hardening)
 
 The track wording asks to "register and use a confidential TEE handler (`handlerInTee` TS /
 `cre.HandlerInTee` Go)". **The TypeScript symbol exists and is used.** `@chainlink/cre-sdk@1.20.1`

@@ -131,7 +131,7 @@ flowchart TB
     USDC -. same-asset .- CORE
 ```
 
-> **CRE TypeScript note (updated 2026-09-12 — verified against the installed SDK):** the diagram's
+> **CRE TypeScript note (correction verified 2026-09-11, ADR-002 §Post-review hardening):** the diagram's
 > `handlerInTee` label is **literal**. `@chainlink/cre-sdk@1.20.1` **does** export `handlerInTee` +
 > `TeeRuntime` (with `reportFromDon` / `usingTheDons`) — `packages/cre-workflow/workflow.ts:212`
 > registers the confidential handler with a real `handlerInTee<…>` call and a TEE constraint

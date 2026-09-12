@@ -106,9 +106,8 @@ others running.
 ---
 
 ## Pre-record checklist
-- [ ] Env templates copied and real (non-committed) values set for whichever track(s) you record.
-- [ ] Arc wallet funded with **both** native (gas) and USDC from the faucet.
-- [ ] Subgraph deployed and `_meta` shows no indexing errors.
-- [ ] `cre workflow simulate` runs clean; scan the logs to confirm no secret leaks before recording.
-- [ ] arcscan tx link opens to a real, confirmed transaction.
+Single source of truth: the master **[`demo-script.md`](demo-script.md)** pre-record checklist —
+run `pnpm demo:health` (every leg you'll show must be 🟢) and `pnpm gate:secrets` (PASSED) first.
+Specific to this 2–4 min cut:
+- [ ] Record only the track(s) whose legs `demo:health` reports 🟢 — unconfigured legs stay off-camera.
 - [ ] Total runtime between 2 and 4 minutes.

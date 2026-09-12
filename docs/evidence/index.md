@@ -11,13 +11,11 @@ requirement it backs. The honesty rules and the "never commit" list live in
 
 ---
 
-## Labels (required on every artifact, per README)
+## Labels (required on every artifact)
 
-- **Enclave axis:** `TEE` (full `handlerInTee` enclave, needs enrollment) · `fallback`
-  (`ConfidentialHTTPClient`-in-normal-handler — protects the credential, **not** the response) ·
-  `harness` (deterministic local, SDK-free — proves decide+encode only).
-- **Broadcast axis:** `dry-run` (no on-chain write; `writeReport` returns `0x0…0`) · `--broadcast`
-  (a real Arc tx).
+The two-axis labeling taxonomy (enclave: `TEE` / `fallback` / `harness` · broadcast: `dry-run` /
+`--broadcast`) is defined once in **[`README.md`](README.md#labeling-required-on-every-artifact)** —
+see there. Every artifact in the table below must carry both axes.
 
 ---
 
