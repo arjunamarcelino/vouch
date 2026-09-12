@@ -18,6 +18,7 @@ import { useIntegrationsHealth, useTopProviders } from "../../lib/api/hooks";
 import { resolveMode, modeLabel } from "../../lib/mode";
 import { shortHex } from "../../lib/format";
 import { PrizeEvidenceDrawer } from "../../components/demo/PrizeEvidenceDrawer";
+import { TechStrip } from "../../components/common/TechStrip";
 import { ModePill } from "../../components/common/indicators";
 
 /**
@@ -67,6 +68,11 @@ export default function DemoPage() {
           </p>
         </div>
         <PrizeEvidenceDrawer />
+      </div>
+
+      {/* Stack strip */}
+      <div className="mt-6 rounded-lg border border-border bg-muted/20 px-4 py-3">
+        <TechStrip label="This demo runs on" size="sm" />
       </div>
 
       {/* Mode banner */}

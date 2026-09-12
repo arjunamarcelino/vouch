@@ -6,6 +6,7 @@ import "./globals.css";
 import { getConfig } from "../lib/wagmi";
 import { Providers } from "./providers";
 import { SiteHeader } from "../components/shell/SiteHeader";
+import { SiteFooter } from "../components/shell/SiteFooter";
 
 export const metadata: Metadata = {
   title: "Vouch — Confidential Outcome Assurance",
@@ -36,7 +37,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
 
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="min-h-dvh bg-surface text-foreground antialiased">
+      <body className="flex min-h-dvh flex-col bg-surface text-foreground antialiased">
         <Providers initialState={initialState}>
           <a
             href="#main"
@@ -45,7 +46,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
             Skip to content
           </a>
           <SiteHeader />
-          <main id="main">{children}</main>
+          <main id="main" className="flex-1">{children}</main>
+          <SiteFooter />
         </Providers>
       </body>
     </html>

@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ShieldCheck } from "lucide-react";
 import { cn } from "@vouch/ui/lib/utils";
 import { WalletConnectButton } from "../wallet/ConnectButton";
 
@@ -21,9 +20,9 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-surface/90 backdrop-blur supports-[backdrop-filter]:bg-surface/75">
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-4 sm:px-6">
-        <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
-          <ShieldCheck className="size-5 text-primary" aria-hidden />
-          <span>Vouch</span>
+        <Link href="/" aria-label="Vouch — home" className="flex items-center">
+          {/* Renewed Vouch wordmark (black on white); dark:invert flips it white-on-dark. */}
+          <img src="/logos/vouch/vouch.png" alt="Vouch" className="h-6 w-auto dark:invert" />
         </Link>
         <nav className="hidden items-center gap-1 sm:flex" aria-label="Primary">
           {NAV.map((item) => {

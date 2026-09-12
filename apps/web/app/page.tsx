@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TechStrip } from "../components/common/TechStrip";
 import {
   ShieldCheck,
   ArrowRight,
@@ -82,6 +83,11 @@ export default function Home() {
         <p className="mt-4 text-sm text-muted-foreground">
           Not a marketplace. Not insurance. Not plain escrow.
         </p>
+      </section>
+
+      {/* Built on — the stack we actually use */}
+      <section className="border-y border-border py-8" aria-label="Built on">
+        <TechStrip />
       </section>
 
       {/* Escrow vs post-completion assurance */}

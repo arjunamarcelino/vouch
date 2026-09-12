@@ -44,3 +44,6 @@ todos/
 
 # Circle entity-secret recovery file (sensitive — keep safe, never commit)
 recovery/
+
+# Chainlink CRE CLI build temp
+packages/cre-workflow/.cre_build_tmp.js
