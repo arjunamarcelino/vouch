@@ -5,11 +5,14 @@
 //   1. A real secret FILE is tracked by git (.env, secrets.yaml, *.pem/*.key, keystore) —
 //      only `*.example` templates may be committed.
 //   2. `.gitignore` does not ignore `.env` and `packages/cre-workflow/secrets.yaml`.
-//   3. A tracked, non-example, non-lockfile text file contains a REAL-looking secret value
-//      (a 64-hex private key or a Circle/API bearer token) assigned to a secret variable —
-//      placeholders / sentinels / `0x000…` / `${VAR}` / `<...>` are allowed.
-//   4. (Positive control) the CRE local harness, when run, prints its "no secret" marker and
-//      does NOT echo the sentinel token — proving the secret path executes AND stays redacted.
+//   3. A tracked, non-example, non-lockfile text file contains either (a) a self-identifying token
+//      shape (JWT / ghp_ / github_pat_ / AKIA / Slack / PEM PRIVATE KEY / Circle key) — flagged
+//      everywhere including test/fixture files — or (b) a real (non-placeholder, high-entropy) 64-hex
+//      value assigned near a SECRET_VARS name. All-same-char hex (0x000…/0x1111…) is treated as a
+//      placeholder; a bare Solidity bytes32 constant (no secret-var name) is not flagged.
+//   4. (Positive control) the CRE local harness runs, reports it CONSUMED a secret, produces the
+//      PAYOUT verdict the private threshold drives, and does NOT echo the sentinel value — a harness
+//      that throws is a FAILURE, not a skip.
 //
 // Honest scope note: this is a lightweight repo-hygiene gate, not a full entropy scanner. It
 // deliberately reports exactly what it scanned (no silent truncation). Deep vectors (built web
@@ -24,8 +27,8 @@ const ROOT = process.cwd();
 const problems = [];
 const notes = [];
 
-function sh(cmd) {
-  return execSync(cmd, { cwd: ROOT, encoding: "utf8" });
+function sh(cmd, opts = {}) {
+  return execSync(cmd, { cwd: ROOT, encoding: "utf8", ...opts });
 }
 
 // ---- 1. no real secret files tracked ------------------------------------------------
@@ -50,64 +53,95 @@ for (const need of [/^\.env$/m, /secrets\.ya?ml/m]) {
 if (!problems.length) notes.push(".gitignore ignores .env + secrets.yaml");
 
 // ---- 3. real-secret content scan ----------------------------------------------------
+// Secret variable names that, when set to a real hex value, indicate a leaked key.
 const SECRET_VARS =
   /(PRIVATE_KEY|DEPLOYER_PK|QUOTE_SIGNER_PK|CIRCLE_API_KEY|CIRCLE_ENTITY_SECRET|SESSION_SECRET|GRAPH_DEPLOY_KEY|AGENT_API_KEY|PASS_THRESHOLD|PRIVATE_TEST|BEARER|AUTHORIZATION)/i;
 // Real 64-hex key (0x-prefixed or bare), not all-zero.
 const HEX64 = /(?:0x)?(?![0]{64}\b)[0-9a-fA-F]{64}\b/;
-// Circle-style key `PREFIX:ID:SECRET` or long opaque token.
+// Self-identifying token shapes — real regardless of surrounding context or file type.
 const CIRCLE = /\b(?:TEST|LIVE)_API_KEY:[0-9a-f]{6,}:[0-9a-f]{6,}/i;
-// Values that are obviously placeholders / templated / sentinels — allowed.
-const PLACEHOLDER =
-  /0x0{20,}|<[^>]+>|\$\{|\bchange[_-]?me\b|\breplace\b|\byour[_-]|\bexample\b|\bsentinel\b|\bplaceholder\b|xxxx|TODO|\bREDACTED\b|deadbeef|\.\.\.|dEaD/i;
+const TOKEN_SHAPES = [
+  ["circle-api-key", CIRCLE],
+  ["jwt", /\beyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/],
+  ["github-pat", /\bghp_[A-Za-z0-9]{36}\b/],
+  ["github-fine-grained-pat", /\bgithub_pat_[A-Za-z0-9_]{50,}\b/],
+  ["aws-access-key", /\bAKIA[0-9A-Z]{16}\b/],
+  ["slack-token", /\bxox[baprs]-[A-Za-z0-9-]{10,}/],
+  ["pem-private-key", /-----BEGIN (?:RSA |EC |DSA |OPENSSH |PGP )?PRIVATE KEY-----/],
+];
+// A 64-hex VALUE that is obviously a placeholder (applied to the matched token, NOT the line).
+function isPlaceholderHex(v) {
+  const h = v.replace(/^0x/i, "").toLowerCase();
+  return /^(.)\1+$/.test(h); // all-same-char (0x000…, 0x1111…, 0xaaaa…); real keys are high-entropy
+}
 
 const SKIP =
   /(^|\/)(node_modules|\.git|\.next|\.turbo|dist|build|out|generated|coverage)\//;
 const SKIP_FILE =
-  /\.example$|pnpm-lock\.yaml$|\.(png|jpg|jpeg|gif|svg|ico|lock|wasm|map)$/i;
-// Test/harness fixtures legitimately hold bytes32 hashes; the CRE package uses sentinel secrets.
-const SOFT =
-  /(^|\/)(test|tests|fixtures|__tests__)\/|\.t\.sol$|\.test\.ts$|secrets\.yaml\.example/;
+  /\.example$|pnpm-lock\.yaml$|\.(png|jpg|jpeg|gif|svg|ico|lock|wasm|map|pdf|zip|gz|woff2?|ttf|eot|jar)$/i;
+// This scanner defines the token-shape patterns above as source; skip itself to avoid self-match.
+const SELF = /(^|\/)scripts\/secret-scan\.mjs$/;
 
 let scanned = 0;
 for (const f of tracked) {
-  if (SKIP.test(f) || SKIP_FILE.test(f)) continue;
+  if (SKIP.test(f) || SKIP_FILE.test(f) || SELF.test(f)) continue;
   let text;
   try {
     text = readFileSync(join(ROOT, f), "utf8");
   } catch {
-    continue; // binary / unreadable
+    continue; // unreadable (I/O error) — readFileSync does NOT throw on binary content
   }
+  if (text.includes("\u0000")) continue; // binary sniff (NUL byte)
   scanned++;
   const lines = text.split("\n");
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    if (PLACEHOLDER.test(line)) continue;
-    const hasSecretVar = SECRET_VARS.test(line);
-    const looksReal =
-      (HEX64.test(line) && hasSecretVar) || CIRCLE.test(line);
-    if (!looksReal) continue;
-    // In test/fixture files a bare 64-hex is expected; only flag if it's clearly a live key
-    // assignment (Circle token, or a secret var set to a hex value) — never a Solidity constant.
-    if (SOFT.test(f) && !CIRCLE.test(line)) continue;
-    problems.push(`${f}:${i + 1}  possible real secret → ${line.trim().slice(0, 80)}`);
+    // Auditable escape hatch for intentional test vectors (e.g. a PUBLIC Hardhat/anvil key used to
+    // test redaction). Mark the line, or the line above, with `secret-scan-allow`.
+    if (/secret-scan-allow/.test(line) || (i > 0 && /secret-scan-allow/.test(lines[i - 1]))) continue;
+    // (a) self-identifying token shapes — flagged everywhere, including test/fixture files.
+    for (const [name, re] of TOKEN_SHAPES) {
+      if (re.test(line)) {
+        problems.push(`${f}:${i + 1}  ${name} → ${line.trim().slice(0, 80)}`);
+      }
+    }
+    // (b) a real (non-placeholder) 64-hex assigned near a SECRET_VARS name. Requiring the secret-var
+    //     keyword means a bare Solidity bytes32 constant (no secret name) is NOT flagged, so test
+    //     files no longer get a blanket skip — a real key assigned to a secret var IS caught there.
+    if (SECRET_VARS.test(line)) {
+      const m = line.match(HEX64);
+      if (m && !isPlaceholderHex(m[0])) {
+        problems.push(`${f}:${i + 1}  secret-var hex value → ${line.trim().slice(0, 80)}`);
+      }
+    }
   }
 }
-notes.push(`content-scanned ${scanned} tracked text files`);
+notes.push(`content-scanned ${scanned} tracked text files (token-shapes + secret-var hex)`);
 
-// ---- 4. positive control: CRE harness runs, prints redaction marker, no sentinel echo ----
+// ---- 4. positive control: the CRE secret path executes AND stays redacted ----
+// A static "no secret printed" line proves nothing on its own, so we assert three things that a
+// placeholder / no-op path could NOT satisfy together:
+//   (a) the exact sentinel token value never appears in stdout (redaction actually holds),
+//   (b) the harness reports it CONSUMED >=1 secret (the getSecret path ran — see harness.ts),
+//   (c) the verdict is PAYOUT (the private threshold secret drove the decision).
+// A harness that throws is a FAILURE (RED), not a silent skip — the control must run.
+const SENTINEL_TOKEN = "SENTINEL_TOKEN_1a2b3c4d5e6f7081"; // fake value from harness.ts SENTINEL.token
 try {
   const out = sh(
     "pnpm --filter @vouch/cre-workflow simulate:harness fixtures/valid-failure.json",
+    { maxBuffer: 1 << 24 },
   );
-  if (!/no secret is printed/i.test(out)) {
-    problems.push("CRE harness output missing the 'no secret is printed' marker");
-  } else if (/BEGIN|-----|Bearer [A-Za-z0-9._-]{20,}/.test(out)) {
-    problems.push("CRE harness output appears to contain a credential");
+  if (out.includes(SENTINEL_TOKEN)) {
+    problems.push("CRE harness LEAKED the sentinel secret value to stdout");
+  } else if (!/secret\(s\) were consumed/i.test(out)) {
+    problems.push("CRE harness positive-control never ran the secret path (no 'consumed' marker)");
+  } else if (!/verdict:\s*PAYOUT/i.test(out)) {
+    problems.push("CRE harness positive-control: expected PAYOUT (the threshold secret drives it)");
   } else {
-    notes.push("CRE harness executed the secret path and stayed redacted");
+    notes.push("CRE harness consumed the secret path, produced PAYOUT, and did not leak the sentinel");
   }
 } catch (e) {
-  notes.push(`CRE harness positive-control skipped (${(e.message || "").slice(0, 60)})`);
+  problems.push(`CRE harness positive-control FAILED to run: ${(e.message || "").slice(0, 80)}`);
 }
 
 // ---- report -------------------------------------------------------------------------
