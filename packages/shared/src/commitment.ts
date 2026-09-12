@@ -19,3 +19,11 @@ export function randomSalt(): Hex {
 export function computeCommitment(preimage: string, salt: Hex): Hex {
   return keccak256(concatHex([salt, toHex(preimage)]));
 }
+
+/**
+ * Hash of the PUBLIC acceptance criteria (`publicCriteriaHash`). Public, so no salt — but it lives here,
+ * not inline in a component, so the web UI and any agent derive the exact same on-chain hash.
+ */
+export function computePublicCriteriaHash(text: string): Hex {
+  return keccak256(toHex(text));
+}

@@ -2,14 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { keccak256, toHex } from "viem";
 import { ShieldCheck, ShieldX, Gauge } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@vouch/ui/components/card";
 import { Badge } from "@vouch/ui/components/badge";
 import { buttonVariants } from "@vouch/ui/components/button";
 import { cn } from "@vouch/ui/lib/utils";
 import { USDC_ADDRESS } from "@vouch/shared/chains";
-import { computeCommitment, randomSalt } from "@vouch/shared/commitment";
+import { computeCommitment, computePublicCriteriaHash, randomSalt } from "@vouch/shared/commitment";
 import type { QuoteCommitment } from "@vouch/shared/schemas";
 import { useAuthMe, useTopProviders } from "../../../lib/api/hooks";
 import { useTxEngine } from "../../../lib/tx/engine";
@@ -73,8 +72,13 @@ export default function CreateJobPage() {
       const salt = randomSalt();
       const privateCriteriaCommitment = computeCommitment(privateCriteria, salt);
       // Persist the salt locally so the private criteria can be reproduced/revealed at claim time.
+      // Guarded: a private-mode/quota throw must not break job submission (security P3).
       if (typeof window !== "undefined") {
-        window.localStorage.setItem(`vouch:criteria-salt:${privateCriteriaCommitment}`, salt);
+        try {
+          window.localStorage.setItem(`vouch:criteria-salt:${privateCriteriaCommitment}`, salt);
+        } catch {
+          /* storage unavailable — the commitment still submits; reveal simply won't autofill */
+        }
       }
       return {
         provider,
@@ -83,7 +87,7 @@ export default function CreateJobPage() {
         serviceFee: parseUsdcInput(serviceFee || "0"),
         submissionDeadline: String(deadlineSec),
         coverageDuration: String(coverage),
-        publicCriteriaHash: keccak256(toHex(publicCriteria)),
+        publicCriteriaHash: computePublicCriteriaHash(publicCriteria),
         privateCriteriaCommitment,
         uiTitle,
       };
