@@ -14,8 +14,21 @@ async function bootstrap(): Promise<void> {
   const env = loadEnv();
   const app = await NestFactory.create(AppModule, { logger: false });
   app.use(cookieParser());
-  // Cookie sessions require an explicit origin + credentials (a wildcard+credentials is rejected).
-  if (env.WEB_ORIGIN) app.enableCors({ origin: env.WEB_ORIGIN, credentials: true });
+  // Cookie sessions require an explicit origin allowlist + credentials (a wildcard+credentials is
+  // rejected by browsers). Match against an EXACT-MATCH Set — never a regex/substring, which would let
+  // `withvouch.xyz.evil.com` through and hand an attacker the session cookie. Requests with no Origin
+  // header (curl, same-origin, server-to-server) are allowed; any listed origin is echoed back.
+  if (env.WEB_ORIGIN.length > 0) {
+    const allow = new Set(env.WEB_ORIGIN);
+    app.enableCors({
+      origin(origin: string | undefined, cb: (err: Error | null, allow?: boolean) => void) {
+        if (!origin || allow.has(origin)) return cb(null, true);
+        return cb(new Error("Not allowed by CORS"), false);
+      },
+      credentials: true,
+      methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    });
+  }
   app.useGlobalFilters(new VouchErrorFilter());
   app.enableShutdownHooks();
   // API now writes operational Postgres — disconnect the pool cleanly on shutdown.

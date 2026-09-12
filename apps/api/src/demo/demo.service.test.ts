@@ -17,6 +17,7 @@ test("demo tooling refuses on a non-demo chain even with DEMO_MODE=true (allowli
   process.env.SESSION_SECRET = "x".repeat(40);
   process.env.SIWE_DOMAIN = "app.vouch.xyz";
   process.env.WEB_ORIGIN = "https://app.vouch.xyz";
+  process.env.AGENT_API_KEY = "test-agent-key";
   const { DemoService } = await import("./demo.service");
   await assert.rejects(new DemoService().reset(), /Demo tooling is disabled/);
 });

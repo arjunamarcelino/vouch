@@ -73,6 +73,26 @@ const envSchema = z
         message: "SUBGRAPH_DEPLOYMENT_ID is required when SUBGRAPH_URL is set (deployment trust-root pin)",
       });
     }
+    // Fail-closed for a network-reachable agent (security C4). Outside development the Bearer key is
+    // mandatory — the API presents the same key, and an unset key would silently DISABLE auth on the
+    // signing/pay routes (rest.ts). And manual-pay (which moves real USDC via /quotes/:id/pay) must
+    // never be enabled outside development — the autonomous, policy-bound path is the only prod path.
+    if (e.CHAIN_ENV !== "development") {
+      if (!e.AGENT_API_KEY) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["AGENT_API_KEY"],
+          message: 'AGENT_API_KEY is required when CHAIN_ENV is not "development" (REST auth fail-closed)',
+        });
+      }
+      if (e.AGENT_ALLOW_MANUAL_PAY) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["AGENT_ALLOW_MANUAL_PAY"],
+          message: 'AGENT_ALLOW_MANUAL_PAY must be false when CHAIN_ENV is not "development"',
+        });
+      }
+    }
   });
 
 export type AgentEnv = z.infer<typeof envSchema>;
