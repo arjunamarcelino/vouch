@@ -172,10 +172,15 @@ This is the non-negotiable architectural constraint that governs where every pie
 `Ownable2Step`). Authority is split across two deliberately separated trust surfaces plus admin
 config:
 
-- **`DEFAULT_ADMIN_ROLE`** — config and role management only: `setForwarder`,
-  `setExpectedWorkflow`, `setFeeRecipient`, `pause` / `unpause`. It can **never** redirect principal
-  (task fee or collateral) to itself — every admin function is routing/config, machine-checked by
-  `test_NoAdminCanSeizeFunds`. Hold in a multisig for production (deployer EOA for the hackathon).
+- **`DEFAULT_ADMIN_ROLE`** — config and role management only: forwarder + expected-workflow changes
+  go through a **two-step timelock** (`queueForwarder` → `applyForwarder`, `queueExpectedWorkflow` →
+  `applyExpectedWorkflow`, applied only after `CONFIG_TIMELOCK = 2 days`; `AssuranceHub.sol:533-568`),
+  plus the immediate `setFeeRecipient` and `pause` / `unpause`. There is **no** unguarded
+  `setForwarder`/`setExpectedWorkflow` external — the setters are internal, reachable only via the
+  timelocked apply step. Admin can **never** redirect principal (task fee or collateral) to itself —
+  every admin function is routing/config, machine-checked by `test_NoAdminCanSeizeFunds`. Hold in a
+  multisig for production (deployer EOA for the hackathon); monitor the queue/apply config-change
+  events. (See [`security.md`](security.md) §1/§4.)
 - **`EVALUATOR_ROLE`** — the *public* trust surface: `resolveInitialEvaluation` only. It approves or
   rejects the public submission (off-chain judgement, on-chain call). It is a global role, not
   per-job. It cannot pay itself.
