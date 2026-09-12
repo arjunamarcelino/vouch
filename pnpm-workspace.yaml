@@ -21,3 +21,14 @@ onlyBuiltDependencies:
   - "@tailwindcss/oxide"
   - "@parcel/watcher"
   - "@swc/core"
+
+# Force patched versions of transitive deps flagged HIGH by `pnpm audit` (2026-09-12,
+# "verify end-to-end assurance lifecycle"). All are deep-transitive (wagmi/walletconnect,
+# NestJS, Prisma); none is a direct dependency, so these overrides pull the fix without an
+# app-code change. Verified: install + typecheck + build + all test suites stay green.
+overrides:
+  ws: ">=8.21.0"
+  axios: ">=1.18.0"
+  multer: ">=2.3.0"
+  mysql2: ">=3.22.0"
+  deepmerge-ts: ">=8.0.0"

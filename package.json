@@ -17,7 +17,9 @@
     "test:contracts": "turbo run test:contracts --filter=@vouch/contracts",
     "test:e2e": "turbo run test:e2e",
     "format": "prettier --write \"**/*.{ts,tsx,md,json,yaml,yml}\"",
-    "format:check": "prettier --check \"**/*.{ts,tsx,md,json,yaml,yml}\""
+    "format:check": "prettier --check \"**/*.{ts,tsx,md,json,yaml,yml}\"",
+    "gate:secrets": "node scripts/secret-scan.mjs",
+    "demo:health": "node scripts/preflight-demo.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",

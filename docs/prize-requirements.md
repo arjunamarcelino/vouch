@@ -68,26 +68,34 @@ action + wallet lifecycle are documented in `docs/arc-agent-stack.md`.
 | Official requirement | Package / app | Demonstration evidence |
 |---|---|---|
 | A **CRE Confidential Workflow** doing a **meaningful** part of the app | `packages/cre-workflow` | The confidential workflow runs the **private regression test** — the sole gate on the 100-USDC guarantee payout. Without it, no covered failure can ever be proven. |
-| Register / use a **TEE handler** | `packages/cre-workflow` (`workflow.ts`) | **See correction below.** TS path uses `ConfidentialHTTPClient` inside a normal `handler`; if the prize hard-requires the `handlerInTee` / `cre.HandlerInTee` **symbol**, the confidential handler is written in **Go**. |
+| Register / use a **TEE handler** | `packages/cre-workflow` (`workflow.ts:212`) | The confidential handler is registered with the **real TypeScript `handlerInTee<…>`** from `@chainlink/cre-sdk@1.20.1` (verified present in the installed SDK), with a `nitro` TEE constraint. No Go rewrite needed — see the updated note below. |
 | Process **≥1 sensitive input / secret / private value inside the enclave** | `packages/cre-workflow` | Private regression tests, private pass/fail thresholds, and repository credentials are fetched/injected **inside the enclave** via Vault DON secrets (`{{.token}}` templating). They exist nowhere else — not in source, Postgres, onchain metadata, or the subgraph. |
 | Confidential portion **meaningfully contributes to core functionality** | `packages/cre-workflow` + `packages/contracts` (`AssuranceHub` receiver) | The enclave verdict — `abi.encode(uint256 jobId, bool covered, uint256 amount)` — is the **sole trigger** for the guarantee payout via **`AssuranceHub.onReport`**, which finalizes a `ClaimPending` job. `onReport` is gated by both the **forwarder** address and the **workflow identity** decoded from packed Keystone metadata (`bytes32 workflowId \| bytes10 workflowName \| address workflowOwner`); the contract caps the payout at `min(amount, guaranteeAmount)` and returns the remainder to the provider. |
 | **Demonstrate via CRE CLI simulation or live deployment** | `packages/cre-workflow` | Evidence via `cre workflow simulate` terminal output (with the secret **never** appearing in logs) + the demo video. **Simulate-as-evidence is explicitly accepted** — private-beta live access is not required to qualify. |
 
-### CRE §17.2 correction — the TypeScript SDK reality
+### CRE §17.2 — the TypeScript SDK reality (updated 2026-09-12, verified against the installed SDK)
 
 The track wording asks to "register and use a confidential TEE handler (`handlerInTee` TS /
-`cre.HandlerInTee` Go)". **That TypeScript symbol does not exist in the current SDK** —
-`handlerInTee`, `TeeRuntime`, and `usingTheDons` are **not present** in the TS SDK. Two paths:
+`cre.HandlerInTee` Go)". **The TypeScript symbol exists and is used.** `@chainlink/cre-sdk@1.20.1`
+exports `handlerInTee` and `TeeRuntime` (with `reportFromDon` / `usingTheDons`), confirmed in the
+installed `.d.ts`. We ship **Path A (TypeScript)**:
 
-- **Path A (TypeScript, recommended if judges accept it):** use **`ConfidentialHTTPClient`** — a
-  real TEE execution path where the Vault-DON secret is injected **inside the enclave** and never
-  touches node memory, called from within a normal `handler`. Demonstrate via
-  `cre workflow simulate`.
-- **Path B (if the prize hard-requires the `HandlerInTee` symbol):** write the confidential
-  handler in **Go** (`cre.HandlerInTee` exists there) and keep the rest of the repo TypeScript.
+- `packages/cre-workflow/workflow.ts:212` registers the confidential handler with a real
+  `handlerInTee<…>` call and a TEE constraint `[{ tee: "nitro", regions: ["us-west-2"] }]`
+  (`us-west-2` is the only region the SDK's zod enum accepts in 1.20.1).
+- The Vault-DON secret is injected **inside the enclave** via `ConfidentialHTTPClient` `{{.token}}`
+  templating (`vaultDonSecrets`) and never touches node memory; the private pass-threshold is read
+  via `getSecret`. Demonstrated via `cre workflow simulate` (and the deterministic `harness.ts`).
 
-**Do not ship a TypeScript `handlerInTee` call — it will not compile.** Confirm the requirement
-wording and inspect the installed `@chainlink/cre-sdk` `.d.ts` before implementing the workflow.
+> **Prior revision retracted:** an earlier version of this section claimed `handlerInTee`/`TeeRuntime`
+> were absent from the TS SDK and that a Go rewrite (`cre.HandlerInTee`) might be required. That is
+> **stale** (true only of pre-1.x betas). **No Go path is needed.**
+
+**Caveats to keep honest** (see [`docs/security.md`](security.md)): `confidential-http@1.0.0-alpha`
+is alpha; response confidentiality (`encryptOutput`) is opt-in and defaults **off** (we adjudicate an
+*untrusted* response and declassify only the verdict, so it is intentionally not enabled — documented,
+not hidden). For an **EVM-log trigger** the CLI expects `--evm-tx-hash`/`--evm-event-index`, not
+`--http-payload`.
 
 ### Confidentiality boundary reminder
 

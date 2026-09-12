@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test '*.test.ts'",
-    "simulate": "echo 'Run: cre workflow simulate <name> --target staging-settings --non-interactive --trigger-index 0 --http-payload ./fixtures/<fixture>.json  (install the CRE CLI first — see README/docs)'"
+    "simulate:harness": "node --import tsx harness.ts",
+    "simulate": "echo 'RUNNABLE NOW (deterministic local proof, no CRE account/secrets): pnpm --filter @vouch/cre-workflow simulate:harness fixtures/<fixture>.json  (e.g. fixtures/valid-failure.json).  SUBMISSION EVIDENCE (needs the CRE CLI + a CRE account): cre workflow simulate <name> --target staging-settings --non-interactive --trigger-index 0 --evm-tx-hash <hash> --evm-event-index <n>  — this is an EVM-LOG trigger (ClaimOpened), so use --evm-tx-hash/--evm-event-index, NOT --http-payload. See README/docs.'"
   },
   "dependencies": {
     "@chainlink/cre-sdk": "1.20.1",
