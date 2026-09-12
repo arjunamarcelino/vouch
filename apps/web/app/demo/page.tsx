@@ -18,6 +18,7 @@ import { useIntegrationsHealth, useTopProviders } from "../../lib/api/hooks";
 import { resolveMode, modeLabel } from "../../lib/mode";
 import { shortHex } from "../../lib/format";
 import { PrizeEvidenceDrawer } from "../../components/demo/PrizeEvidenceDrawer";
+import { ModePill } from "../../components/common/indicators";
 
 /**
  * Judge demo (WS-7). A guided, numbered walk through the canonical 6-step flow. Each step is labeled
@@ -46,17 +47,7 @@ function RailPill({ live, cre }: { live: boolean; cre?: boolean }) {
       </span>
     );
   }
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
-        live ? "bg-success/10 text-success" : "bg-muted text-muted-foreground",
-      )}
-    >
-      {live ? <CircleCheck className="size-3.5" aria-hidden /> : <CircleSlash className="size-3.5" aria-hidden />}
-      {live ? "Live · Arc testnet" : "Local simulation"}
-    </span>
-  );
+  return <ModePill live={live} />;
 }
 
 export default function DemoPage() {

@@ -9,6 +9,7 @@ import { cn } from "@vouch/ui/lib/utils";
 import { computeCommitment, randomSalt } from "@vouch/shared/commitment";
 import type { ClaimStatus } from "@vouch/shared/schemas";
 import { useJob, useClaimStatus, useAuthMe } from "../../lib/api/hooks";
+import { jobActions, viewerFromAuth } from "../../lib/roles";
 import { useTxEngine } from "../../lib/tx/engine";
 import { prepareClaim, prepareResolveTimeout } from "../../lib/api/prepare";
 import { formatUsdc } from "../../lib/format";
@@ -39,28 +40,27 @@ export function ClaimFlow({ id }: { id: string }) {
   }
 
   const j = job.data;
-  const addr = me.data?.address?.toLowerCase();
-  const isClient = !!addr && addr === j.client.toLowerCase();
-  const isParty = isClient || (!!addr && addr === j.provider.toLowerCase());
+  const viewer = viewerFromAuth(me.data);
+  const addr = viewer.address?.toLowerCase();
+  const isParty = !!addr && (addr === j.client.toLowerCase() || addr === j.provider.toLowerCase());
   const nowSec = Math.floor(Date.now() / 1000);
-  const coverageOpen = nowSec < Number(j.coverageEnd);
-  const eligible = isClient && j.status === "InitiallyApproved" && coverageOpen;
+  // Eligibility + reason come from the shared jobActions projection (single source of truth with the
+  // API guards) rather than a re-implemented ladder.
+  const claimAction = jobActions(j, viewer, nowSec).find((a) => a.id === "CLAIM");
+  const eligible = !!claimAction?.available;
   const status = claim.data?.status ?? "NONE";
-
-  const ineligibleReason = !me.data
-    ? "Connect and sign in to file a claim."
-    : !isClient
-      ? "Only the job's client can open a claim."
-      : j.status !== "InitiallyApproved"
-        ? `A claim can only be opened on an approved job (this job is ${j.status}).`
-        : !coverageOpen
-          ? "The coverage window has closed."
-          : null;
+  const ineligibleReason = !me.data ? "Connect and sign in to file a claim." : (claimAction?.reason ?? null);
 
   function openClaim() {
     const salt = randomSalt();
     const commitment = computeCommitment(evidence, salt);
-    if (typeof window !== "undefined") window.localStorage.setItem(`vouch:evidence-salt:${commitment}`, salt);
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.setItem(`vouch:evidence-salt:${commitment}`, salt);
+      } catch {
+        /* storage unavailable — the claim still opens; reveal simply won't autofill */
+      }
+    }
     void engine.run({ action: "CLAIM", jobId: id, prepare: (k) => prepareClaim(id, k, commitment) });
   }
 

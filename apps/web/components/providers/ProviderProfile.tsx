@@ -55,7 +55,7 @@ export function ProviderProfile({ address }: { address: string }) {
         ) : (
           <span className="font-mono text-sm">{shortHex(address, 10, 8)}</span>
         )}
-        <FreshnessBadge source="graph" confidence="FRESH" />
+        <FreshnessBadge source="graph" />
       </div>
 
       {perf.isLoading ? (

@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ShieldCheck, ShieldAlert, Database, Activity } from "lucide-react";
+import { ShieldCheck, ShieldAlert, Database, Activity, CircleCheck, CircleSlash } from "lucide-react";
 import { Badge } from "@vouch/ui/components/badge";
 import { cn } from "@vouch/ui/lib/utils";
-import type { JobState } from "@vouch/shared/schemas";
+import type { JobState, ClaimStatus } from "@vouch/shared/schemas";
 
 /**
  * Small shared indicators reused across dashboard / job detail (dedup — one countdown, one state badge,
@@ -27,6 +27,43 @@ const STATE_META: Record<JobState, { label: string; variant: "default" | "succes
 export function StateBadge({ status }: { status: JobState }) {
   const meta = STATE_META[status];
   return <Badge variant={meta.variant}>{meta.label}</Badge>;
+}
+
+const CLAIM_STATUS_META: Record<ClaimStatus, { label: string; variant: "default" | "success" | "warning" | "destructive" }> = {
+  NONE: { label: "No claim", variant: "default" },
+  PENDING: { label: "Claim pending", variant: "warning" },
+  COVERED_PAID: { label: "Covered · paid", variant: "success" },
+  REJECTED_CONSUMED: { label: "Rejected", variant: "destructive" },
+  TIMED_OUT: { label: "Timed out", variant: "destructive" },
+};
+
+/** Single source of truth for claim-status label + tone (shared by JobDetail + ClaimFlow). */
+export function ClaimBadge({ status }: { status: ClaimStatus }) {
+  const meta = CLAIM_STATUS_META[status];
+  return <Badge variant={meta.variant}>{meta.label}</Badge>;
+}
+
+/** One live-vs-simulation pill (shared by the Prize Evidence drawer + demo stepper). */
+export function ModePill({
+  live,
+  liveLabel = "Live · Arc testnet",
+  simLabel = "Local simulation",
+}: {
+  live: boolean;
+  liveLabel?: string;
+  simLabel?: string;
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
+        live ? "bg-success/10 text-success" : "bg-muted text-muted-foreground",
+      )}
+    >
+      {live ? <CircleCheck className="size-3.5" aria-hidden /> : <CircleSlash className="size-3.5" aria-hidden />}
+      {live ? liveLabel : simLabel}
+    </span>
+  );
 }
 
 function fmtRemaining(sec: number): string {

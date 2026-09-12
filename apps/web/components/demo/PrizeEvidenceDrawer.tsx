@@ -1,6 +1,6 @@
 "use client";
 
-import { Network, Coins, Cpu, Bot, ExternalLink, CheckCircle2, CircleSlash } from "lucide-react";
+import { Network, Coins, Cpu, Bot, ExternalLink } from "lucide-react";
 import {
   Sheet,
   SheetTrigger,
@@ -15,6 +15,7 @@ import { USDC_ADDRESS, arcTestnet } from "@vouch/shared/chains";
 import { useIntegrationsHealth } from "../../lib/api/hooks";
 import { resolveMode } from "../../lib/mode";
 import { explorerAddressLink } from "../../lib/format";
+import { ModePill } from "../common/indicators";
 
 /**
  * Prize Evidence drawer (demo-mode only). Surfaces, per sponsor track, whether the integration is LIVE
@@ -23,24 +24,6 @@ import { explorerAddressLink } from "../../lib/format";
  * live endpoint. Chainlink CRE has no live API probe — its evidence is the sanitized `cre workflow
  * simulate` output committed to the repo, so that row is evidence-based, not a live/sim toggle.
  */
-
-function StatusPill({ live, label }: { live: boolean; label?: string }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
-        live ? "bg-success/10 text-success" : "bg-muted text-muted-foreground",
-      )}
-    >
-      {live ? (
-        <CheckCircle2 className="size-3.5" aria-hidden />
-      ) : (
-        <CircleSlash className="size-3.5" aria-hidden />
-      )}
-      {label ?? (live ? "Live · Arc testnet" : "Not configured · local simulation")}
-    </span>
-  );
-}
 
 function EvidenceRow({
   icon: Icon,
@@ -61,7 +44,7 @@ function EvidenceRow({
         <Icon className="size-4 text-primary" aria-hidden />
         <h3 className="text-sm font-semibold">{title}</h3>
         <span className="ml-auto">
-          <StatusPill live={live} label={liveLabel} />
+          <ModePill live={live} liveLabel={liveLabel} simLabel={liveLabel ?? "Not configured · local simulation"} />
         </span>
       </div>
       <div className="mt-2 space-y-1 text-sm text-muted-foreground">{children}</div>

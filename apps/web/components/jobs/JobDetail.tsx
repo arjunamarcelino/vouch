@@ -20,11 +20,10 @@ import {
   prepareWithdraw,
   prepareResolveTimeout,
   prepareSubmit,
-  prepareClaim,
   fetchAllowance,
 } from "../../lib/api/prepare";
 import { formatUsdc, shortHex, explorerAddressLink, isHash32, gteUsdc } from "../../lib/format";
-import { StateBadge, CoverageCountdown, FreshnessBadge } from "../common/indicators";
+import { StateBadge, CoverageCountdown, FreshnessBadge, ClaimBadge } from "../common/indicators";
 import { TxStatus } from "../tx/TxStatus";
 import { ApiClientError } from "../../lib/api/client";
 
@@ -118,12 +117,12 @@ export function JobDetail({ id }: { id: string }) {
         return engine.run({ ...common, action: "RESOLVE_TIMEOUT", prepare: (k) => prepareResolveTimeout(id, k) });
       case "SUBMIT":
         return engine.run({ ...common, action: "SUBMIT", prepare: (k) => prepareSubmit(id, k, commitment) });
-      case "CLAIM":
-        return engine.run({ ...common, action: "CLAIM", prepare: (k) => prepareClaim(id, k, commitment) });
     }
   };
 
-  const needsCommitment = (a: JobActionId) => a === "SUBMIT" || a === "CLAIM";
+  // SUBMIT takes a commitment inline; CLAIM routes to the dedicated /claim page (which hashes evidence
+  // from plain text) rather than asking the user to paste a bytes32 here.
+  const needsCommitment = (a: JobActionId) => a === "SUBMIT";
   const commitmentValid = isHash32(commitment);
 
   return (
@@ -213,7 +212,7 @@ export function JobDetail({ id }: { id: string }) {
                   <li key={s} className="flex items-center gap-3 text-sm">
                     <span
                       className={cn(
-                        "flex size-5 items-center justify-center rounded-full text-[10px] font-semibold",
+                        "flex size-5 items-center justify-center rounded-full text-xs font-semibold",
                         current ? "bg-primary text-primary-foreground" : done ? "bg-success text-success-foreground" : "bg-muted text-muted-foreground",
                       )}
                       aria-hidden
@@ -279,7 +278,7 @@ export function JobDetail({ id }: { id: string }) {
           {commitFor && needsCommitment(commitFor) ? (
             <div className="rounded-md border border-input p-3">
               <label htmlFor="commitment" className="text-sm font-medium">
-                {commitFor === "CLAIM" ? "Evidence commitment" : "Submission commitment"} (bytes32)
+                Submission commitment (bytes32)
               </label>
               <input
                 id="commitment"
@@ -296,6 +295,24 @@ export function JobDetail({ id }: { id: string }) {
           ) : null}
           <div className="flex flex-wrap gap-2">
             {actions.map((a) => {
+              // CLAIM routes to the dedicated claim page (evidence hashed there), not an inline tx.
+              if (a.id === "CLAIM") {
+                return a.available ? (
+                  <Link key={a.id} href={`/jobs/${id}/claim`} className={buttonVariants({ size: "sm" })}>
+                    {a.label}
+                  </Link>
+                ) : (
+                  <button
+                    key={a.id}
+                    disabled
+                    aria-disabled
+                    title={a.reason}
+                    className={cn(buttonVariants({ size: "sm" }), "pointer-events-none opacity-50")}
+                  >
+                    {a.label}
+                  </button>
+                );
+              }
               const blocked = !a.available || engine.isBusy || (needsCommitment(a.id) && commitFor === a.id && !commitmentValid);
               const onClick = () => {
                 if (needsCommitment(a.id) && commitFor !== a.id) {
@@ -328,10 +345,4 @@ export function JobDetail({ id }: { id: string }) {
       </Card>
     </div>
   );
-}
-
-function ClaimBadge({ status }: { status: string }) {
-  const variant =
-    status === "COVERED_PAID" ? "success" : status === "REJECTED_CONSUMED" || status === "TIMED_OUT" ? "destructive" : status === "PENDING" ? "warning" : "default";
-  return <Badge variant={variant as "success" | "destructive" | "warning" | "default"}>{status}</Badge>;
 }
