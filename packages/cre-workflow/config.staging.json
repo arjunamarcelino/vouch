@@ -4,11 +4,11 @@
   "//chainId": "block.chainid of the settlement chain (Circle Arc testnet). Bound in the report as the anti cross-chain replay domain field.",
   "chainId": "5042002",
   "//assuranceHubAddress": "The AssuranceHub address — used for the ClaimOpened log trigger, the getJob read, the report hub domain field, AND the writeReport receiver (one field so they cannot diverge). MUST be replaced: the non-zero refine rejects this 0x0…0 placeholder at startup.",
-  "assuranceHubAddress": "0x0000000000000000000000000000000000000000",
+  "assuranceHubAddress": "0xB30e054557533f28753B4ACdf646B393E2072bf9",
   "//owner": "Vault DON secret-owner scope for the confidential-fetch credential ({{.token}}).",
-  "owner": "0x0000000000000000000000000000000000000000",
+  "owner": "0x9A39bC6C499C4f51336692871233164Ae621D52E",
   "gasLimit": "500000",
-  "testApiUrl": "https://example.invalid/private-test",
+  "testApiUrl": "https://your-confidential-test-api.example/private-test",
   "//workflowId": "Pinned Keystone workflow identifier — bound in the evidence-commitment preimage. Set to the registered workflow id before deploy.",
-  "workflowId": "0x0000000000000000000000000000000000000000000000000000000000000000"
+  "workflowId": "0xd38944d8afd25c7f280faf6f59d673e021c285abb59160d25bc8d2a28fb5e467"
 }

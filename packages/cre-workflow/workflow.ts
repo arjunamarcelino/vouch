@@ -162,11 +162,10 @@ function makePort(rt: TeeRuntime<Config>, evmClient: EVMClient): EvalPort {
       if (w.txStatus !== TxStatus.SUCCESS) {
         return { ok: false };
       }
-      if (!w.txHash) {
-        // Success without a tx hash is a contradiction — do not fabricate zeros.
-        throw new Error("writeReport reported SUCCESS without a txHash");
-      }
-      return { ok: true, txHash: bytesToHex(w.txHash) };
+      // A real broadcast returns a txHash; a dry-run (`cre workflow simulate` without --broadcast)
+      // returns SUCCESS with NO txHash. Accept both — never fabricate a zero hash. Downstream treats
+      // an empty txHash as "dry-run, not delivered".
+      return { ok: true, txHash: w.txHash ? bytesToHex(w.txHash) : undefined };
     },
     now() {
       return BigInt(Math.floor(rt.now().getTime() / 1000));

@@ -49,8 +49,11 @@ export const configSchema = z.object({
   owner: hexAddress,
   /** Gas limit for `writeReport`, as a positive-int decimal string. */
   gasLimit: positiveIntString,
-  /** The confidential test-API endpoint (credential injected via `{{.token}}`). */
-  testApiUrl: z.string().url(),
+  /** The confidential test-API endpoint (credential injected via `{{.token}}`).
+   *  NOTE: plain string, NOT `z.string().url()` — the CRE javy/WASM runtime's zod rejects the
+   *  `.url()` refinement for EVERY value ("Invalid url"), which blocks `cre workflow simulate`
+   *  (verified 2026-09-13). The runtime confidential fetch fails loud on a malformed URL anyway. */
+  testApiUrl: z.string().min(1),
   /** The pinned Keystone workflow identifier, bound in the commitment. */
   workflowId: bytes32,
 });
