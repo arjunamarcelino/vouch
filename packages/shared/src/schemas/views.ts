@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { hexAddress, baseUnits, uintString, ratioBpsString } from "./primitives";
-import { jobStateSchema, claimStatusSchema } from "./api";
+import { jobStateSchema, claimStatusSchema, trackedTxStatusSchema } from "./api";
 
 /**
  * Read-response ("view") schemas for the web↔api READ surface — the frozen internal contract (plan §6)
@@ -124,6 +124,16 @@ export type Nonce = z.infer<typeof nonceSchema>;
 
 export const authVerifySchema = z.object({ address: hexAddress, token: z.string().optional() });
 export type AuthVerify = z.infer<typeof authVerifySchema>;
+
+// --- POST /transactions/track + GET /transactions/:txHash ---
+export const trackResultSchema = z.object({
+  txHash: z.string(),
+  status: trackedTxStatusSchema,
+  confirmations: z.number(),
+  eventVerified: z.boolean(),
+  jobId: z.string().optional(),
+});
+export type TrackResult = z.infer<typeof trackResultSchema>;
 
 // --- HTTP error envelope (VouchErrorFilter: `{ error: <code>, message }`, status carried by HTTP) ---
 export const apiErrorEnvelopeSchema = z.object({ error: z.string(), message: z.string() });
