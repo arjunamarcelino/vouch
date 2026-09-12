@@ -100,6 +100,9 @@ The stop predicate requires `query.state.data` to exist: `data && data.status !=
 open job tab into a sustained request storm against an already-failing service.
 **Recommendation:** add `if (query.state.status === "error") return false;` before the data check (both
 hooks), and treat any non-`PENDING` status (including `NONE`) as a stop.
+**Resolution:** ✅ Fixed. Both `useJob` and `useClaimStatus` `refetchInterval` callbacks now return
+`false` immediately when `query.state.status === "error"`, so a degraded endpoint can no longer drive an
+unbounded 3s/2s request loop. (`hooks.ts`)
 
 ### P2-4 · `useJob` post-tx polling is a dead no-op → stale state after an action  `✓ verified`
 **Files:** `apps/web/components/jobs/JobDetail.tsx:61`, `apps/web/lib/api/hooks.ts:93-95`
@@ -111,6 +114,10 @@ blanket invalidation in P2-2. If the Arc read lags one block behind the mined re
 available actions show stale state until a manual reload.
 **Recommendation:** capture the pre-action ordinal and pass a real predicate, e.g.
 `(j) => JOB_STATES.indexOf(j.status) > priorOrdinal`; gate polling on `submitted`/`tracking`/`done`.
+**Resolution:** ✅ Fixed. `JobDetail` records the lifecycle status when an action is dispatched
+(`statusAtActionStart` ref) and, once `flow.stage === "done"`, passes `pollUntil = (jv) => jv.status !==
+statusAtActionStart.current` so `useJob` actually polls until the authoritative chain read advances
+(bounded by the new error-stop in P2-3). (`JobDetail.tsx`)
 
 ### P2-5 · Track FSM treats `PENDING` as success → premature "Confirmed on-chain" + explorer link  `✓ verified`
 **File:** `apps/web/lib/tx/engine.ts:161,170`
@@ -136,6 +143,9 @@ the `pointer-events-none` class use `!a.available || engine.isBusy`. A user can 
 bytes32 field empty, and the click fires `run("SUBMIT")` with `commitment === ""` → server `.strict()`
 hex32 400s into a generic error. The client gate is effectively dead for the interactive path.
 **Recommendation:** include the commitment check in `disabled` and the class guard.
+**Resolution:** ✅ Fixed. The button's `disabled` attribute and `pointer-events-none`/`opacity-50` class
+now both use the full `blocked` expression (which includes `needsCommitment(a.id) && commitFor === a.id
+&& !commitmentValid`), so an empty/invalid bytes32 can't fire SUBMIT/CLAIM. (`JobDetail.tsx`)
 
 ### P2-7 · No receipt timeout / abort branch — the flow can pin in `submitted` forever
 **File:** `apps/web/lib/tx/engine.ts:147,160`
@@ -163,6 +173,10 @@ queries in the in-memory cache on a shared machine. The plan's own hard rule
 (`accountsChanged` → invalidate + `queryClient.clear()`) is unimplemented.
 **Recommendation:** add `useAccountEffect`/`watchAccount` → on address change, force SIWE re-verify (or
 `signOut`) and `queryClient.clear()`.
+**Resolution:** ✅ Fixed. `AuthGate` now watches `useAccount().address`; on any change after the first
+connect it POSTs `/auth/logout` (ends the old-address session), `queryClient.clear()`s the cache, and
+drops the old address's persisted pending-tx blob. `/auth/me` then re-derives as unauthenticated and
+RainbowKit prompts a fresh SIWE sign-in. (`providers.tsx`)
 
 ### P2-9 · "Simulate" is derived from the API health probe, not wallet/chain reality
 **Files:** `apps/web/components/jobs/JobDetail.tsx:88`, `ClaimFlow.tsx:67`, `jobs/new/page.tsx:135` (`simulate = !mode.arc`), `lib/mode.ts:31`, `lib/api/hooks.ts:67`

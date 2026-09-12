@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
-import { WagmiProvider, type State } from "wagmi";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { WagmiProvider, useAccount, type State } from "wagmi";
 import { QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import {
   RainbowKitProvider,
@@ -11,10 +11,13 @@ import {
   type AuthenticationStatus,
 } from "@rainbow-me/rainbowkit";
 import "@rainbow-me/rainbowkit/styles.css";
+import { arcTestnet } from "@vouch/shared/chains";
 import { getConfig } from "../lib/wagmi";
 import { getQueryClient } from "../lib/query";
 import { makeAuthAdapter } from "../lib/auth";
 import { useAuthMe, queryKeys } from "../lib/api/hooks";
+import { API_BASE_URL } from "../lib/env";
+import { clearPendingTx } from "../lib/tx/persistence";
 
 /**
  * Client providers for the wallet-heavy surface. `WagmiProvider` is React Context so it MUST be a
@@ -51,6 +54,23 @@ const rainbowTheme = {
 function AuthGate({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const me = useAuthMe();
+  const { address } = useAccount();
+
+  // P2-8: on any wallet account change (switch or disconnect), the SIWE cookie is still bound to the OLD
+  // address — purge all cached data, drop the old address's pending-tx blob, and end the stale session so
+  // the UI re-derives identity (RainbowKit will prompt a fresh SIWE sign-in). Not fired on the first
+  // connect (prev === undefined).
+  const prevAddress = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const prev = prevAddress.current;
+    if (prev !== undefined && prev !== address) {
+      if (prev) clearPendingTx(prev, arcTestnet.id);
+      void fetch(`${API_BASE_URL.replace(/\/$/u, "")}/auth/logout`, { method: "POST", credentials: "include" }).catch(() => {});
+      queryClient.clear();
+    }
+    prevAddress.current = address;
+  }, [address, queryClient]);
+
   const adapter = useMemo(
     () => makeAuthAdapter(() => void queryClient.invalidateQueries({ queryKey: queryKeys.authMe })),
     [queryClient],
