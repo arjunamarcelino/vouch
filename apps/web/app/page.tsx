@@ -8,7 +8,6 @@ import {
   Network,
   Cpu,
   Check,
-  X,
   EyeOff,
   Clock,
   Layers,
@@ -65,8 +64,6 @@ const STATS = [
   { icon: Globe, value: 100, suffix: "%", label: "Settled & proven on-chain" },
 ];
 
-const NOT = ["Not a marketplace", "Not insurance", "Not plain escrow"];
-
 export default function Home() {
   return (
     <div className="relative overflow-hidden">
@@ -86,16 +83,12 @@ export default function Home() {
           <div className="lg:col-span-7">
             <div className="rise" style={delay(0)}>
               <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card/70 px-3 py-1 font-mono text-[0.7rem] uppercase tracking-[0.14em] text-subtle-foreground shadow-sm backdrop-blur">
-                <span className="relative flex size-1.5">
-                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary/70" />
-                  <span className="relative inline-flex size-1.5 rounded-full bg-primary" />
-                </span>
                 Post-completion assurance
               </span>
             </div>
 
             <h1
-              className="rise mt-6 font-display text-5xl leading-[0.98] tracking-tight text-foreground sm:text-6xl lg:text-7xl"
+              className="rise mt-6 font-display text-5xl font-bold leading-[1.02] tracking-tight text-foreground sm:text-6xl lg:text-7xl"
               style={delay(80)}
             >
               Protect the work{" "}
@@ -143,14 +136,6 @@ export default function Home() {
               </Link>
             </div>
 
-            <ul className="rise mt-8 flex flex-wrap items-center gap-x-5 gap-y-2" style={delay(300)}>
-              {NOT.map((n) => (
-                <li key={n} className="flex items-center gap-2 font-mono text-xs text-subtle-foreground">
-                  <X className="size-3.5 text-muted-foreground/70" aria-hidden />
-                  {n}
-                </li>
-              ))}
-            </ul>
           </div>
 
           {/* Right — the guarantee "instrument" ticket */}
@@ -308,7 +293,7 @@ export default function Home() {
       <section className="relative isolate overflow-hidden border-t border-border">
         <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
           <div className="absolute inset-0 bg-paper" />
-          <div className="absolute left-1/2 top-0 size-[40rem] -translate-x-1/2 rounded-full bg-primary/10 blur-[130px]" />
+          <div className="absolute left-1/2 top-8 size-[26rem] -translate-x-1/2 rounded-full bg-primary/10 blur-[120px]" />
           <div className="absolute inset-0 text-foreground/[0.1] bg-grid [mask-image:radial-gradient(90%_100%_at_50%_0%,#000,transparent_70%)]" />
         </div>
         <div className="mx-auto max-w-3xl px-4 py-24 text-center sm:px-6 sm:py-28">

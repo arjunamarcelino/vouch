@@ -15,13 +15,25 @@
  * cover the first-paint window before the web fonts swap in.
  */
 @theme {
-  --font-sans: var(--font-geist), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", "Menlo", monospace;
-  --font-display: var(--font-instrument), ui-serif, "Iowan Old Style", Georgia, serif;
+  /* Display = the same Plus Jakarta Sans family as the body; the `.font-display` base rule below adds
+     the heavier weight + tighter tracking that make headings read as headings. */
+  --font-display: var(--font-jakarta), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 
   /* Warm-paper substrate for the editorial home surface (asyah register). Subtle enough that the
      zinc UI tokens still read as neutral, warm enough to kill the sterile pure-white slop look. */
   --color-paper: oklch(0.988 0.004 85);
+}
+
+@layer base {
+  /* `font-display` and `font-sans` are the same Plus Jakarta Sans family, so headings need a heavier
+     weight + tighter tracking to separate from body copy. Explicit weight utilities (font-bold, etc.)
+     still win because the utilities layer outranks base. */
+  .font-display {
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
 }
 
 /*

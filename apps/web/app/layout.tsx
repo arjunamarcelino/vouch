@@ -2,24 +2,17 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { headers } from "next/headers";
 import { cookieToInitialState } from "wagmi";
-import { Instrument_Serif, Geist, Geist_Mono } from "next/font/google";
+import { Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 /**
- * Typography (plan §Design system — de-generic pass). Three deliberate voices instead of the browser
- * default stack: an editorial serif for display headlines (Instrument Serif — high-contrast, unhurried,
- * the "asyah" register), a clean grotesque for body/UI (Geist), and a mono for money + on-chain data
- * (Geist Mono, tabular). Each is exposed as a CSS var and mapped to a Tailwind `font-*` utility in
- * globals.css so `font-display` / `font-sans` / `font-mono` resolve correctly.
+ * Typography. Plus Jakarta Sans is the primary voice — a modern geometric sans used for BOTH display
+ * headlines (heavier, tight tracking — see the `.font-display` weight rule in globals.css) and body/UI,
+ * so the two "match" by being one family. Geist Mono stays for money + on-chain data (tabular). Each is
+ * exposed as a CSS var and mapped to a Tailwind `font-*` utility in globals.css so `font-display` /
+ * `font-sans` / `font-mono` resolve correctly.
  */
-const fontDisplay = Instrument_Serif({
-  subsets: ["latin"],
-  weight: "400",
-  style: ["normal", "italic"],
-  variable: "--font-instrument",
-  display: "swap",
-});
-const fontSans = Geist({ subsets: ["latin"], variable: "--font-geist", display: "swap" });
+const fontSans = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-jakarta", display: "swap" });
 const fontMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", display: "swap" });
 import { getConfig } from "../lib/wagmi";
 import { Providers } from "./providers";
@@ -57,7 +50,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${fontSans.variable} ${fontDisplay.variable} ${fontMono.variable}`}
+      className={`${fontSans.variable} ${fontMono.variable}`}
     >
       <body className="flex min-h-dvh flex-col bg-surface font-sans text-foreground antialiased">
         <Providers initialState={initialState}>
