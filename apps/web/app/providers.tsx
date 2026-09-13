@@ -67,8 +67,20 @@ function AuthGate({ children }: { children: ReactNode }) {
     const prev = prevAddress.current;
     if (prev !== undefined && prev !== address) {
       if (prev) clearPendingTx(prev, arcTestnet.id);
-      void fetch(apiUrl("/auth/logout"), { method: "POST", credentials: "include" }).catch(() => {});
-      queryClient.clear();
+      // Ordered logout (review 105): drop the identity OPTIMISTICALLY so the gate can never observe a
+      // stale-but-truthy session, THEN end the server session, and only clear (which re-fetches
+      // /auth/me) once logout has landed — so a slow logout can't be lost to a winning me-refetch that
+      // would re-cache the old address.
+      queryClient.setQueryData(queryKeys.authMe, null);
+      void (async () => {
+        try {
+          await fetch(apiUrl("/auth/logout"), { method: "POST", credentials: "include" });
+        } catch {
+          /* network failure — the address-match gate still fail-closes on the mismatch */
+        } finally {
+          queryClient.clear();
+        }
+      })();
     }
     prevAddress.current = address;
   }, [address, queryClient]);

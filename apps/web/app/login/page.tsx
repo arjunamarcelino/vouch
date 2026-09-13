@@ -30,14 +30,16 @@ function LoginInner() {
   const router = useRouter();
   const params = useSearchParams();
   const me = useAuthMe();
-  const { isConnected } = useAccount();
+  const { address, isConnected } = useAccount();
   const next = safeNext(params.get("next"));
 
-  // Forward only when BOTH the wallet is connected AND the SIWE session exists — the /app gate requires
-  // both, so redirecting on the session alone (stale cookie + disconnected wallet) would ping-pong.
+  // Forward only when the wallet is connected AND a SIWE session exists FOR THAT SAME ADDRESS — matches
+  // the /app gate (review 105). Redirecting on the session alone (stale cookie, or a cookie bound to a
+  // different address) would either ping-pong with the gate or forward into an identity-mismatch state.
+  const sessionMatchesWallet = isConnected && !!me.data && me.data.address.toLowerCase() === address?.toLowerCase();
   useEffect(() => {
-    if (isConnected && me.data) router.replace(next);
-  }, [isConnected, me.data, next, router]);
+    if (sessionMatchesWallet) router.replace(next);
+  }, [sessionMatchesWallet, next, router]);
 
   return (
     <div className="relative grid min-h-dvh lg:grid-cols-2">

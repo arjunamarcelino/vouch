@@ -20,10 +20,12 @@ export default function AppGateLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const me = useAuthMe();
-  const { isConnected, status } = useAccount();
+  const { address, isConnected, status } = useAccount();
 
   const resolving = me.isLoading || status === "connecting" || status === "reconnecting";
-  const authed = isConnected && !!me.data;
+  // Require the SIWE session to belong to the CURRENTLY connected wallet (review 105) — a still-valid
+  // cookie bound to a different address (account switched while away, or a lost logout) must not admit.
+  const authed = isConnected && !!me.data && me.data.address.toLowerCase() === address?.toLowerCase();
 
   useEffect(() => {
     if (!resolving && !authed) {
