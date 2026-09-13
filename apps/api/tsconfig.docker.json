@@ -1,0 +1,25 @@
+{
+  "//": "Self-contained tsconfig for the RUNTIME loader (@swc-node/register) in the prod image. The",
+  "//2": "normal tsconfig.json extends @vouch/config/tsconfig-node, but that workspace package is a",
+  "//3": "devDependency and is pruned by `pnpm deploy --prod`, so an `extends` to it is unresolvable at",
+  "//4": "runtime. The Dockerfile points SWC_NODE_PROJECT at this file. Build/typecheck still use",
+  "//5": "tsconfig.json (they run in the build stage where @vouch/config exists). Keep the decorator",
+  "//6": "metadata options — NestJS DI needs emitDecoratorMetadata.",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "useDefineForClassFields": false,
+    "verbatimModuleSyntax": false,
+    "isolatedModules": false,
+    "skipLibCheck": true,
+    "types": ["node"],
+    "noEmit": true
+  },
+  "include": ["src"]
+}

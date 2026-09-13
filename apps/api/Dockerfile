@@ -35,6 +35,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends tini \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=build --chown=node:node /out /app
+# The runtime loader reads a SELF-CONTAINED tsconfig. tsconfig.json extends @vouch/config/tsconfig-node,
+# a devDependency pruned by `pnpm deploy --prod`, so its `extends` is unresolvable at runtime — swc-node
+# would throw "Tsconfig not found @vouch/config/tsconfig-node". tsconfig.docker.json has no extends.
+ENV SWC_NODE_PROJECT=tsconfig.docker.json
 USER node
 EXPOSE 3001
 ENTRYPOINT ["/usr/bin/tini", "--"]
