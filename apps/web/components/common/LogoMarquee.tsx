@@ -27,8 +27,9 @@ function LogoItem({ mark, h }: { mark: Mark; h: string }) {
 }
 
 export function LogoMarquee({ className, height = "h-8" }: { className?: string; height?: string }) {
-  // Duplicated once → the -50% shift equals exactly one copy width for a seamless loop.
-  const loop = [...MARKS, ...MARKS];
+  // Tripled → the -100%/3 shift equals exactly one copy for a seamless loop, and two copies always
+  // span the container so no trailing gap shows when a single set is narrower than the viewport.
+  const loop = [...MARKS, ...MARKS, ...MARKS];
   return (
     <div
       className={cn(

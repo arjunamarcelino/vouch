@@ -3,20 +3,14 @@ import type { CSSProperties } from "react";
 import {
   ShieldCheck,
   ArrowRight,
-  ArrowUpRight,
-  Coins,
-  Network,
-  Cpu,
   Check,
   EyeOff,
-  Clock,
-  Layers,
-  Globe,
 } from "lucide-react";
 import { buttonVariants } from "@vouch/ui/components/button";
 import { cn } from "@vouch/ui/lib/utils";
 import { LogoMarquee } from "../components/common/LogoMarquee";
 import { ResolveTimeline } from "../components/home/ResolveTimeline";
+import { ReceiptFlow } from "../components/home/ReceiptFlow";
 import { Reveal, CountUp } from "../components/home/motion";
 
 /**
@@ -33,40 +27,47 @@ import { Reveal, CountUp } from "../components/home/motion";
 const delay = (ms: number) => ({ "--rise-delay": `${ms}ms` }) as CSSProperties;
 
 const COMPARE: { label: string; escrow: string; vouch: string; highlight?: boolean }[] = [
-  { label: "When it protects", escrow: "Only until you accept", vouch: "Long after you accept", highlight: true },
-  { label: "Payout trigger", escrow: "You accept delivery", vouch: "Confidential proof of a covered break" },
-  { label: "Who funds it", escrow: "You escrow the fee", vouch: "The provider stakes it" },
-  { label: "Recourse if it breaks", escrow: "None — funds are gone", vouch: "Capped service-credit payout" },
+  { label: "When It Protects", escrow: "Only until you accept", vouch: "Long after you accept", highlight: true },
+  { label: "Payout Trigger", escrow: "You accept delivery", vouch: "Confidential proof of a covered break" },
+  { label: "Who Funds It", escrow: "You escrow the fee", vouch: "The provider stakes it" },
+  { label: "Recourse If It Breaks", escrow: "None — funds are gone", vouch: "Capped service-credit payout" },
 ];
 
 const INTEGRATIONS = [
   {
-    icon: Network,
     name: "The Graph",
+    logos: ["/logos/the-graph/the-graph-ink.svg"],
     body: "Indexes every verdict into a provider's on-chain track record — the risk quote reads straight from it.",
   },
   {
-    icon: Coins,
     name: "Arc + Circle",
+    logos: ["/logos/arc/Arc_Logo_Navy.svg", "/logos/circle/circle-logo-licorice.svg"],
     body: "Escrow, collateral, and payouts settle in USDC on Arc, driven by the Circle Agent Stack.",
   },
   {
-    icon: Cpu,
     name: "Chainlink CRE",
+    logos: ["/logos/chainlink/Chainlink-Logo-Blue.svg"],
     body: "Runs the private test inside a TEE and signs the verdict — the only thing that can release a payout.",
   },
 ];
 
+const ANATOMY = [
+  { title: "Collateral Locked", body: "The provider's capped stake, escrowed on Arc before the work begins." },
+  { title: "Fee Released", body: "Public tests pass and the task fee pays out — acceptance, on-chain." },
+  { title: "Confidential Test", body: "A private regression runs inside a TEE; the secret never leaves the enclave." },
+  { title: "Verdict → Reputation", body: "The signed outcome settles the payout and writes to the provider's history." },
+];
+
 const STATS = [
-  { icon: Coins, value: 100, suffix: "", label: "USDC guarantee, provider-staked" },
-  { icon: Clock, value: 24, suffix: "h", label: "Confidential coverage window" },
-  { icon: Layers, value: 3, suffix: "", label: "Verifiable on-chain rails" },
-  { icon: Globe, value: 100, suffix: "%", label: "Settled & proven on-chain" },
+  { img: "/icon-stats-1.png", value: 100, suffix: "", label: "USDC guarantee, provider-staked" },
+  { img: "/icon-stats-2.png", value: 24, suffix: "h", label: "Confidential coverage window" },
+  { img: "/icon-stats-3.png", value: 3, suffix: "", label: "Verifiable on-chain rails" },
+  { img: "/icon-stats-4.png", value: 100, suffix: "%", label: "Settled & proven on-chain" },
 ];
 
 export default function Home() {
   return (
-    <div className="relative overflow-hidden">
+    <div id="top" className="relative overflow-hidden">
       {/* ============================= HERO ============================= */}
       <section className="relative isolate">
         {/* Atmosphere: warm-paper wash, two soft accent glows, and a fading ledger grid. Decorative. */}
@@ -88,12 +89,12 @@ export default function Home() {
             </div>
 
             <h1
-              className="rise mt-6 font-display text-5xl font-bold leading-[1.02] tracking-tight text-foreground sm:text-6xl lg:text-7xl"
+              className="rise mt-6 max-w-2xl font-display text-5xl font-bold leading-[1.02] tracking-tight text-foreground sm:text-6xl lg:text-7xl"
               style={delay(80)}
             >
-              Protect the work{" "}
-              <span className="relative whitespace-nowrap italic text-primary">
-                after
+              Protect the Work{" "}
+              <span className="relative mr-3 whitespace-nowrap italic text-primary">
+                After
                 <svg
                   aria-hidden
                   viewBox="0 0 200 12"
@@ -103,10 +104,10 @@ export default function Home() {
                   <path d="M2 8 C 50 2, 150 2, 198 7" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
                 </svg>
               </span>{" "}
-              it&apos;s accepted and paid.
+              It&apos;s Accepted and Paid.
             </h1>
 
-            <p className="rise mt-7 max-w-lg text-lg leading-relaxed text-muted-foreground" style={delay(160)}>
+            <p className="rise mt-7 max-w-2xl text-lg leading-relaxed text-muted-foreground" style={delay(160)}>
               <span className="font-medium text-foreground">AI agents pass the tests, get paid, then break.</span>{" "}
               Vouch backs every delivery with a provider-funded guarantee that pays the client the instant a{" "}
               <span className="font-medium text-foreground">confidential</span> test catches a covered
@@ -114,33 +115,37 @@ export default function Home() {
             </p>
 
             <div className="rise mt-9 flex flex-wrap items-center gap-3" style={delay(240)}>
-              <Link
-                href="/demo"
-                className={cn(
-                  buttonVariants({ size: "lg" }),
-                  "group gap-2 shadow-lg shadow-primary/20 transition-shadow hover:shadow-primary/30",
-                )}
-              >
-                Open judge demo
-                <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
+              <Link href="/demo" className={cn(buttonVariants({ variant: "ghost", size: "lg" }), "gap-2")}>
+                Demo
               </Link>
               <Link
                 href="/dashboard"
-                className={cn(buttonVariants({ variant: "outline", size: "lg" }), "group gap-2")}
+                className={cn(
+                  buttonVariants({ size: "lg" }),
+                  "group gap-2",
+                )}
               >
-                View dashboard
-                <ArrowUpRight
-                  className="size-4 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
-                  aria-hidden
-                />
+                Open App
+                <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
               </Link>
             </div>
 
           </div>
 
-          {/* Right — the guarantee "instrument" ticket */}
+          {/* Right — the Vouch brand render, floating in a dark showcase panel */}
           <div className="rise lg:col-span-5" style={delay(360)}>
-            <GuaranteeTicket />
+            <div className="relative">
+              <div aria-hidden className="absolute -inset-6 -z-10 rounded-[3rem] bg-primary/15 blur-3xl" />
+              <div className="animate-float overflow-hidden rounded-3xl">
+                <img
+                  src="/bg-hero.png"
+                  alt="Vouch — a glass mark encircling proof, document, and shield tiles"
+                  width={1536}
+                  height={1024}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -149,12 +154,24 @@ export default function Home() {
       <section className="mx-auto max-w-[88rem] px-4 pb-16 sm:px-6 sm:pb-24" aria-label="At a glance">
         <Reveal className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border bg-border shadow-sm lg:grid-cols-4">
           {STATS.map((s) => (
-            <div key={s.label} className="bg-card px-6 py-7">
-              <s.icon className="size-5 text-primary" aria-hidden />
-              <div className="mt-4 font-mono text-4xl font-medium tracking-tight text-foreground">
-                <CountUp to={s.value} suffix={s.suffix} />
+            <div
+              key={s.label}
+              className="group flex items-center gap-4 bg-card px-5 py-4 transition-colors duration-300 hover:bg-muted/40 sm:px-6"
+            >
+              <img
+                src={s.img}
+                alt=""
+                aria-hidden
+                width={1254}
+                height={1254}
+                className="size-20 shrink-0 object-contain transition-transform duration-500 ease-out group-hover:-translate-y-1.5 group-hover:rotate-3 group-hover:scale-110 motion-reduce:transition-none sm:size-24"
+              />
+              <div className="min-w-0">
+                <div className="font-mono text-3xl font-medium tracking-tight text-foreground">
+                  <CountUp to={s.value} suffix={s.suffix} />
+                </div>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{s.label}</p>
               </div>
-              <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{s.label}</p>
             </div>
           ))}
         </Reveal>
@@ -165,7 +182,7 @@ export default function Home() {
         <div className="mx-auto max-w-[88rem] px-4 sm:px-6">
           <div className="text-center">
             <h2 id="rails-heading" className="font-display text-3xl tracking-tight sm:text-4xl">
-              Built on rails you can verify.
+              Built on Rails You Can Verify.
             </h2>
             <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
               Escrow, confidential proof, and payout — every step runs on public infrastructure you can
@@ -177,45 +194,80 @@ export default function Home() {
       </section>
 
       <div className="mx-auto max-w-[88rem] px-4 sm:px-6">
+        {/* ===================== ANATOMY (TICKET SHOWCASE) ===================== */}
+        <section className="py-20 sm:py-24" aria-labelledby="anatomy-heading">
+          <div className="grid gap-12 lg:grid-cols-2 lg:items-center lg:gap-16">
+            <Reveal>
+              <span className="font-mono text-xs uppercase tracking-[0.16em] text-subtle-foreground">
+                The instrument
+              </span>
+              <h2 id="anatomy-heading" className="mt-4 font-display text-4xl leading-tight tracking-tight sm:text-5xl">
+                Anatomy of a Guarantee
+              </h2>
+              <p className="mt-5 max-w-md text-lg leading-relaxed text-muted-foreground">
+                Every job carries a live guarantee ticket — one object that shows exactly what&apos;s
+                staked, what&apos;s cleared, and what&apos;s still in force.
+              </p>
+              <ul className="mt-8 space-y-4">
+                {ANATOMY.map((a) => (
+                  <li key={a.title} className="flex gap-3.5">
+                    <span aria-hidden className="mt-[0.45rem] size-2 shrink-0 rounded-full bg-primary/80 ring-4 ring-primary/10" />
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{a.title}</p>
+                      <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">{a.body}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </Reveal>
+            <Reveal delay={120}>
+              <GuaranteeTicket />
+            </Reveal>
+          </div>
+        </section>
+
         {/* ===================== COMPARISON SPEC SHEET ===================== */}
         <section className="py-20 sm:py-24" aria-labelledby="compare-heading">
           <SectionHeading id="compare-heading">
-            Where escrow stops, <span className="italic text-primary">Vouch begins.</span>
+            Where Escrow Stops,
+            <br />
+            <span className="italic text-primary">Vouch Begins.</span>
           </SectionHeading>
 
-          {/* Desktop: spec sheet — no icons, the Vouch column tinted as one continuous block. */}
+          {/* Desktop: spec sheet — no icons, the Vouch column tinted as one continuous block. Each data
+              row reveals on scroll (staggered) via its own Reveal, which is the row's grid container. */}
           <div className="mt-12 hidden overflow-hidden rounded-2xl border border-border bg-card shadow-sm sm:block">
+            {/* Column heads */}
             <div className="grid grid-cols-[1.1fr_1fr_1fr]">
-              {/* Column heads */}
               <div aria-hidden />
-              <div className="px-6 py-5 text-base font-semibold text-foreground">Plain escrow</div>
+              <div className="px-6 py-5 text-base font-semibold text-foreground">Plain Escrow</div>
               <div className="rounded-tr-2xl bg-primary/[0.05] px-6 py-5 text-base font-semibold text-primary">
                 Vouch
               </div>
-
-              {COMPARE.map((row, i) => {
-                const last = i === COMPARE.length - 1;
-                return (
-                  <div key={row.label} className="contents">
-                    <div className="flex items-center justify-center border-t border-border px-6 py-6 text-center text-sm font-semibold text-foreground">
-                      {row.label}
-                    </div>
-                    <div className="flex items-center border-t border-border px-6 py-6 text-sm text-muted-foreground">
-                      {row.escrow}
-                    </div>
-                    <div
-                      className={cn(
-                        "flex items-center border-t border-primary/15 bg-primary/[0.05] px-6 py-6 text-sm text-primary",
-                        last && "rounded-br-2xl",
-                        row.highlight && "font-medium",
-                      )}
-                    >
-                      {row.vouch}
-                    </div>
-                  </div>
-                );
-              })}
             </div>
+
+            {COMPARE.map((row, i) => {
+              const last = i === COMPARE.length - 1;
+              return (
+                <Reveal key={row.label} delay={i * 90} className="group grid grid-cols-[1.1fr_1fr_1fr]">
+                  <div className="flex items-center justify-center border-t border-border px-6 py-6 text-center text-sm font-semibold text-foreground transition-colors duration-200 group-hover:bg-muted/50">
+                    {row.label}
+                  </div>
+                  <div className="flex items-center border-t border-border px-6 py-6 text-sm text-muted-foreground transition-colors duration-200 group-hover:bg-muted/50">
+                    {row.escrow}
+                  </div>
+                  <div
+                    className={cn(
+                      "flex items-center border-t border-primary/15 bg-primary/[0.05] px-6 py-6 text-sm text-primary transition-colors duration-200 group-hover:bg-primary/[0.11]",
+                      last && "rounded-br-2xl",
+                      row.highlight && "font-medium",
+                    )}
+                  >
+                    {row.vouch}
+                  </div>
+                </Reveal>
+              );
+            })}
           </div>
 
           {/* Mobile: one stacked card per dimension, escrow vs the tinted Vouch value. */}
@@ -228,7 +280,7 @@ export default function Home() {
                 <div className="grid grid-cols-2 divide-x divide-border">
                   <div className="px-4 py-3">
                     <div className="font-mono text-[0.62rem] uppercase tracking-wide text-subtle-foreground">
-                      Plain escrow
+                      Plain Escrow
                     </div>
                     <div className="mt-1 text-sm text-muted-foreground">{row.escrow}</div>
                   </div>
@@ -244,13 +296,13 @@ export default function Home() {
 
         {/* ===================== HOW IT RESOLVES (TIMELINE) ===================== */}
         <section className="py-20 sm:py-24" aria-labelledby="how-heading">
-          <SectionHeading id="how-heading">How a guarantee resolves</SectionHeading>
+          <SectionHeading id="how-heading">How a Guarantee Resolves?</SectionHeading>
           <ResolveTimeline />
         </section>
 
         {/* ===================== CONCRETE EXAMPLE (RECEIPT) ===================== */}
         <section className="py-20 sm:py-24" aria-labelledby="example-heading">
-          <SectionHeading id="example-heading">One bug, from fee to payout.</SectionHeading>
+          <SectionHeading id="example-heading">One Bug, From Fee to Payout.</SectionHeading>
           <div className="mt-12 grid gap-10 lg:grid-cols-12 lg:items-center lg:gap-12">
             <div className="lg:col-span-5">
               <p className="text-lg leading-relaxed text-muted-foreground">
@@ -270,19 +322,30 @@ export default function Home() {
 
         {/* ===================== THREE RAILS ===================== */}
         <section className="py-20 sm:py-24" aria-labelledby="arch-heading">
-          <SectionHeading id="arch-heading">What each rail does</SectionHeading>
+          <SectionHeading id="arch-heading">What Each Rail Does?</SectionHeading>
+          <p className="mx-auto mt-3 max-w-md text-center text-sm text-muted-foreground">
+            Hover a rail to see what it does.
+          </p>
           <div className="mt-12 grid gap-5 sm:grid-cols-3">
             {INTEGRATIONS.map((it) => (
               <div
                 key={it.name}
-                className="group relative overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-sm transition-all hover:-translate-y-1 hover:border-primary/30 hover:shadow-md"
+                className="group relative min-h-[13rem] overflow-hidden rounded-2xl border border-border bg-card p-7 shadow-sm transition-all hover:-translate-y-1 hover:border-primary/30 hover:shadow-md"
               >
                 <div className="absolute -right-16 -top-16 size-32 rounded-full bg-primary/[0.06] opacity-0 blur-2xl transition-opacity group-hover:opacity-100" />
-                <div className="flex size-11 items-center justify-center rounded-xl border border-border bg-muted/60 text-primary">
-                  <it.icon className="size-5" aria-hidden />
+
+                {/* Default: brand logo(s), centered. Fades out on hover. */}
+                <div className="absolute inset-0 flex items-center justify-center gap-5 p-6 transition-all duration-300 group-hover:-translate-y-1 group-hover:opacity-0">
+                  {it.logos.map((src) => (
+                    <img key={src} src={src} alt={it.name} className="h-8 w-auto max-w-[45%] object-contain" />
+                  ))}
                 </div>
-                <h3 className="mt-5 font-display text-xl tracking-tight text-foreground">{it.name}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{it.body}</p>
+
+                {/* On hover: the name + explanation fade in. */}
+                <div className="relative flex h-full min-h-[inherit] flex-col justify-center opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                  <h3 className="font-display text-2xl tracking-tight text-foreground">{it.name}</h3>
+                  <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">{it.body}</p>
+                </div>
               </div>
             ))}
           </div>
@@ -296,24 +359,21 @@ export default function Home() {
           <div className="absolute left-1/2 top-8 size-[26rem] -translate-x-1/2 rounded-full bg-primary/10 blur-[120px]" />
           <div className="absolute inset-0 text-foreground/[0.1] bg-grid [mask-image:radial-gradient(90%_100%_at_50%_0%,#000,transparent_70%)]" />
         </div>
-        <div className="mx-auto max-w-3xl px-4 py-24 text-center sm:px-6 sm:py-28">
-          <h2 className="font-display text-4xl leading-tight tracking-tight sm:text-6xl">
-            Ship agent work clients trust —{" "}
-            <span className="italic text-primary">after the invoice clears.</span>
+        <div className="mx-auto max-w-5xl px-4 py-24 text-center sm:px-6 sm:py-28">
+          <h2 className="mx-auto max-w-4xl font-display text-4xl leading-tight tracking-tight sm:text-6xl">
+            Ship Agent Work Clients Trust —{" "}
+            <span className="italic text-primary">After the Invoice Clears.</span>
           </h2>
           <p className="mx-auto mt-5 max-w-xl text-lg text-muted-foreground">
             Watch one resolve end to end — locked collateral to a DON-signed payout, live on-chain.
           </p>
           <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-            <Link
-              href="/demo"
-              className={cn(buttonVariants({ size: "lg" }), "group gap-2 shadow-lg shadow-primary/20")}
-            >
-              Open judge demo
-              <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
+            <Link href="/demo" className={cn(buttonVariants({ variant: "ghost", size: "lg" }), "gap-2")}>
+              Demo
             </Link>
-            <Link href="/jobs/new" className={buttonVariants({ variant: "outline", size: "lg" })}>
-              Create a job
+            <Link href="/dashboard" className={cn(buttonVariants({ size: "lg" }), "group gap-2")}>
+              Open App
+              <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
             </Link>
           </div>
         </div>
@@ -330,7 +390,7 @@ function SectionHeading({ id, children }: { id?: string; children: React.ReactNo
   return (
     <h2
       id={id}
-      className="mx-auto max-w-3xl text-center font-display text-4xl leading-tight tracking-tight sm:text-5xl"
+      className="mx-auto max-w-3xl scroll-mt-32 text-center font-display text-4xl leading-tight tracking-tight sm:text-5xl"
     >
       {children}
     </h2>
@@ -425,48 +485,3 @@ function TicketRow({ label, children }: { label: string; children: React.ReactNo
 }
 
 /** Worked-example receipt: a vertical settlement flow with mono figures and status. */
-function ReceiptFlow() {
-  const rows = [
-    { t: "Client funds task fee", v: "+20.00", tone: "neutral" as const },
-    { t: "Provider locks guarantee", v: "+100.00", tone: "neutral" as const },
-    { t: "Public tests pass → fee released", v: "−20.00", tone: "good" as const },
-    { t: "24h confidential coverage opens", v: "TEE", tone: "muted" as const },
-    { t: "Regression proves covered failure", v: "PROOF", tone: "muted" as const },
-    { t: "Guarantee paid to client", v: "→100.00", tone: "pay" as const },
-  ];
-  return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-      <div className="flex items-center justify-between border-b border-border bg-muted/40 px-5 py-3">
-        <span className="font-mono text-xs uppercase tracking-[0.14em] text-subtle-foreground">
-          Settlement ledger
-        </span>
-        <span className="font-mono text-xs text-subtle-foreground">Arc · USDC</span>
-      </div>
-      <ol className="divide-y divide-border">
-        {rows.map((r, i) => (
-          <li key={r.t} className="flex items-center gap-4 px-5 py-3.5">
-            <span className="font-mono text-xs tabular-nums text-muted-foreground/70">
-              {String(i + 1).padStart(2, "0")}
-            </span>
-            <span className="flex-1 text-sm text-foreground">{r.t}</span>
-            <span
-              className={cn(
-                "font-mono text-sm tabular-nums",
-                r.tone === "good" && "text-success-text",
-                r.tone === "pay" && "font-semibold text-primary",
-                r.tone === "neutral" && "text-foreground",
-                r.tone === "muted" && "text-[0.7rem] uppercase tracking-wide text-subtle-foreground",
-              )}
-            >
-              {r.v}
-            </span>
-          </li>
-        ))}
-      </ol>
-      <div className="flex items-center justify-between border-t border-border bg-primary/[0.04] px-5 py-3.5">
-        <span className="font-mono text-xs uppercase tracking-[0.12em] text-primary">Client made whole</span>
-        <span className="font-mono text-sm font-semibold tabular-nums text-primary">100.00 USDC</span>
-      </div>
-    </div>
-  );
-}

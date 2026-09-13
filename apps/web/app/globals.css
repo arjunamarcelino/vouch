@@ -36,14 +36,12 @@
   }
 }
 
-/* In-page section links (floating nav): smooth-scroll, and land the target clear of the pill. */
+/* In-page section links (floating nav): smooth-scroll. The clear-of-the-pill offset is applied per
+   heading via a `scroll-mt-*` utility (more reliable than `:target` for framework hash navigation). */
 @media (prefers-reduced-motion: no-preference) {
   html {
     scroll-behavior: smooth;
   }
-}
-:target {
-  scroll-margin-top: 7rem;
 }
 
 /*
@@ -72,15 +70,16 @@
     }
   }
 
-  /* Seamless one-direction logo marquee: the track holds the logo set twice and shifts by exactly
-     one copy (-50%), so the loop point is invisible ("jangan patah"). Per-item horizontal padding —
-     not a flex gap — keeps the seam spacing identical to the inter-item spacing. */
+  /* Seamless one-direction logo marquee: the track holds the logo set THREE times and shifts by
+     exactly one copy (-100%/3), so the loop point is invisible AND two copies always cover the
+     container (no trailing gap when a set is narrower than the viewport). Per-item horizontal
+     padding — not a flex gap — keeps the seam spacing identical to the inter-item spacing. */
   @keyframes vouch-marquee {
     from {
       transform: translateX(0);
     }
     to {
-      transform: translateX(-50%);
+      transform: translateX(calc(-100% / 3));
     }
   }
   .animate-marquee {
@@ -127,6 +126,20 @@
     background-size: 22px 22px;
   }
 
+  /* Gentle float for the hero brand render / instrument card. */
+  @keyframes vouch-float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+  .animate-float {
+    animation: vouch-float 6s ease-in-out infinite;
+  }
+
   /* Slow-drifting specular sheen for the hero instrument card. */
   .sheen::after {
     content: "";
@@ -153,7 +166,8 @@
       animation: none;
       opacity: 0;
     }
-    .animate-marquee {
+    .animate-marquee,
+    .animate-float {
       animation: none;
     }
   }

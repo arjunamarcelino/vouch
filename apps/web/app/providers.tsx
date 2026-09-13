@@ -27,7 +27,7 @@ import { clearPendingTx } from "../lib/tx/persistence";
  * auto-switches light/dark with `prefers-color-scheme`; the `{ lightMode, darkMode }` object makes the
  * modal follow the OS without a flash. SIWE auth is layered on in a later unit.
  */
-const ACCENT = "#1570d1"; // primary blue (matches --color-primary); RainbowKit wants a concrete color
+const ACCENT = "#7C3AED"; // violet (matches --color-primary + the gradient button); RainbowKit wants a concrete color
 
 const rainbowTheme = {
   lightMode: lightTheme({

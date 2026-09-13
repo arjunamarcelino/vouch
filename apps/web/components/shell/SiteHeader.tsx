@@ -1,11 +1,13 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { buttonVariants } from "@vouch/ui/components/button";
 import { cn } from "@vouch/ui/lib/utils";
 import { WalletConnectButton } from "../wallet/ConnectButton";
+import { TestnetBadge } from "../common/TestnetBadge";
 
 /**
  * App shell header: a floating pill (asyah-style). Context-aware:
@@ -17,8 +19,9 @@ import { WalletConnectButton } from "../wallet/ConnectButton";
  * `isolate` keys the wordmark blend against the pill's own backdrop, not scrolled page content.
  */
 const HOME_NAV = [
+  { href: "#top", label: "Home" },
   { href: "#compare-heading", label: "Compare" },
-  { href: "#how-heading", label: "How it works" },
+  { href: "#how-heading", label: "How It Works" },
   { href: "#example-heading", label: "Example" },
   { href: "#arch-heading", label: "Rails" },
 ];
@@ -32,26 +35,57 @@ export function SiteHeader() {
   const isHome = pathname === "/";
   const nav = isHome ? HOME_NAV : APP_NAV;
 
+  // Scroll-spy: on the landing, highlight whichever section has scrolled past the nav line. The active
+  // item is the last section whose top sits above the offset (nav height + a little), so it flips exactly
+  // as each section reaches the pill.
+  const [activeHash, setActiveHash] = useState("#top");
+  useEffect(() => {
+    if (!isHome) return;
+    const ids = HOME_NAV.map((n) => n.href.slice(1));
+    const onScroll = () => {
+      // Slightly past where headings land (scroll-mt-32 = 128px) so a clicked section reads as active.
+      const offset = 140;
+      let current = ids[0]!;
+      for (const id of ids) {
+        const el = document.getElementById(id);
+        if (el && el.getBoundingClientRect().top <= offset) current = id;
+      }
+      setActiveHash(`#${current}`);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, [isHome]);
+
   return (
     <header className="sticky top-0 z-30 px-4 pt-3 sm:px-6 sm:pt-4">
       <div className="relative isolate mx-auto flex h-[4.5rem] max-w-[88rem] items-center justify-between gap-4 rounded-2xl border border-border bg-surface/80 px-4 shadow-lg shadow-black/[0.04] backdrop-blur-md supports-[backdrop-filter]:bg-surface/65 sm:px-6">
-        <Link href="/" aria-label="Vouch — home" className="flex items-center">
-          {/* Vouch wordmark: black ink on an opaque white PNG. Blend modes key the white bg out against
+        <div className="flex items-center gap-2.5">
+          <Link href="/" aria-label="Vouch — home" className="flex items-center">
+            {/* Vouch wordmark: black ink on an opaque white PNG. Blend modes key the white bg out against
               either theme (light → multiply keeps black ink; dark → invert+screen keeps white ink). The
               pill's `isolate` composites the blend against its own backdrop, not scrolled content.
               Intrinsic w/h reserve the box (no first-paint reflow); h-7 w-auto scales it. */}
-          <img
-            src="/logos/vouch/vouch.png"
-            alt="Vouch"
-            width={828}
-            height={285}
-            className="h-7 w-auto mix-blend-multiply dark:mix-blend-screen dark:invert"
-          />
-        </Link>
+            <img
+              src="/logos/vouch/vouch.png"
+              alt="Vouch"
+              width={828}
+              height={285}
+              className="h-7 w-auto mix-blend-multiply dark:mix-blend-screen dark:invert"
+            />
+          </Link>
+          <TestnetBadge />
+        </div>
 
         <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-8 sm:flex" aria-label="Primary">
           {nav.map((item) => {
-            const active = !isHome && (pathname === item.href || pathname.startsWith(`${item.href}/`));
+            const active = isHome
+              ? item.href === activeHash
+              : pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
               <Link
                 key={item.href}
