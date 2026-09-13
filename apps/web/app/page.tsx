@@ -13,6 +13,7 @@ import { LogoMarquee } from "../components/common/LogoMarquee";
 import { ResolveTimeline } from "../components/home/ResolveTimeline";
 import { ReceiptFlow } from "../components/home/ReceiptFlow";
 import { Reveal, CountUp } from "../components/home/motion";
+import { SECTION } from "../lib/home-sections";
 
 /**
  * Landing (WS-1) — the 20-second test, editorial/light "settlement-desk" register (de-generic pass,
@@ -88,7 +89,7 @@ const STATS = [
 
 export default function Home() {
   return (
-    <div id="top" className="relative overflow-hidden">
+    <div id={SECTION.top} className="relative overflow-hidden">
       {/* ============================= HERO ============================= */}
       <section className="relative isolate">
         {/* Atmosphere: warm-paper wash, two soft accent glows, and a fading ledger grid. Decorative. */}
@@ -277,7 +278,7 @@ export default function Home() {
 
         {/* ===================== COMPARISON SPEC SHEET ===================== */}
         <section className="py-20 sm:py-24" aria-labelledby="compare-heading">
-          <SectionHeading id="compare-heading">
+          <SectionHeading id={SECTION.compare}>
             Where Escrow Stops,
             <br />
             <span className="italic text-primary">Vouch Begins.</span>
@@ -345,13 +346,13 @@ export default function Home() {
 
         {/* ===================== HOW IT RESOLVES (TIMELINE) ===================== */}
         <section className="py-20 sm:py-24" aria-labelledby="how-heading">
-          <SectionHeading id="how-heading">How a Guarantee Resolves?</SectionHeading>
+          <SectionHeading id={SECTION.how}>How a Guarantee Resolves?</SectionHeading>
           <ResolveTimeline />
         </section>
 
         {/* ===================== CONCRETE EXAMPLE (RECEIPT) ===================== */}
         <section className="py-20 sm:py-24" aria-labelledby="example-heading">
-          <SectionHeading id="example-heading">One Bug, From Fee to Payout.</SectionHeading>
+          <SectionHeading id={SECTION.example}>One Bug, From Fee to Payout.</SectionHeading>
           <div className="mt-12 grid gap-10 lg:grid-cols-12 lg:items-center lg:gap-12">
             <div className="lg:col-span-5">
               <p className="text-lg leading-relaxed text-muted-foreground">
@@ -371,7 +372,7 @@ export default function Home() {
 
         {/* ===================== THREE RAILS ===================== */}
         <section className="py-20 sm:py-24" aria-labelledby="arch-heading">
-          <SectionHeading id="arch-heading">What Each Rail Does?</SectionHeading>
+          <SectionHeading id={SECTION.rails}>What Each Rail Does?</SectionHeading>
           {/* Hover reveal is a desktop nicety (touch has no hover), so the hint + the reveal only apply at lg. */}
           <p className="mx-auto mt-3 hidden max-w-md text-center text-sm text-muted-foreground lg:block">
             Hover a rail to see what it does.

@@ -8,6 +8,7 @@ import { buttonVariants } from "@vouch/ui/components/button";
 import { cn } from "@vouch/ui/lib/utils";
 import { WalletConnectButton } from "../wallet/ConnectButton";
 import { TestnetBadge } from "../common/TestnetBadge";
+import { HOME_NAV } from "../../lib/home-sections";
 
 /**
  * App shell header: a floating pill (asyah-style). Context-aware:
@@ -18,13 +19,6 @@ import { TestnetBadge } from "../common/TestnetBadge";
  * The sticky <header> supplies only the floating inset; the inner pill is the blurred, bordered surface.
  * `isolate` keys the wordmark blend against the pill's own backdrop, not scrolled page content.
  */
-const HOME_NAV = [
-  { href: "#top", label: "Home" },
-  { href: "#compare-heading", label: "Compare" },
-  { href: "#how-heading", label: "How It Works" },
-  { href: "#example-heading", label: "Example" },
-  { href: "#arch-heading", label: "Rails" },
-];
 const APP_NAV = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/jobs/new", label: "Create job" },
@@ -48,7 +42,7 @@ export function SiteHeader() {
       ticking = false;
       // Slightly past where headings land (scroll-mt-32 = 128px) so a clicked section reads as active.
       const offset = 140;
-      let current = ids[0]!;
+      let current = ids[0] ?? "top";
       for (const id of ids) {
         const el = document.getElementById(id);
         if (el && el.getBoundingClientRect().top <= offset) current = id;
