@@ -30,27 +30,27 @@ import { ResolveTimeline } from "../components/home/ResolveTimeline";
 const delay = (ms: number) => ({ "--rise-delay": `${ms}ms` }) as CSSProperties;
 
 const COMPARE: { label: string; escrow: string; vouch: string; highlight?: boolean }[] = [
-  { label: "When it protects", escrow: "Only until acceptance", vouch: "After acceptance", highlight: true },
-  { label: "Payout trigger", escrow: "Acceptance of delivery", vouch: "Confidential proof of a covered regression" },
-  { label: "Who funds it", escrow: "Client escrows the fee", vouch: "Provider self-funds a capped guarantee" },
-  { label: "Recourse after payment", escrow: "None — funds released", vouch: "Capped service-credit payout" },
+  { label: "When it protects", escrow: "Only until you accept", vouch: "Long after you accept", highlight: true },
+  { label: "Payout trigger", escrow: "You accept delivery", vouch: "Confidential proof of a covered break" },
+  { label: "Who funds it", escrow: "You escrow the fee", vouch: "The provider stakes it" },
+  { label: "Recourse if it breaks", escrow: "None — funds are gone", vouch: "Capped service-credit payout" },
 ];
 
 const INTEGRATIONS = [
   {
     icon: Network,
     name: "The Graph",
-    body: "Provider reputation indexed from on-chain events — a load-bearing input to the risk quote.",
+    body: "Indexes every verdict into a provider's on-chain track record — the risk quote reads straight from it.",
   },
   {
     icon: Coins,
     name: "Arc + Circle",
-    body: "USDC escrow, collateral, and capped payouts settle on Arc; the agent uses the Circle Agent Stack.",
+    body: "Escrow, collateral, and payouts settle in USDC on Arc, driven by the Circle Agent Stack.",
   },
   {
     icon: Cpu,
     name: "Chainlink CRE",
-    body: "The private regression test runs inside a TEE; the DON-signed verdict is the sole payout gate.",
+    body: "Runs the private test inside a TEE and signs the verdict — the only thing that can release a payout.",
   },
 ];
 
@@ -104,9 +104,9 @@ export default function Home() {
 
             <p className="rise mt-7 max-w-lg text-lg leading-relaxed text-muted-foreground" style={delay(160)}>
               <span className="font-medium text-foreground">AI agents pass the tests, get paid, then break.</span>{" "}
-              Vouch backs every delivery with a provider-funded guarantee — paid to the client the moment
-              a <span className="font-medium text-foreground">confidential</span> test proves it broke after
-              acceptance. Settled on-chain.
+              Vouch backs every delivery with a provider-funded guarantee that pays the client the instant a{" "}
+              <span className="font-medium text-foreground">confidential</span> test catches a covered
+              failure — settled on-chain, in USDC.
             </p>
 
             <div className="rise mt-9 flex flex-wrap items-center gap-3" style={delay(240)}>
@@ -157,8 +157,8 @@ export default function Home() {
               Built on rails you can verify.
             </h2>
             <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
-              Escrow, confidential verification, and payout run on public infrastructure — every step is
-              auditable on-chain, never fabricated.
+              Escrow, confidential proof, and payout — every step runs on public infrastructure you can
+              audit on-chain. Nothing is faked.
             </p>
           </div>
           <LogoMarquee className="mt-10 sm:mt-12" />
@@ -239,16 +239,15 @@ export default function Home() {
 
         {/* ===================== CONCRETE EXAMPLE (RECEIPT) ===================== */}
         <section className="py-20 sm:py-24" aria-labelledby="example-heading">
-          <SectionHeading id="example-heading">A worked example</SectionHeading>
+          <SectionHeading id="example-heading">One bug, from fee to payout.</SectionHeading>
           <div className="mt-12 grid gap-10 lg:grid-cols-12 lg:items-center lg:gap-12">
             <div className="lg:col-span-5">
               <p className="text-lg leading-relaxed text-muted-foreground">
-                A client pays an AI coding provider <Money>20</Money> to fix an authentication bug. The
-                provider locks <Money>100</Money> as a guarantee. Public tests pass, so the fee is
-                released — and a <span className="font-medium text-foreground">24-hour</span> confidential
-                coverage window opens. If a private regression test proves the fix broke something covered,
-                the client receives the <Money>100</Money> guarantee, and the outcome is written to the
-                provider&apos;s on-chain reputation.
+                A client pays an AI provider <Money>20</Money> to fix an auth bug; the provider stakes{" "}
+                <Money>100</Money> to back it. Public tests pass, the fee releases, and a{" "}
+                <span className="font-medium text-foreground">24-hour</span> confidential window opens. If a
+                private test proves a covered break, the client is paid the full <Money>100</Money> — and
+                the miss lands on the provider&apos;s on-chain reputation.
               </p>
             </div>
 
@@ -292,7 +291,7 @@ export default function Home() {
             <span className="italic text-primary">after the invoice clears.</span>
           </h2>
           <p className="mx-auto mt-5 max-w-xl text-lg text-muted-foreground">
-            Watch a full guarantee resolve on-chain, from locked collateral to a DON-signed payout.
+            Watch one resolve end to end — locked collateral to a DON-signed payout, live on-chain.
           </p>
           <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
             <Link

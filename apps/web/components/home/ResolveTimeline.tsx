@@ -25,7 +25,7 @@ const STAGES: Stage[] = [
     key: "fund",
     label: "Fund & lock",
     parties: ["Client", "Provider"],
-    detail: "The client funds the task fee; the provider locks a capped, self-funded guarantee as collateral.",
+    detail: "The client funds the fee; the provider stakes a capped guarantee as collateral.",
     meta: [
       { k: "Collateral", v: "100 USDC" },
       { k: "Settles on", v: "Arc" },
@@ -35,7 +35,7 @@ const STAGES: Stage[] = [
     key: "accept",
     label: "Tests pass",
     parties: ["Client"],
-    detail: "The public suite passes on delivery, so the task fee is released to the provider.",
+    detail: "Public tests pass on delivery, so the fee releases to the provider.",
     meta: [
       { k: "Fee released", v: "20 USDC" },
       { k: "Signal", v: "Public tests" },
@@ -45,7 +45,7 @@ const STAGES: Stage[] = [
     key: "coverage",
     label: "Coverage opens",
     parties: ["Provider"],
-    detail: "A post-acceptance coverage window opens; a confidential regression test runs privately inside a TEE.",
+    detail: "A coverage window opens and a confidential regression test runs privately inside a TEE.",
     meta: [
       { k: "Window", v: "24h" },
       { k: "Runs in", v: "TEE" },
@@ -55,7 +55,7 @@ const STAGES: Stage[] = [
     key: "proof",
     label: "Confidential proof",
     parties: ["Chainlink CRE"],
-    detail: "If the private test proves a covered failure, the DON returns a signed verdict — the sole payout gate.",
+    detail: "Prove a covered break and the DON signs a verdict — the only thing that releases funds.",
     meta: [
       { k: "Verifier", v: "Chainlink CRE" },
       { k: "Gate", v: "DON-signed" },
@@ -65,7 +65,7 @@ const STAGES: Stage[] = [
     key: "payout",
     label: "Pay out",
     parties: ["Client", "Provider"],
-    detail: "The client is paid the capped guarantee, and the outcome is written to the provider's on-chain reputation.",
+    detail: "The client is paid the capped guarantee, and the miss lands on the provider's on-chain reputation.",
     meta: [
       { k: "Payout", v: "100 USDC" },
       { k: "Written to", v: "Reputation" },
