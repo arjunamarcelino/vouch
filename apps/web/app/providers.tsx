@@ -85,7 +85,9 @@ function AuthGate({ children }: { children: ReactNode }) {
 
   return (
     <RainbowKitAuthenticationProvider adapter={adapter} status={status}>
-      <RainbowKitProvider theme={rainbowTheme} modalSize="compact">
+      {/* App is light-only (no `.dark` toggle), so pin the wallet modal to light — otherwise RainbowKit
+          auto-switches to dark on OS preference and the modal renders dark over a light app. */}
+      <RainbowKitProvider theme={rainbowTheme.lightMode} modalSize="compact">
         {children}
       </RainbowKitProvider>
     </RainbowKitAuthenticationProvider>

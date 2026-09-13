@@ -70,11 +70,12 @@
 }
 
 /*
- * Dark palette (class-based — `.dark` on <html>). Neutral surfaces + foreground flip;
- * the primary fill stays identical for button identity (white-on-blue 4.92:1), while
- * inline accent/links use a brighter tint that reads on dark surfaces. Status solid fills
- * are intentionally theme-stable (white-on-fill stays AA), so only the *-text variants
- * brighten for dark backgrounds.
+ * Dark palette (class-based — `.dark` on <html>). DORMANT: the app is currently light-only (no `.dark`
+ * toggle is applied), so this block and the scattered `dark:` variants are not active. Kept as the basis
+ * for a future dark theme, NOT actively maintained — if dark is ever enabled, audit every surface first
+ * (notably `--color-paper`, which is defined for light only and would need a dark value).
+ * Neutral surfaces + foreground flip; the primary fill stays identical for button identity, while inline
+ * accent/links use a brighter tint that reads on dark surfaces.
  */
 :root.dark {
   --color-background: oklch(0.165 0.006 286); /* #0e0e11 */
