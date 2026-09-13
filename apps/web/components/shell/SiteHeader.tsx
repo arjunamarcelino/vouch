@@ -6,34 +6,23 @@ import { usePathname } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { buttonVariants } from "@vouch/ui/components/button";
 import { cn } from "@vouch/ui/lib/utils";
-import { WalletConnectButton } from "../wallet/ConnectButton";
 import { TestnetBadge } from "../common/TestnetBadge";
 import { HOME_NAV } from "../../lib/home-sections";
 
 /**
- * App shell header: a floating pill (asyah-style). Context-aware:
- *   - Landing ("/"): centered nav = in-page section anchors; right = Demo + Open App. No wallet here —
- *     the marketing page stays a public, no-connect surface.
- *   - Demo ("/demo"): same marketing chrome (right = Demo + Open App) but no centered nav — the public
- *     demo is a no-connect surface with no in-page sections.
- *   - App pages: centered nav = product routes (Dashboard / Create job); right = Demo + Connect Wallet.
- *     Create-job and the wallet only surface once you're inside the app.
- * The sticky <header> supplies only the floating inset; the inner pill is the blurred, bordered surface.
- * `isolate` keys the wordmark blend against the pill's own backdrop, not scrolled page content.
+ * Marketing header: a floating pill (asyah-style), mounted only by the (marketing) route group.
+ *   - Landing ("/"): centered nav = in-page section anchors; right = Demo + Open App.
+ *   - Demo ("/demo"): no centered nav (no in-page sections); right = Demo + Open App.
+ * No wallet/product nav here — the gated app renders those via AppShell. The sticky <header> supplies
+ * only the floating inset; `isolate` keys the wordmark blend against the pill's own backdrop.
  */
-const APP_NAV = [
-  { href: "/app/dashboard", label: "Dashboard" },
-  { href: "/app/jobs/new", label: "Create job" },
-];
 
 export function SiteHeader() {
   const pathname = usePathname();
   const isHome = pathname === "/";
-  const isDemo = pathname === "/demo";
-  // Marketing chrome (no product nav; right side = Demo + Open App) on the landing AND the public demo —
-  // both are no-connect surfaces. The demo has no in-page sections, so it carries no centered nav at all.
-  const marketingChrome = isHome || isDemo;
-  const nav = isHome ? HOME_NAV : isDemo ? [] : APP_NAV;
+  // Marketing-only header (review 107/108): it is mounted solely by the (marketing) route group, i.e.
+  // only on `/` and `/demo`. The landing carries the in-page section nav; the demo has none.
+  const nav = isHome ? HOME_NAV : [];
 
   // Scroll-spy: on the landing, highlight whichever section has scrolled past the nav line. The active
   // item is the last section whose top sits above the offset (nav height + a little), so it flips exactly
@@ -124,24 +113,13 @@ export function SiteHeader() {
         ) : null}
 
         <div className="flex items-center gap-2">
-          {marketingChrome ? (
-            <>
-              <Link href="/demo" className={cn(buttonVariants({ variant: "ghost" }), "hidden sm:inline-flex")}>
-                Demo
-              </Link>
-              <Link href="/app/dashboard" className={cn(buttonVariants(), "group gap-1.5")}>
-                Open App
-                <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
-              </Link>
-            </>
-          ) : (
-            <>
-              <Link href="/demo" className={cn(buttonVariants({ variant: "ghost" }), "hidden sm:inline-flex")}>
-                Demo
-              </Link>
-              <WalletConnectButton />
-            </>
-          )}
+          <Link href="/demo" className={cn(buttonVariants({ variant: "ghost" }), "hidden sm:inline-flex")}>
+            Demo
+          </Link>
+          <Link href="/app/dashboard" className={cn(buttonVariants(), "group gap-1.5")}>
+            Open App
+            <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
+          </Link>
         </div>
       </div>
     </header>
