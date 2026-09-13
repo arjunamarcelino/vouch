@@ -42,7 +42,10 @@ export function SiteHeader() {
   useEffect(() => {
     if (!isHome) return;
     const ids = HOME_NAV.map((n) => n.href.slice(1));
-    const onScroll = () => {
+    let rafId = 0;
+    let ticking = false;
+    const measure = () => {
+      ticking = false;
       // Slightly past where headings land (scroll-mt-32 = 128px) so a clicked section reads as active.
       const offset = 140;
       let current = ids[0]!;
@@ -52,10 +55,18 @@ export function SiteHeader() {
       }
       setActiveHash(`#${current}`);
     };
-    onScroll();
+    // Coalesce scroll/resize into one measurement per frame — the layout reads (getBoundingClientRect)
+    // must not run per-event, or they force a reflow storm on every scroll tick.
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      rafId = requestAnimationFrame(measure);
+    };
+    measure();
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll);
     return () => {
+      cancelAnimationFrame(rafId);
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
     };
