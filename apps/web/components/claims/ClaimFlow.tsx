@@ -66,7 +66,7 @@ export function ClaimFlow({ id }: { id: string }) {
 
   return (
     <div className="mx-auto max-w-[88rem] px-4 py-10 sm:px-6">
-      <Link href={`/jobs/${id}`} className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+      <Link href={`/app/jobs/${id}`} className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="size-4" aria-hidden /> Job #{id}
       </Link>
       <div className="flex flex-wrap items-center gap-3">

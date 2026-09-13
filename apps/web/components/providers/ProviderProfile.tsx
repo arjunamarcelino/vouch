@@ -42,7 +42,7 @@ export function ProviderProfile({ address }: { address: string }) {
 
   return (
     <div className="mx-auto max-w-[88rem] px-4 py-10 sm:px-6">
-      <Link href="/dashboard" className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+      <Link href="/app/dashboard" className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="size-4" aria-hidden /> Dashboard
       </Link>
 

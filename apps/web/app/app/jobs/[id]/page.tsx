@@ -1,4 +1,4 @@
-import { JobDetail } from "../../../components/jobs/JobDetail";
+import { JobDetail } from "../../../../components/jobs/JobDetail";
 
 /**
  * Job detail route. Next 16 `params` is async — await it in this Server Component and hand the id to the

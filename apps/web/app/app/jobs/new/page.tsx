@@ -10,11 +10,11 @@ import { cn } from "@vouch/ui/lib/utils";
 import { USDC_ADDRESS } from "@vouch/shared/chains";
 import { computeCommitment, computePublicCriteriaHash, randomSalt } from "@vouch/shared/commitment";
 import type { QuoteCommitment } from "@vouch/shared/schemas";
-import { useAuthMe, useTopProviders } from "../../../lib/api/hooks";
-import { useTxEngine } from "../../../lib/tx/engine";
-import { prepareOpenJob, prepareApprove, requestQuote, fetchAllowance } from "../../../lib/api/prepare";
-import { parseUsdcInput, formatUsdc, shortHex, isAddress, addUsdc, gteUsdc } from "../../../lib/format";
-import { TxStatus } from "../../../components/tx/TxStatus";
+import { useAuthMe, useTopProviders } from "../../../../lib/api/hooks";
+import { useTxEngine } from "../../../../lib/tx/engine";
+import { prepareOpenJob, prepareApprove, requestQuote, fetchAllowance } from "../../../../lib/api/prepare";
+import { parseUsdcInput, formatUsdc, shortHex, isAddress, addUsdc, gteUsdc } from "../../../../lib/format";
+import { TxStatus } from "../../../../components/tx/TxStatus";
 
 /**
  * Create job (WS-3). Collects provider, fees, deadlines, coverage, the public acceptance criteria
@@ -161,7 +161,7 @@ export default function CreateJobPage() {
       ) : null}
       {engine.flow.stage === "done" ? (
         <div className="mt-3">
-          <button onClick={() => router.push("/dashboard")} className={buttonVariants({ variant: "outline", size: "sm" })}>
+          <button onClick={() => router.push("/app/dashboard")} className={buttonVariants({ variant: "outline", size: "sm" })}>
             Go to dashboard
           </button>
         </div>

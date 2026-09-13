@@ -9,17 +9,17 @@ import { useIntegrationsHealth } from "../../lib/api/hooks";
 import { resolveMode, modeLabel } from "../../lib/mode";
 
 /**
- * App status bar (WS-2/WS-3 consolidation). A slim fixed footer chrome — shown ONLY on the app routes
- * (`/dashboard`, `/jobs/*`), never on the marketing home — that merges the two status affordances that
+ * App status bar (WS-2/WS-3 consolidation). A slim fixed footer chrome — shown ONLY on the gated app
+ * surface (`/app/*`), never on the marketing home / `/demo` / `/login` — that merges the two affordances
  * used to live inside those pages: the dashboard "Integration health" strip and the create-job "live"
  * badge. Left is a single Live/Simulation indicator (derived from the dual-mode resolver); next to it a
  * "Networks"-style popover reveals the per-integration health probes. Locked (unauthenticated) resolves
  * to a muted "Local simulation" — the UI never implies a live integration it can't prove (see mode.ts).
  */
 
-/** Routes that get the bar. Home (`/`), demo, and provider pages deliberately do NOT. */
+/** Routes that get the bar: the gated app surface only. Home (`/`), `/demo`, `/login` do NOT. */
 function isAppRoute(pathname: string): boolean {
-  return pathname === "/dashboard" || pathname === "/jobs" || pathname.startsWith("/jobs/");
+  return pathname === "/app" || pathname.startsWith("/app/");
 }
 
 function probeTone(status: Probe["status"]): string {

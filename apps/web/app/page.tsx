@@ -142,7 +142,7 @@ export default function Home() {
                 Demo
               </Link>
               <Link
-                href="/dashboard"
+                href="/app/dashboard"
                 className={cn(
                   buttonVariants({ size: "lg" }),
                   "group gap-2",
@@ -429,7 +429,7 @@ export default function Home() {
             <Link href="/demo" className={cn(buttonVariants({ variant: "ghost", size: "lg" }), "gap-2")}>
               Demo
             </Link>
-            <Link href="/dashboard" className={cn(buttonVariants({ size: "lg" }), "group gap-2")}>
+            <Link href="/app/dashboard" className={cn(buttonVariants({ size: "lg" }), "group gap-2")}>
               Open App
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
             </Link>

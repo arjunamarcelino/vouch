@@ -72,7 +72,7 @@ export function JobDetail({ id }: { id: string }) {
     const notFound = job.error instanceof ApiClientError && job.error.isNotFound;
     return (
       <div className="mx-auto max-w-[88rem] px-4 py-10">
-        <Link href="/dashboard" className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+        <Link href="/app/dashboard" className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="size-4" aria-hidden /> Dashboard
         </Link>
         <Card>
@@ -127,7 +127,7 @@ export function JobDetail({ id }: { id: string }) {
 
   return (
     <div className="mx-auto max-w-[88rem] px-4 py-10 sm:px-6">
-      <Link href="/dashboard" className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+      <Link href="/app/dashboard" className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="size-4" aria-hidden /> Dashboard
       </Link>
 
@@ -298,7 +298,7 @@ export function JobDetail({ id }: { id: string }) {
               // CLAIM routes to the dedicated claim page (evidence hashed there), not an inline tx.
               if (a.id === "CLAIM") {
                 return a.available ? (
-                  <Link key={a.id} href={`/jobs/${id}/claim`} className={buttonVariants({ size: "sm" })}>
+                  <Link key={a.id} href={`/app/jobs/${id}/claim`} className={buttonVariants({ size: "sm" })}>
                     {a.label}
                   </Link>
                 ) : (

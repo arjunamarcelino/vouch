@@ -20,8 +20,8 @@ import { HOME_NAV } from "../../lib/home-sections";
  * `isolate` keys the wordmark blend against the pill's own backdrop, not scrolled page content.
  */
 const APP_NAV = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/jobs/new", label: "Create job" },
+  { href: "/app/dashboard", label: "Dashboard" },
+  { href: "/app/jobs/new", label: "Create job" },
 ];
 
 export function SiteHeader() {
@@ -121,7 +121,7 @@ export function SiteHeader() {
               <Link href="/demo" className={cn(buttonVariants({ variant: "ghost" }), "hidden sm:inline-flex")}>
                 Demo
               </Link>
-              <Link href="/dashboard" className={cn(buttonVariants(), "group gap-1.5")}>
+              <Link href="/app/dashboard" className={cn(buttonVariants(), "group gap-1.5")}>
                 Open App
                 <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
               </Link>

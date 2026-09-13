@@ -8,8 +8,8 @@ import { Badge } from "@vouch/ui/components/badge";
 import { buttonVariants } from "@vouch/ui/components/button";
 import { cn } from "@vouch/ui/lib/utils";
 import { JOB_STATES, type JobState, type MyJob } from "@vouch/shared/schemas";
-import { useMyJobs, useAuthMe } from "../../lib/api/hooks";
-import { StateBadge } from "../../components/common/indicators";
+import { useMyJobs, useAuthMe } from "../../../lib/api/hooks";
+import { StateBadge } from "../../../components/common/indicators";
 
 /**
  * Jobs dashboard (WS-2). Role-aware: one list that adapts per the connected wallet's per-job role. Jobs
@@ -33,7 +33,7 @@ function JobRow({ job }: { job: MyJob }) {
   const state = asJobState(job.cachedStatus);
   return (
     <Link
-      href={job.jobId ? `/jobs/${job.jobId}` : "#"}
+      href={job.jobId ? `/app/jobs/${job.jobId}` : "#"}
       className="flex items-center justify-between gap-3 rounded-md border border-border px-4 py-3 text-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <div className="min-w-0">
@@ -69,7 +69,7 @@ export default function DashboardPage() {
     <div className="mx-auto max-w-[88rem] px-4 py-10 sm:px-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-display text-3xl tracking-tight sm:text-4xl">Dashboard</h1>
-        <Link href="/jobs/new" className={cn(buttonVariants({ size: "sm" }), "gap-2")}>
+        <Link href="/app/jobs/new" className={cn(buttonVariants({ size: "sm" }), "gap-2")}>
           <Plus className="size-4" aria-hidden /> Create job
         </Link>
       </div>
@@ -94,7 +94,7 @@ export default function DashboardPage() {
         <Card className="mt-6">
           <CardContent className="p-6 text-sm text-muted-foreground">
             No jobs yet.{" "}
-            <Link href="/jobs/new" className="text-primary hover:underline">
+            <Link href="/app/jobs/new" className="text-primary hover:underline">
               Create one
             </Link>{" "}
             to attach a post-completion guarantee.
