@@ -92,8 +92,7 @@ The novelty is the **post-acceptance coverage window** combined with a **confide
 
 ## Demo links
 
-- **Demo video (2–4 min, human-narrated):** *TBD — link pending.*
-- **Live app:** [https://withvouch.xyz](https://withvouch.xyz) *(deploying).* API `https://api.withvouch.xyz`, agent `https://agent.withvouch.xyz`. One-command local review via `docker-compose` (browse + read-live + `/health`; click-through mutation needs a funded wallet + browser wallet + SIWE).
+- **Live app:** [https://withvouch.xyz](https://withvouch.xyz). API `https://api.withvouch.xyz`, agent `https://agent.withvouch.xyz`. One-command local review via `docker-compose` (browse + read-live + `/health`; click-through mutation needs a funded wallet + browser wallet + SIWE).
 
 ## Repository & links
 
