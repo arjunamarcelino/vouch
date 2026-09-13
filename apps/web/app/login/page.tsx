@@ -19,10 +19,16 @@ import { TestnetBadge } from "../../components/common/TestnetBadge";
  */
 const DEFAULT_NEXT = "/app/dashboard";
 
-/** Only allow same-app relative redirects — never an attacker-supplied absolute/protocol-relative URL. */
+/**
+ * Only allow same-app redirects into `/app/*` (review 106). `next` is only ever produced by the gate,
+ * which always targets `/app/...`, so anything else is a crafted value. The `^/app(/|$|?)` anchor rejects
+ * protocol-relative (`//host`), backslash tricks (`/\host`, which the URL parser normalises to `//host`),
+ * control-char prefixes, `/appfoo`, and `/login` itself; the explicit backslash bail is defense-in-depth.
+ */
 function safeNext(raw: string | null): string {
   if (!raw) return DEFAULT_NEXT;
-  if (!raw.startsWith("/") || raw.startsWith("//")) return DEFAULT_NEXT;
+  if (raw.includes("\\")) return DEFAULT_NEXT;
+  if (!/^\/app(\/|$|\?)/.test(raw)) return DEFAULT_NEXT;
   return raw;
 }
 

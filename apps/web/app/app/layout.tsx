@@ -29,7 +29,10 @@ export default function AppGateLayout({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!resolving && !authed) {
-      router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+      // Carry the full path INCL. query string so deep links (e.g. ?tab=evidence) survive sign-in
+      // (review 106/114). `pathname` for the SSR-safe part; `search` read client-side in this effect.
+      const here = pathname + (typeof window !== "undefined" ? window.location.search : "");
+      router.replace(`/login?next=${encodeURIComponent(here)}`);
     }
   }, [resolving, authed, pathname, router]);
 
