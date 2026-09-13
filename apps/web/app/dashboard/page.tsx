@@ -77,7 +77,7 @@ export default function DashboardPage() {
   }, [jobs.data]);
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
+    <div className="mx-auto max-w-[88rem] px-4 py-10 sm:px-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-display text-3xl tracking-tight sm:text-4xl">Dashboard</h1>
         <Link href="/jobs/new" className={cn(buttonVariants({ size: "sm" }), "gap-2")}>
