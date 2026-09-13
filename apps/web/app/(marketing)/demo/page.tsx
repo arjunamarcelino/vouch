@@ -4,13 +4,13 @@ import { Cpu } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@vouch/ui/components/card";
 import { Badge } from "@vouch/ui/components/badge";
 import { cn } from "@vouch/ui/lib/utils";
-import { useIntegrationsHealth, useTopProviders } from "../../lib/api/hooks";
-import { resolveMode } from "../../lib/mode";
-import { shortHex } from "../../lib/format";
-import { PrizeEvidenceDrawer } from "../../components/demo/PrizeEvidenceDrawer";
-import { TechStrip } from "../../components/common/TechStrip";
-import { ModePill } from "../../components/common/indicators";
-import { Reveal } from "../../components/home/motion";
+import { useIntegrationsHealth, useTopProviders } from "../../../lib/api/hooks";
+import { resolveMode } from "../../../lib/mode";
+import { shortHex } from "../../../lib/format";
+import { PrizeEvidenceDrawer } from "../../../components/demo/PrizeEvidenceDrawer";
+import { TechStrip } from "../../../components/common/TechStrip";
+import { ModePill } from "../../../components/common/indicators";
+import { Reveal } from "../../../components/home/motion";
 
 /**
  * Judge demo (WS-7). A guided walk through the canonical 6-step flow. Each step names the integration it

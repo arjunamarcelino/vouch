@@ -16,9 +16,6 @@ const fontSans = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-jakar
 const fontMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", display: "swap" });
 import { getConfig } from "../lib/wagmi";
 import { Providers } from "./providers";
-import { SiteHeader } from "../components/shell/SiteHeader";
-import { SiteFooter } from "../components/shell/SiteFooter";
-import { StatusBar } from "../components/shell/StatusBar";
 
 export const metadata: Metadata = {
   title: "Vouch — Confidential Outcome Assurance",
@@ -61,10 +58,9 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           >
             Skip to content
           </a>
-          <SiteHeader />
-          <main id="main" className="flex-1">{children}</main>
-          <SiteFooter />
-          <StatusBar />
+          {/* Chrome is owned per route-group (review 107): (marketing) renders the header/footer, the
+              /app gate renders the sidebar + status bar, /login renders neither. Root stays chrome-free. */}
+          {children}
         </Providers>
       </body>
     </html>

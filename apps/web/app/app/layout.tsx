@@ -6,6 +6,7 @@ import { useAccount } from "wagmi";
 import { Loader2 } from "lucide-react";
 import { useAuthMe } from "../../lib/api/hooks";
 import { AppShell } from "../../components/shell/AppShell";
+import { StatusBar } from "../../components/shell/StatusBar";
 
 /**
  * Auth gate for the `/app/*` surface. Access requires BOTH a live wallet connection (wagmi) AND a SIWE
@@ -47,5 +48,10 @@ export default function AppGateLayout({ children }: { children: ReactNode }) {
     );
   }
 
-  return <AppShell>{children}</AppShell>;
+  return (
+    <>
+      <AppShell>{children}</AppShell>
+      <StatusBar />
+    </>
+  );
 }

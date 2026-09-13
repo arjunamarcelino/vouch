@@ -1,18 +1,12 @@
-"use client";
-
-import { usePathname } from "next/navigation";
 import { TechStrip } from "../common/TechStrip";
 import { TestnetBadge } from "../common/TestnetBadge";
 
 /**
- * App shell footer: the "Built on" stack strip + a light legal line. Renders on every page via the root
- * layout EXCEPT the standalone auth screen (`/login`) and the gated app surface (`/app/*`), which run
- * their own chrome (a full-height sign-in and a side menu, respectively).
+ * App shell footer: the "Built on" stack strip + a light legal line. Rendered only by the `(marketing)`
+ * route-group layout (review 107), so it no longer self-gates on `pathname` — the gated app and login
+ * screen simply don't mount it.
  */
 export function SiteFooter() {
-  const pathname = usePathname();
-  if (pathname === "/login" || pathname === "/app" || pathname.startsWith("/app/")) return null;
-
   return (
     <footer className="relative mt-24 border-t border-border bg-paper">
       <div className="mx-auto flex max-w-[88rem] flex-col gap-8 px-4 py-14 sm:px-6">

@@ -17,11 +17,6 @@ import { resolveMode, modeLabel } from "../../lib/mode";
  * to a muted "Local simulation" — the UI never implies a live integration it can't prove (see mode.ts).
  */
 
-/** Routes that get the bar: the gated app surface + the public demo. Home (`/`) and `/login` do NOT. */
-function isAppRoute(pathname: string): boolean {
-  return pathname === "/app" || pathname.startsWith("/app/") || pathname === "/demo";
-}
-
 function probeTone(status: Probe["status"]): string {
   return status === "up" ? "text-success" : status === "degraded" ? "text-warning" : "text-destructive";
 }
@@ -72,8 +67,6 @@ export function StatusBar() {
 
   // Reset the popover when navigating between app routes.
   useEffect(() => setOpen(false), [pathname]);
-
-  if (!isAppRoute(pathname)) return null;
 
   const loading = health.isLoading;
   const live = mode.isLive;

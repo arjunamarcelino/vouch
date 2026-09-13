@@ -9,11 +9,11 @@ import {
 } from "lucide-react";
 import { buttonVariants } from "@vouch/ui/components/button";
 import { cn } from "@vouch/ui/lib/utils";
-import { LogoMarquee } from "../components/common/LogoMarquee";
-import { ResolveTimeline } from "../components/home/ResolveTimeline";
-import { ReceiptFlow } from "../components/home/ReceiptFlow";
-import { Reveal, CountUp } from "../components/home/motion";
-import { SECTION } from "../lib/home-sections";
+import { LogoMarquee } from "../../components/common/LogoMarquee";
+import { ResolveTimeline } from "../../components/home/ResolveTimeline";
+import { ReceiptFlow } from "../../components/home/ReceiptFlow";
+import { Reveal, CountUp } from "../../components/home/motion";
+import { SECTION } from "../../lib/home-sections";
 
 /**
  * Landing (WS-1) — the 20-second test, light/editorial register. Plus Jakarta Sans display + mono for
