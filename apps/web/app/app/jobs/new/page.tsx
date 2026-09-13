@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ShieldCheck, ShieldX, Gauge } from "lucide-react";
+import { ArrowLeft, ShieldCheck, ShieldX, Gauge } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@vouch/ui/components/card";
 import { Badge } from "@vouch/ui/components/badge";
 import { buttonVariants } from "@vouch/ui/components/button";
@@ -15,13 +16,15 @@ import { useTxEngine } from "../../../../lib/tx/engine";
 import { prepareOpenJob, prepareApprove, requestQuote, fetchAllowance } from "../../../../lib/api/prepare";
 import { parseUsdcInput, formatUsdc, shortHex, isAddress, addUsdc, gteUsdc } from "../../../../lib/format";
 import { TxStatus } from "../../../../components/tx/TxStatus";
+import { PageHeader } from "../../../../components/app/PageHeader";
 
 /**
  * Create job (WS-3). Collects provider, fees, deadlines, coverage, the public acceptance criteria
  * (hashed on-chain), and the PRIVATE criteria — which are hashed to a bytes32 commitment CLIENT-SIDE
  * (shared helper); only the commitment is submitted, the raw text + salt never leave the browser. A
- * best-effort risk-quote preview degrades to "unavailable" when the agent isn't configured. Funding is
- * a separate approval stage then openJob, driven by the shared tx-engine.
+ * best-effort risk-quote preview degrades to "unavailable" when the agent isn't configured. Funding is a
+ * separate approval stage then openJob, driven by the shared tx-engine. Reached from /app/jobs; the /app
+ * gate guarantees an authed session.
  */
 const COVERAGE_OPTIONS = [
   { label: "24 hours", seconds: 86_400 },
@@ -32,7 +35,7 @@ const COVERAGE_OPTIONS = [
 
 function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
   return (
-    <label className="block space-y-1">
+    <label className="block space-y-1.5">
       <span className="text-sm font-medium">{label}</span>
       {children}
       {hint ? <span className="block text-xs text-subtle-foreground">{hint}</span> : null}
@@ -41,7 +44,7 @@ function Field({ label, children, hint }: { label: string; children: React.React
 }
 
 const inputCls =
-  "w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  "w-full rounded-lg border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 export default function CreateJobPage() {
   const router = useRouter();
@@ -66,6 +69,15 @@ export default function CreateJobPage() {
   const deadlineSec = deadline ? Math.floor(new Date(deadline).getTime() / 1000) : 0;
   const canSubmit =
     !!me.data && addrOk && Number(taskFee) > 0 && Number(guarantee) > 0 && deadlineSec > Math.floor(Date.now() / 1000) && !engine.isBusy;
+
+  // Live escrow preview (task fee + service fee) — the amount the client locks to open the job.
+  const escrowDisplay = useMemo(() => {
+    try {
+      return formatUsdc(addUsdc(parseUsdcInput(taskFee), parseUsdcInput(serviceFee || "0")).toString(), { symbol: true });
+    } catch {
+      return null;
+    }
+  }, [taskFee, serviceFee]);
 
   const buildBody = useMemo(
     () => () => {
@@ -141,33 +153,33 @@ export default function CreateJobPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[88rem] px-4 py-10 sm:px-6">
-      <h1 className="font-display text-3xl tracking-tight sm:text-4xl">Create a job</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Attach a provider-funded, capped guarantee to AI-agent work. Private criteria are hashed in your
-        browser — only the commitment is stored.
-      </p>
+    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-10">
+      <Link
+        href="/app/jobs"
+        className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <ArrowLeft className="size-4" aria-hidden /> Back to jobs
+      </Link>
 
-      {!me.data ? (
-        <Card className="mt-6">
-          <CardContent className="p-6 text-sm text-muted-foreground">Connect your wallet and sign in to create a job.</CardContent>
-        </Card>
-      ) : null}
+      <PageHeader
+        title="Create a job"
+        subtitle="Attach a provider-funded, capped guarantee to AI-agent work. Private criteria are hashed in your browser — only the commitment is stored."
+      />
 
       {engine.flow.stage !== "idle" ? (
-        <div className="mt-4">
+        <div className="mt-6">
           <TxStatus flow={engine.flow} onReset={engine.reset} />
         </div>
       ) : null}
       {engine.flow.stage === "done" ? (
         <div className="mt-3">
-          <button onClick={() => router.push("/app/dashboard")} className={buttonVariants({ variant: "outline", size: "sm" })}>
-            Go to dashboard
+          <button onClick={() => router.push("/app/jobs")} className={buttonVariants({ variant: "outline", size: "sm" })}>
+            View your jobs
           </button>
         </div>
       ) : null}
 
-      <div className="mt-6 grid gap-4">
+      <div className="mt-8 grid gap-4">
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Provider &amp; task</CardTitle>
@@ -176,13 +188,13 @@ export default function CreateJobPage() {
             <Field label="Provider address" hint={providers.data?.length ? "Pick an indexed provider or paste an address" : "Paste the provider's address"}>
               <input className={cn(inputCls, "font-mono text-xs")} placeholder="0x…" value={provider} onChange={(e) => setProvider(e.target.value)} />
               {providers.data?.length ? (
-                <div className="mt-1 flex flex-wrap gap-1">
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
                   {providers.data.slice(0, 5).map((p) => (
                     <button
                       key={p.id}
                       type="button"
                       onClick={() => setProvider(p.id)}
-                      className="rounded-full border border-border px-2 py-0.5 font-mono text-xs hover:bg-muted"
+                      className="rounded-full border border-border px-2.5 py-0.5 font-mono text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                     >
                       {shortHex(p.id)}
                     </button>
@@ -204,18 +216,26 @@ export default function CreateJobPage() {
           <CardHeader>
             <CardTitle className="text-base">Terms</CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2">
-            <Field label="Task fee (USDC)"><input className={inputCls} inputMode="decimal" value={taskFee} onChange={(e) => setTaskFee(e.target.value)} /></Field>
-            <Field label="Requested guarantee (USDC)"><input className={inputCls} inputMode="decimal" value={guarantee} onChange={(e) => setGuarantee(e.target.value)} /></Field>
-            <Field label="Service fee (USDC)"><input className={inputCls} inputMode="decimal" value={serviceFee} onChange={(e) => setServiceFee(e.target.value)} /></Field>
-            <Field label="Coverage duration">
-              <select className={inputCls} value={coverage} onChange={(e) => setCoverage(Number(e.target.value))}>
-                {COVERAGE_OPTIONS.map((o) => (
-                  <option key={o.seconds} value={o.seconds}>{o.label}</option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Submission deadline"><input type="datetime-local" className={inputCls} value={deadline} onChange={(e) => setDeadline(e.target.value)} /></Field>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Task fee (USDC)"><input className={inputCls} inputMode="decimal" value={taskFee} onChange={(e) => setTaskFee(e.target.value)} /></Field>
+              <Field label="Requested guarantee (USDC)"><input className={inputCls} inputMode="decimal" value={guarantee} onChange={(e) => setGuarantee(e.target.value)} /></Field>
+              <Field label="Service fee (USDC)"><input className={inputCls} inputMode="decimal" value={serviceFee} onChange={(e) => setServiceFee(e.target.value)} /></Field>
+              <Field label="Coverage duration">
+                <select className={inputCls} value={coverage} onChange={(e) => setCoverage(Number(e.target.value))}>
+                  {COVERAGE_OPTIONS.map((o) => (
+                    <option key={o.seconds} value={o.seconds}>{o.label}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Submission deadline"><input type="datetime-local" className={inputCls} value={deadline} onChange={(e) => setDeadline(e.target.value)} /></Field>
+            </div>
+            {escrowDisplay ? (
+              <div className="flex items-center justify-between rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm">
+                <span className="text-muted-foreground">You&apos;ll escrow to open the job</span>
+                <span className="font-mono font-medium tabular-nums text-foreground">{escrowDisplay}</span>
+              </div>
+            ) : null}
           </CardContent>
         </Card>
 
@@ -226,7 +246,7 @@ export default function CreateJobPage() {
               <Gauge className="size-4 text-primary" aria-hidden /> Risk quote preview
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2 text-sm">
+          <CardContent className="space-y-3 text-sm">
             <button type="button" onClick={previewQuote} disabled={!addrOk || quoteState === "loading"} className={cn(buttonVariants({ variant: "outline", size: "sm" }), (!addrOk || quoteState === "loading") && "opacity-50 pointer-events-none")}>
               {quoteState === "loading" ? "Requesting…" : "Preview quote"}
             </button>
@@ -249,14 +269,14 @@ export default function CreateJobPage() {
 
         {/* Covered / not covered */}
         <Card>
-          <CardContent className="grid gap-3 p-4 sm:grid-cols-2">
+          <CardContent className="grid gap-4 p-5 sm:grid-cols-2">
             <div>
-              <p className="flex items-center gap-1 text-sm font-medium text-success"><ShieldCheck className="size-4" aria-hidden /> Covered</p>
-              <p className="mt-1 text-sm text-muted-foreground">A private regression proving a covered failure within the coverage window, verified confidentially.</p>
+              <p className="flex items-center gap-1.5 text-sm font-medium text-success"><ShieldCheck className="size-4" aria-hidden /> Covered</p>
+              <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">A private regression proving a covered failure within the coverage window, verified confidentially.</p>
             </div>
             <div>
-              <p className="flex items-center gap-1 text-sm font-medium text-muted-foreground"><ShieldX className="size-4" aria-hidden /> Not covered</p>
-              <p className="mt-1 text-sm text-muted-foreground">Failures outside the window, issues outside the agreed criteria, or disputes after coverage ends.</p>
+              <p className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground"><ShieldX className="size-4" aria-hidden /> Not covered</p>
+              <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">Failures outside the window, issues outside the agreed criteria, or disputes after coverage ends.</p>
             </div>
           </CardContent>
         </Card>
@@ -266,7 +286,7 @@ export default function CreateJobPage() {
           <button onClick={submit} disabled={!canSubmit} className={cn(buttonVariants({ size: "lg" }), !canSubmit && "opacity-50 pointer-events-none")}>
             Approve &amp; create job
           </button>
-          {!me.data ? <Badge variant="warning">connect to act</Badge> : null}
+          {escrowDisplay ? <span className="text-xs text-muted-foreground">Escrows {escrowDisplay}</span> : null}
         </div>
       </div>
     </div>

@@ -6,11 +6,12 @@ import { TestnetBadge } from "../common/TestnetBadge";
 
 /**
  * App shell footer: the "Built on" stack strip + a light legal line. Renders on every page via the root
- * layout EXCEPT `/login`, which is a full-height standalone auth screen with no chrome.
+ * layout EXCEPT the standalone auth screen (`/login`) and the gated app surface (`/app/*`), which run
+ * their own chrome (a full-height sign-in and a side menu, respectively).
  */
 export function SiteFooter() {
   const pathname = usePathname();
-  if (pathname === "/login") return null;
+  if (pathname === "/login" || pathname === "/app" || pathname.startsWith("/app/")) return null;
 
   return (
     <footer className="relative mt-24 border-t border-border bg-paper">

@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useAccount } from "wagmi";
 import { Loader2 } from "lucide-react";
 import { useAuthMe } from "../../lib/api/hooks";
+import { AppShell } from "../../components/shell/AppShell";
 
 /**
  * Auth gate for the `/app/*` surface. Access requires BOTH a live wallet connection (wagmi) AND a SIWE
@@ -41,5 +42,5 @@ export default function AppGateLayout({ children }: { children: ReactNode }) {
     );
   }
 
-  return <>{children}</>;
+  return <AppShell>{children}</AppShell>;
 }

@@ -72,8 +72,8 @@ export function SiteHeader() {
     };
   }, [isHome]);
 
-  // The login page is a standalone auth screen — it carries its own "Back to Homepage" link, no navbar.
-  if (pathname === "/login") return null;
+  // No marketing navbar on the login screen (own back link) or the gated app surface (own side menu).
+  if (pathname === "/login" || pathname === "/app" || pathname.startsWith("/app/")) return null;
 
   return (
     <header className="sticky top-0 z-30 px-4 pt-3 sm:px-6 sm:pt-4">
