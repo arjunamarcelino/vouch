@@ -82,6 +82,8 @@ export function CountUp({
       setValue(to);
       return;
     }
+    let rafId = 0;
+    const cancel = { done: false };
     const io = new IntersectionObserver(
       ([entry]) => {
         if (!entry?.isIntersecting || started.current) return;
@@ -89,17 +91,23 @@ export function CountUp({
         io.disconnect();
         const start = performance.now();
         const tick = (now: number) => {
+          if (cancel.done) return;
           const p = Math.min(1, (now - start) / duration);
           const eased = 1 - Math.pow(1 - p, 3);
           setValue(to * eased);
-          if (p < 1) requestAnimationFrame(tick);
+          if (p < 1) rafId = requestAnimationFrame(tick);
         };
-        requestAnimationFrame(tick);
+        rafId = requestAnimationFrame(tick);
       },
       { threshold: 0.6 },
     );
     io.observe(el);
-    return () => io.disconnect();
+    // Cancel the rAF chain on unmount so it can't keep setting state after teardown.
+    return () => {
+      cancel.done = true;
+      cancelAnimationFrame(rafId);
+      io.disconnect();
+    };
   }, [to, duration]);
 
   return (
