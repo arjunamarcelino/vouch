@@ -168,13 +168,12 @@ export default function Home() {
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         {/* ===================== COMPARISON SPEC SHEET ===================== */}
         <section className="py-20 sm:py-24" aria-labelledby="compare-heading">
-          <SectionKicker>The distinction</SectionKicker>
-          <h2 id="compare-heading" className="mt-4 max-w-2xl font-display text-4xl leading-tight tracking-tight sm:text-5xl">
-            Escrow stops at the door. <span className="italic text-primary">Vouch stays inside.</span>
-          </h2>
+          <SectionHeading id="compare-heading">
+            Where escrow stops, <span className="italic text-primary">Vouch begins.</span>
+          </SectionHeading>
 
-          {/* Desktop: asyah-style spec sheet — no icons, the Vouch column tinted as one continuous block. */}
-          <div className="mt-10 hidden overflow-hidden rounded-2xl border border-border bg-card shadow-sm sm:block">
+          {/* Desktop: spec sheet — no icons, the Vouch column tinted as one continuous block. */}
+          <div className="mt-12 hidden overflow-hidden rounded-2xl border border-border bg-card shadow-sm sm:block">
             <div className="grid grid-cols-[1.1fr_1fr_1fr]">
               {/* Column heads */}
               <div aria-hidden />
@@ -234,25 +233,16 @@ export default function Home() {
 
         {/* ===================== HOW IT RESOLVES (TIMELINE) ===================== */}
         <section className="py-20 sm:py-24" aria-labelledby="how-heading">
-          <SectionKicker>How a guarantee resolves</SectionKicker>
-          <h2 id="how-heading" className="mt-4 max-w-2xl font-display text-4xl leading-tight tracking-tight sm:text-5xl">
-            From locked collateral to payout.
-          </h2>
+          <SectionHeading id="how-heading">How a guarantee resolves</SectionHeading>
           <ResolveTimeline />
         </section>
 
         {/* ===================== CONCRETE EXAMPLE (RECEIPT) ===================== */}
         <section className="py-20 sm:py-24" aria-labelledby="example-heading">
-          <div className="grid gap-10 lg:grid-cols-12 lg:items-center lg:gap-12">
+          <SectionHeading id="example-heading">A worked example</SectionHeading>
+          <div className="mt-12 grid gap-10 lg:grid-cols-12 lg:items-center lg:gap-12">
             <div className="lg:col-span-5">
-              <SectionKicker>Worked example</SectionKicker>
-              <h2
-                id="example-heading"
-                className="mt-4 font-display text-4xl leading-tight tracking-tight sm:text-5xl"
-              >
-                A coding agent fixes a bug — and stays on the hook.
-              </h2>
-              <p className="mt-5 text-base leading-relaxed text-muted-foreground">
+              <p className="text-lg leading-relaxed text-muted-foreground">
                 A client pays an AI coding provider <Money>20</Money> to fix an authentication bug. The
                 provider locks <Money>100</Money> as a guarantee. Public tests pass, so the fee is
                 released — and a <span className="font-medium text-foreground">24-hour</span> confidential
@@ -270,11 +260,8 @@ export default function Home() {
 
         {/* ===================== THREE RAILS ===================== */}
         <section className="py-20 sm:py-24" aria-labelledby="arch-heading">
-          <SectionKicker>Under the hood</SectionKicker>
-          <h2 id="arch-heading" className="mt-4 max-w-2xl font-display text-4xl leading-tight tracking-tight sm:text-5xl">
-            Built on three rails.
-          </h2>
-          <div className="mt-10 grid gap-5 sm:grid-cols-3">
+          <SectionHeading id="arch-heading">What each rail does</SectionHeading>
+          <div className="mt-12 grid gap-5 sm:grid-cols-3">
             {INTEGRATIONS.map((it) => (
               <div
                 key={it.name}
@@ -327,12 +314,16 @@ export default function Home() {
 
 /* --------------------------------- pieces --------------------------------- */
 
-function SectionKicker({ children }: { children: React.ReactNode }) {
+// One centered section title per section (asyah/okx register) — no eyebrow, no subtitle when the
+// title already carries the meaning.
+function SectionHeading({ id, children }: { id?: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-3">
-      <span className="h-px w-8 bg-primary/50" aria-hidden />
-      <span className="font-mono text-xs uppercase tracking-[0.18em] text-subtle-foreground">{children}</span>
-    </div>
+    <h2
+      id={id}
+      className="mx-auto max-w-3xl text-center font-display text-4xl leading-tight tracking-tight sm:text-5xl"
+    >
+      {children}
+    </h2>
   );
 }
 
