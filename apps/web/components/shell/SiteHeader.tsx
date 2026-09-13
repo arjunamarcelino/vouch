@@ -7,6 +7,7 @@ import { ArrowRight } from "lucide-react";
 import { buttonVariants } from "@vouch/ui/components/button";
 import { cn } from "@vouch/ui/lib/utils";
 import { TestnetBadge } from "../common/TestnetBadge";
+import { Wordmark } from "../common/Wordmark";
 import { HOME_NAV } from "../../lib/home-sections";
 
 /**
@@ -66,17 +67,7 @@ export function SiteHeader() {
       <div className="relative isolate mx-auto flex h-[4.5rem] max-w-[88rem] items-center justify-between gap-4 rounded-2xl border border-border bg-surface/80 px-4 shadow-lg shadow-black/[0.04] backdrop-blur-md supports-[backdrop-filter]:bg-surface/65 sm:px-6">
         <div className="flex items-center gap-2.5">
           <Link href="/" aria-label="Vouch — home" className="flex items-center">
-            {/* Vouch wordmark: black ink on an opaque white PNG. Blend modes key the white bg out against
-              either theme (light → multiply keeps black ink; dark → invert+screen keeps white ink). The
-              pill's `isolate` composites the blend against its own backdrop, not scrolled content.
-              Intrinsic w/h reserve the box (no first-paint reflow); h-7 w-auto scales it. */}
-            <img
-              src="/logos/vouch/vouch.png"
-              alt="Vouch"
-              width={828}
-              height={285}
-              className="h-7 w-auto mix-blend-multiply dark:mix-blend-screen dark:invert"
-            />
+            <Wordmark />
           </Link>
           <TestnetBadge />
         </div>

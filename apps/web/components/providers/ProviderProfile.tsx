@@ -7,6 +7,7 @@ import { Badge } from "@vouch/ui/components/badge";
 import { useProviderPerformance } from "../../lib/api/hooks";
 import { formatUsdc, shortHex, explorerAddressLink } from "../../lib/format";
 import { FreshnessBadge } from "../common/indicators";
+import { APP_CONTAINER } from "../../lib/layout";
 
 /**
  * Provider profile (WS-5). Live reputation via The Graph (fail-closed: the API 503s on a stale/lagging
@@ -41,7 +42,7 @@ export function ProviderProfile({ address }: { address: string }) {
   const link = explorerAddressLink(address);
 
   return (
-    <div className="mx-auto max-w-[88rem] px-4 py-10 sm:px-6">
+    <div className={APP_CONTAINER}>
       <Link href="/app/dashboard" className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="size-4" aria-hidden /> Dashboard
       </Link>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { buttonVariants } from "@vouch/ui/components/button";
 import { cn } from "@vouch/ui/lib/utils";
+import { APP_CONTAINER } from "../../../lib/layout";
 import { useMyJobs, useAuthMe } from "../../../lib/api/hooks";
 import { bucketize } from "../../../lib/jobs";
 import { JobRow } from "../../../components/jobs/JobRow";
@@ -29,7 +30,7 @@ export default function JobsPage() {
   }, [jobs.data]);
 
   return (
-    <div className="mx-auto max-w-[88rem] px-4 py-10 sm:px-6">
+    <div className={APP_CONTAINER}>
       <PageHeader
         title="Jobs"
         subtitle="Every job you're a client or provider on, grouped by status."

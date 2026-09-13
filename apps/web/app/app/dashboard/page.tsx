@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@vouch/ui/components/card";
 import { cn } from "@vouch/ui/lib/utils";
+import { APP_CONTAINER } from "../../../lib/layout";
 import { useMyJobs, useAuthMe } from "../../../lib/api/hooks";
 import { bucketize } from "../../../lib/jobs";
 import { JobRow } from "../../../components/jobs/JobRow";
@@ -25,7 +26,7 @@ export default function OverviewPage() {
   }, [jobs.data]);
 
   return (
-    <div className="mx-auto max-w-[88rem] px-4 py-10 sm:px-6">
+    <div className={APP_CONTAINER}>
       <PageHeader title="Overview" subtitle="Your guarantees at a glance." />
 
       {/* Summary stats */}

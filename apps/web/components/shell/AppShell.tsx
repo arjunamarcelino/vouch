@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { LayoutDashboard, Briefcase, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { cn } from "@vouch/ui/lib/utils";
 import { WalletConnectButton } from "../wallet/ConnectButton";
+import { Wordmark } from "../common/Wordmark";
 import { TestnetBadge } from "../common/TestnetBadge";
 
 /**
@@ -19,16 +20,6 @@ const NAV = [
   { href: "/app/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/app/jobs", label: "Jobs", icon: Briefcase },
 ] as const;
-
-const WORDMARK = (
-  <img
-    src="/logos/vouch/vouch.png"
-    alt="Vouch"
-    width={828}
-    height={285}
-    className="h-7 w-auto mix-blend-multiply dark:mix-blend-screen dark:invert"
-  />
-);
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -70,11 +61,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         {/* Logo + testnet, centered horizontally */}
         <div className="flex flex-col items-center gap-2">
           <Link href="/" aria-label="Vouch — home" className="flex items-center justify-center">
-            {collapsed ? (
-              <img src="/favicon.svg" alt="Vouch" className="size-7" />
-            ) : (
-              WORDMARK
-            )}
+            {collapsed ? <img src="/favicon.svg" alt="Vouch" className="size-7" /> : <Wordmark />}
           </Link>
           {collapsed ? null : <TestnetBadge />}
         </div>
@@ -102,7 +89,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="lg:hidden">
         <div className="flex items-center justify-between gap-3 border-b border-border bg-card/40 px-4 py-3">
           <Link href="/" aria-label="Vouch — home" className="flex items-center">
-            {WORDMARK}
+            <Wordmark />
           </Link>
           <WalletConnectButton />
         </div>

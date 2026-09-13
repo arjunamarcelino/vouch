@@ -5,7 +5,7 @@ import { JOB_STATES, type JobState, type MyJob } from "@vouch/shared/schemas";
  * status mirror (display-only — the authoritative lifecycle lives on chain and is shown on the job detail
  * page). Kept in one place so the Overview counts and the Jobs list never drift apart.
  */
-export const BUCKETS: { key: string; label: string; states: JobState[] }[] = [
+const BUCKETS: { key: string; label: string; states: JobState[] }[] = [
   { key: "active", label: "Active jobs", states: ["Funded", "AcceptedByProvider", "Submitted"] },
   { key: "coverage", label: "Under coverage", states: ["InitiallyApproved"] },
   { key: "claims", label: "Pending claims", states: ["ClaimPending"] },

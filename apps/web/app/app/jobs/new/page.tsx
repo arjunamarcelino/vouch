@@ -79,8 +79,11 @@ export default function CreateJobPage() {
     }
   }, [taskFee, serviceFee]);
 
-  const buildBody = useMemo(
-    () => () => {
+  // Builds the openJob body: generates a fresh salt, hashes the private criteria to a commitment, and
+  // persists the salt locally. Side-effecting, so it's a plain function called once from submit() — not
+  // memoized (review 114).
+  const buildBody = () => {
+    {
       const salt = randomSalt();
       const privateCriteriaCommitment = computeCommitment(privateCriteria, salt);
       // Persist the salt locally so the private criteria can be reproduced/revealed at claim time.
@@ -103,9 +106,8 @@ export default function CreateJobPage() {
         privateCriteriaCommitment,
         uiTitle,
       };
-    },
-    [provider, taskFee, guarantee, serviceFee, deadlineSec, coverage, publicCriteria, privateCriteria, uiTitle],
-  );
+    }
+  };
 
   async function previewQuote() {
     if (!me.data || !addrOk) return;

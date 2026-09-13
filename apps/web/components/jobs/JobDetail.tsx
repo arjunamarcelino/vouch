@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@vouch/ui/components/c
 import { Badge } from "@vouch/ui/components/badge";
 import { buttonVariants } from "@vouch/ui/components/button";
 import { cn } from "@vouch/ui/lib/utils";
+import { APP_CONTAINER } from "../../lib/layout";
 import { JOB_STATES, type JobState } from "@vouch/shared/schemas";
 import { useJob, useClaimStatus, useAuthMe } from "../../lib/api/hooks";
 import { jobActions, viewerFromAuth, type JobActionId } from "../../lib/roles";
@@ -75,12 +76,12 @@ export function JobDetail({ id }: { id: string }) {
   const claim = useClaimStatus(id, true);
 
   if (job.isLoading) {
-    return <div className="mx-auto max-w-[88rem] px-4 py-10 text-sm text-muted-foreground">Loading job…</div>;
+    return <div className={cn(APP_CONTAINER, "text-sm text-muted-foreground")}>Loading job…</div>;
   }
   if (job.isError) {
     const notFound = job.error instanceof ApiClientError && job.error.isNotFound;
     return (
-      <div className="mx-auto max-w-[88rem] px-4 py-10">
+      <div className={APP_CONTAINER}>
         <Link href="/app/jobs" className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="size-4" aria-hidden /> Back to jobs
         </Link>
@@ -148,7 +149,7 @@ export function JobDetail({ id }: { id: string }) {
   const commitmentValid = isHash32(commitment);
 
   return (
-    <div className="mx-auto max-w-[88rem] px-4 py-10 sm:px-6">
+    <div className={APP_CONTAINER}>
       <Link href="/app/jobs" className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="size-4" aria-hidden /> Back to jobs
       </Link>
