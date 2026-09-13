@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { CSSProperties } from "react";
 import {
   ShieldCheck,
@@ -58,7 +59,7 @@ const ANATOMY = [
   { title: "Verdict → Reputation", body: "The signed outcome settles the payout and writes to the provider's history." },
 ];
 
-// Three pillars, each showing one icon from the /icon-asset.png sprite (shield / document / cube),
+// Three pillars, each showing one icon from the /icon-asset.webp sprite (shield / document / cube),
 // selected via background-position (0% / 50% / 100%).
 const PILLARS = [
   {
@@ -79,10 +80,10 @@ const PILLARS = [
 ];
 
 const STATS = [
-  { img: "/icon-stats-1.png", value: 100, suffix: "", label: "USDC guarantee, provider-staked" },
-  { img: "/icon-stats-2.png", value: 24, suffix: "h", label: "Confidential coverage window" },
-  { img: "/icon-stats-3.png", value: 3, suffix: "", label: "Verifiable on-chain rails" },
-  { img: "/icon-stats-4.png", value: 100, suffix: "%", label: "Settled & proven on-chain" },
+  { img: "/icon-stats-1.webp", value: 100, suffix: "", label: "USDC guarantee, provider-staked" },
+  { img: "/icon-stats-2.webp", value: 24, suffix: "h", label: "Confidential coverage window" },
+  { img: "/icon-stats-3.webp", value: 3, suffix: "", label: "Verifiable on-chain rails" },
+  { img: "/icon-stats-4.webp", value: 100, suffix: "%", label: "Settled & proven on-chain" },
 ];
 
 export default function Home() {
@@ -156,13 +157,14 @@ export default function Home() {
           <div className="rise lg:col-span-5" style={delay(360)}>
             <div className="relative">
               <div aria-hidden className="absolute -inset-6 -z-10 rounded-[3rem] bg-primary/15 blur-3xl" />
-              <div className="animate-float overflow-hidden rounded-3xl">
-                <img
-                  src="/bg-hero.png"
+              <div className="animate-float relative aspect-[3/2] overflow-hidden rounded-3xl">
+                <Image
+                  src="/bg-hero.webp"
                   alt="Vouch — a glass mark encircling proof, document, and shield tiles"
-                  width={1536}
-                  height={1024}
-                  className="h-full w-full object-cover"
+                  fill
+                  sizes="(min-width: 1024px) 40vw, 100vw"
+                  priority
+                  className="object-cover"
                 />
               </div>
             </div>
@@ -178,12 +180,12 @@ export default function Home() {
               key={s.label}
               className="group flex items-center gap-4 bg-card px-5 py-4 transition-colors duration-300 hover:bg-muted/40 sm:px-6"
             >
-              <img
+              <Image
                 src={s.img}
                 alt=""
                 aria-hidden
-                width={1254}
-                height={1254}
+                width={96}
+                height={96}
                 className="size-16 shrink-0 object-contain transition-transform duration-500 ease-out group-hover:-translate-y-1.5 group-hover:rotate-3 group-hover:scale-110 motion-reduce:transition-none sm:size-20 lg:size-24"
               />
               <div className="min-w-0">
@@ -228,7 +230,7 @@ export default function Home() {
                     aria-label={p.title}
                     className="mx-auto block aspect-[591/887] h-28 bg-no-repeat transition-transform duration-500 group-hover:-translate-y-1.5 group-hover:scale-105 motion-reduce:transition-none"
                     style={{
-                      backgroundImage: "url(/icon-asset.png)",
+                      backgroundImage: "url(/icon-asset.webp)",
                       backgroundSize: "300% 100%",
                       backgroundPosition: `${p.pos} center`,
                     }}
