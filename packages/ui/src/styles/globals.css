@@ -41,10 +41,15 @@
   --color-input: oklch(0.62 0.015 286); /* 3.65:1 vs #fff — interactive form borders (1.4.11) */
 
   /* Single blue accent — authoritative / "act here" only */
-  --color-primary: oklch(0.53 0.23 292); /* violet #7C3AED — matches the gradient button's mid stop */
+  --color-primary: oklch(0.53 0.23 292); /* violet #7C3AED — single source for the accent */
   --color-primary-foreground: oklch(0.985 0.001 286);
   --color-accent-text: oklch(0.53 0.23 292); /* inline link text (light) */
   --color-ring: oklch(0.53 0.23 292); /* focus ring = primary */
+  /* Primary gradient — derived from the primary token so button + accent stay one source. Both stops
+     are dark enough that primary-foreground text clears WCAG AA across the whole button (the old
+     third stop #A78BFA failed under white text). */
+  --color-primary-from: oklch(0.51 0.22 274); /* indigo #4F46E5 — gradient start */
+  --gradient-primary: linear-gradient(135deg, var(--color-primary-from) 0%, var(--color-primary) 100%);
 
   /* Status — solid fills paired with near-white text (AA white-on-fill in both themes).
      The *-text tokens are the text-on-background variants for inline labels. */
