@@ -7,3 +7,111 @@
  * its real on-disk path (plan §17.7-11). Path is relative to this CSS file.
  */
 @source "../../../packages/ui/src/**/*.{ts,tsx}";
+
+/*
+ * Typography tokens — map the next/font CSS variables (set on <html> in layout.tsx)
+ * onto Tailwind `font-*` utilities. `font-display` = editorial serif, `font-sans` =
+ * Geist body/UI, `font-mono` = Geist Mono for money + on-chain data. Fallback chains
+ * cover the first-paint window before the web fonts swap in.
+ */
+@theme {
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", "Menlo", monospace;
+  --font-display: var(--font-instrument), ui-serif, "Iowan Old Style", Georgia, serif;
+
+  /* Warm-paper substrate for the editorial home surface (asyah register). Subtle enough that the
+     zinc UI tokens still read as neutral, warm enough to kill the sterile pure-white slop look. */
+  --color-paper: oklch(0.988 0.004 85);
+}
+
+/*
+ * Editorial home motion + atmosphere. Kept CSS-only so the landing stays a fast server component:
+ * a single orchestrated page-load reveal (staggered via inline animation-delay) plus a few texture
+ * helpers. All reveals collapse to a no-op under prefers-reduced-motion.
+ */
+@layer utilities {
+  @keyframes vouch-rise {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes vouch-fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes vouch-progress {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(1);
+    }
+  }
+
+  @keyframes vouch-sheen {
+    0% {
+      transform: translateX(-120%);
+    }
+    60%,
+    100% {
+      transform: translateX(320%);
+    }
+  }
+
+  /* Entrance: elements start hidden and rise into place. Pair with `[--rise-delay]` via inline style. */
+  .rise {
+    opacity: 0;
+    animation: vouch-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation-delay: var(--rise-delay, 0ms);
+  }
+  .fade-in {
+    opacity: 0;
+    animation: vouch-fade 0.9s ease forwards;
+    animation-delay: var(--rise-delay, 0ms);
+  }
+
+  /* Fine dotted grid — the "settlement ledger" texture behind the hero. */
+  .bg-grid {
+    background-image: radial-gradient(currentColor 0.75px, transparent 0.75px);
+    background-size: 22px 22px;
+  }
+
+  /* Slow-drifting specular sheen for the hero instrument card. */
+  .sheen::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      100deg,
+      transparent 30%,
+      color-mix(in oklch, var(--color-primary) 22%, transparent) 50%,
+      transparent 70%
+    );
+    transform: translateX(-120%);
+    animation: vouch-sheen 6s ease-in-out 1.2s infinite;
+    pointer-events: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rise,
+    .fade-in {
+      opacity: 1;
+      animation: none;
+    }
+    .sheen::after {
+      animation: none;
+      opacity: 0;
+    }
+  }
+}
