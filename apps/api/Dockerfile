@@ -4,10 +4,14 @@
 #
 # Repo-specific notes (see docs/deployment-hosting.md):
 #  - The API runs TypeScript at runtime via @swc-node/register (NOT tsx/esbuild — SWC emits the
-#    `design:paramtypes` metadata NestJS DI needs). `build` is `tsc --noEmit`, so there is no dist/;
-#    @swc-node/register + @swc/core are runtime `dependencies`, so `pnpm deploy --prod` keeps them.
-#  - `pnpm deploy` requires `--legacy` here: the repo uses pnpm catalogs, incompatible with the
-#    inject-workspace-packages that deploy otherwise needs.
+#    `design:paramtypes` metadata NestJS DI needs). `build` is `tsc --noEmit`, so there is no dist/.
+#  - We DO NOT use `pnpm deploy` here. `pnpm deploy` COPIES the @vouch/* workspace packages INTO
+#    node_modules, but swc-node hard-skips anything under /node_modules/ (it will not transpile it),
+#    so Node's native type-stripping then throws ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING on
+#    @vouch/db/src/index.ts (which is raw TS — every @vouch/* package exports ./src/*.ts). Instead we
+#    ship the FULL installed workspace at the SAME path (/repo) so node_modules/@vouch/* stay SYMLINKS
+#    to /repo/packages/* — a realpath OUTSIDE node_modules — which swc-node DOES transpile, exactly as
+#    in dev. The symlinks are relative, so the runtime path must be identical to the build path (/repo).
 #  - Node 25+ unbundles corepack, so pnpm is pinned explicitly via corepack prepare.
 #  - The `build` stage doubles as the one-shot DB migrate runner (it has prisma + psql + the full
 #    workspace); the compose `migrate` service targets it. See docker-compose.yml.
@@ -25,19 +29,18 @@ COPY . .
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 # Generate the Prisma client into packages/db/src/generated (needed by the API at runtime).
 RUN pnpm --filter @vouch/db codegen
-# Prune to a self-contained, prod-only deployment of the API (workspace deps injected). --legacy is
-# REQUIRED because catalogs are incompatible with inject-workspace-packages (pnpm#8950).
-RUN pnpm deploy --legacy --filter=@vouch/api --prod /out
 
-FROM node:22-slim AS runtime
+FROM base AS runtime
 ENV NODE_ENV=production
 RUN apt-get update && apt-get install -y --no-install-recommends tini \
     && rm -rf /var/lib/apt/lists/*
-WORKDIR /app
-COPY --from=build --chown=node:node /out /app
-# The runtime loader reads a SELF-CONTAINED tsconfig. tsconfig.json extends @vouch/config/tsconfig-node,
-# a devDependency pruned by `pnpm deploy --prod`, so its `extends` is unresolvable at runtime — swc-node
-# would throw "Tsconfig not found @vouch/config/tsconfig-node". tsconfig.docker.json has no extends.
+# Ship the full installed workspace at the SAME path so @vouch/* stay symlinks (see header note).
+COPY --from=build --chown=node:node /repo /repo
+# Run from the api package; its relative node_modules/@vouch/* symlinks resolve to /repo/packages/*.
+WORKDIR /repo/apps/api
+# Point the runtime loader at a self-contained tsconfig (no `extends`) so it never has to resolve
+# @vouch/config/tsconfig-node. (@vouch/config is present in the full workspace, but keeping the runtime
+# config self-contained avoids any dependency on dev-only config resolution at boot.)
 ENV SWC_NODE_PROJECT=tsconfig.docker.json
 USER node
 EXPOSE 3001
