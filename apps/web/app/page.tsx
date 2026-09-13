@@ -58,6 +58,26 @@ const ANATOMY = [
   { title: "Verdict → Reputation", body: "The signed outcome settles the payout and writes to the provider's history." },
 ];
 
+// Three pillars, each showing one icon from the /icon-asset.png sprite (shield / document / cube),
+// selected via background-position (0% / 50% / 100%).
+const PILLARS = [
+  {
+    pos: "0%",
+    title: "Backed by Collateral",
+    body: "The provider stakes a capped guarantee up front — real money behind every delivery, not a promise.",
+  },
+  {
+    pos: "50%",
+    title: "Proven Confidentially",
+    body: "A private regression test decides the outcome inside a TEE; the criteria never leak.",
+  },
+  {
+    pos: "100%",
+    title: "Settled On-Chain",
+    body: "Escrow, collateral, and payout all settle on-chain — auditable end to end.",
+  },
+];
+
 const STATS = [
   { img: "/icon-stats-1.png", value: 100, suffix: "", label: "USDC guarantee, provider-staked" },
   { img: "/icon-stats-2.png", value: 24, suffix: "h", label: "Confidential coverage window" },
@@ -89,7 +109,7 @@ export default function Home() {
             </div>
 
             <h1
-              className="rise mt-6 max-w-2xl font-display text-5xl font-bold leading-[1.02] tracking-tight text-foreground sm:text-6xl lg:text-7xl"
+              className="rise mt-6 max-w-2xl font-display text-4xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-5xl md:text-6xl lg:text-7xl"
               style={delay(80)}
             >
               Protect the Work{" "}
@@ -164,7 +184,7 @@ export default function Home() {
                 aria-hidden
                 width={1254}
                 height={1254}
-                className="size-20 shrink-0 object-contain transition-transform duration-500 ease-out group-hover:-translate-y-1.5 group-hover:rotate-3 group-hover:scale-110 motion-reduce:transition-none sm:size-24"
+                className="size-16 shrink-0 object-contain transition-transform duration-500 ease-out group-hover:-translate-y-1.5 group-hover:rotate-3 group-hover:scale-110 motion-reduce:transition-none sm:size-20 lg:size-24"
               />
               <div className="min-w-0">
                 <div className="font-mono text-3xl font-medium tracking-tight text-foreground">
@@ -194,6 +214,33 @@ export default function Home() {
       </section>
 
       <div className="mx-auto max-w-[88rem] px-4 sm:px-6">
+        {/* ===================== THREE PILLARS ===================== */}
+        <section className="py-20 sm:py-24" aria-labelledby="pillars-heading">
+          <SectionHeading id="pillars-heading">
+            Backed. Proven. <span className="italic text-primary">Settled.</span>
+          </SectionHeading>
+          <div className="mt-14 grid gap-5 sm:grid-cols-3">
+            {PILLARS.map((p, i) => (
+              <Reveal key={p.title} delay={i * 110}>
+                <div className="group h-full rounded-2xl border border-border bg-card p-8 text-center shadow-sm transition-all hover:-translate-y-1 hover:border-primary/30 hover:shadow-md">
+                  <span
+                    role="img"
+                    aria-label={p.title}
+                    className="mx-auto block aspect-[591/887] h-28 bg-no-repeat transition-transform duration-500 group-hover:-translate-y-1.5 group-hover:scale-105 motion-reduce:transition-none"
+                    style={{
+                      backgroundImage: "url(/icon-asset.png)",
+                      backgroundSize: "300% 100%",
+                      backgroundPosition: `${p.pos} center`,
+                    }}
+                  />
+                  <h3 className="mt-6 font-display text-2xl tracking-tight text-foreground">{p.title}</h3>
+                  <p className="mx-auto mt-2.5 max-w-xs text-sm leading-relaxed text-muted-foreground">{p.body}</p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </section>
+
         {/* ===================== ANATOMY (TICKET SHOWCASE) ===================== */}
         <section className="py-20 sm:py-24" aria-labelledby="anatomy-heading">
           <div className="grid gap-12 lg:grid-cols-2 lg:items-center lg:gap-16">
@@ -201,7 +248,7 @@ export default function Home() {
               <span className="font-mono text-xs uppercase tracking-[0.16em] text-subtle-foreground">
                 The instrument
               </span>
-              <h2 id="anatomy-heading" className="mt-4 font-display text-4xl leading-tight tracking-tight sm:text-5xl">
+              <h2 id="anatomy-heading" className="mt-4 font-display text-3xl leading-tight tracking-tight sm:text-4xl md:text-5xl">
                 Anatomy of a Guarantee
               </h2>
               <p className="mt-5 max-w-md text-lg leading-relaxed text-muted-foreground">
@@ -323,28 +370,29 @@ export default function Home() {
         {/* ===================== THREE RAILS ===================== */}
         <section className="py-20 sm:py-24" aria-labelledby="arch-heading">
           <SectionHeading id="arch-heading">What Each Rail Does?</SectionHeading>
-          <p className="mx-auto mt-3 max-w-md text-center text-sm text-muted-foreground">
+          {/* Hover reveal is a desktop nicety (touch has no hover), so the hint + the reveal only apply at lg. */}
+          <p className="mx-auto mt-3 hidden max-w-md text-center text-sm text-muted-foreground lg:block">
             Hover a rail to see what it does.
           </p>
-          <div className="mt-12 grid gap-5 sm:grid-cols-3">
+          <div className="mt-8 grid gap-5 sm:grid-cols-3 lg:mt-12">
             {INTEGRATIONS.map((it) => (
               <div
                 key={it.name}
-                className="group relative min-h-[13rem] overflow-hidden rounded-2xl border border-border bg-card p-7 shadow-sm transition-all hover:-translate-y-1 hover:border-primary/30 hover:shadow-md"
+                className="group relative overflow-hidden rounded-2xl border border-border bg-card p-7 shadow-sm transition-all hover:-translate-y-1 hover:border-primary/30 hover:shadow-md lg:min-h-[13rem]"
               >
                 <div className="absolute -right-16 -top-16 size-32 rounded-full bg-primary/[0.06] opacity-0 blur-2xl transition-opacity group-hover:opacity-100" />
 
-                {/* Default: brand logo(s), centered. Fades out on hover. */}
-                <div className="absolute inset-0 flex items-center justify-center gap-5 p-6 transition-all duration-300 group-hover:-translate-y-1 group-hover:opacity-0">
+                {/* Brand logo(s): a static row on mobile/tablet; on lg, a centered overlay that fades on hover. */}
+                <div className="flex items-center gap-5 lg:absolute lg:inset-0 lg:justify-center lg:p-6 lg:transition-all lg:duration-300 lg:group-hover:-translate-y-1 lg:group-hover:opacity-0">
                   {it.logos.map((src) => (
-                    <img key={src} src={src} alt={it.name} className="h-8 w-auto max-w-[45%] object-contain" />
+                    <img key={src} src={src} alt={it.name} className="h-7 w-auto max-w-[45%] object-contain lg:h-8" />
                   ))}
                 </div>
 
-                {/* On hover: the name + explanation fade in. */}
-                <div className="relative flex h-full min-h-[inherit] flex-col justify-center opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-                  <h3 className="font-display text-2xl tracking-tight text-foreground">{it.name}</h3>
-                  <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">{it.body}</p>
+                {/* Explanation: always visible on mobile/tablet; fades in on hover at lg. */}
+                <div className="mt-5 lg:relative lg:mt-0 lg:flex lg:h-full lg:min-h-[inherit] lg:flex-col lg:justify-center lg:opacity-0 lg:transition-opacity lg:duration-300 lg:group-hover:opacity-100">
+                  <h3 className="font-display text-xl tracking-tight text-foreground lg:text-2xl">{it.name}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground lg:mt-2.5">{it.body}</p>
                 </div>
               </div>
             ))}
@@ -360,7 +408,7 @@ export default function Home() {
           <div className="absolute inset-0 text-foreground/[0.1] bg-grid [mask-image:radial-gradient(90%_100%_at_50%_0%,#000,transparent_70%)]" />
         </div>
         <div className="mx-auto max-w-5xl px-4 py-24 text-center sm:px-6 sm:py-28">
-          <h2 className="mx-auto max-w-4xl font-display text-4xl leading-tight tracking-tight sm:text-6xl">
+          <h2 className="mx-auto max-w-4xl font-display text-3xl leading-tight tracking-tight sm:text-4xl md:text-5xl lg:text-6xl">
             Ship Agent Work Clients Trust —{" "}
             <span className="italic text-primary">After the Invoice Clears.</span>
           </h2>
@@ -390,7 +438,7 @@ function SectionHeading({ id, children }: { id?: string; children: React.ReactNo
   return (
     <h2
       id={id}
-      className="mx-auto max-w-3xl scroll-mt-32 text-center font-display text-4xl leading-tight tracking-tight sm:text-5xl"
+      className="mx-auto max-w-3xl scroll-mt-32 text-center font-display text-3xl leading-tight tracking-tight sm:text-4xl md:text-5xl"
     >
       {children}
     </h2>
