@@ -2,43 +2,56 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ArrowRight } from "lucide-react";
+import { buttonVariants } from "@vouch/ui/components/button";
 import { cn } from "@vouch/ui/lib/utils";
 import { WalletConnectButton } from "../wallet/ConnectButton";
 
 /**
- * App shell header: wordmark, primary nav, and the wallet connect button. Blue accent is reserved for
- * the active nav item (accent discipline). Sticky, zinc substrate, one hairline border.
+ * App shell header: a floating pill (asyah-style). Context-aware:
+ *   - Landing ("/"): centered nav = in-page section anchors; right = Demo + Open App. No wallet here —
+ *     the marketing page stays a public, no-connect surface.
+ *   - App pages: centered nav = product routes (Dashboard / Create job); right = Demo + Connect Wallet.
+ *     Create-job and the wallet only surface once you're inside the app.
+ * The sticky <header> supplies only the floating inset; the inner pill is the blurred, bordered surface.
+ * `isolate` keys the wordmark blend against the pill's own backdrop, not scrolled page content.
  */
-const NAV = [
+const HOME_NAV = [
+  { href: "#compare-heading", label: "Compare" },
+  { href: "#how-heading", label: "How it works" },
+  { href: "#example-heading", label: "Example" },
+  { href: "#arch-heading", label: "Rails" },
+];
+const APP_NAV = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/jobs/new", label: "Create job" },
-  { href: "/demo", label: "Judge demo" },
 ];
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const isHome = pathname === "/";
+  const nav = isHome ? HOME_NAV : APP_NAV;
+
   return (
-    <header className="sticky top-0 z-30 isolate border-b border-border bg-surface/90 backdrop-blur supports-[backdrop-filter]:bg-surface/75">
-      <div className="mx-auto flex h-16 max-w-[88rem] items-center gap-8 px-4 sm:px-6">
+    <header className="sticky top-0 z-30 px-4 pt-3 sm:px-6 sm:pt-4">
+      <div className="relative isolate mx-auto flex h-[4.5rem] max-w-[88rem] items-center justify-between gap-4 rounded-2xl border border-border bg-surface/80 px-4 shadow-lg shadow-black/[0.04] backdrop-blur-md supports-[backdrop-filter]:bg-surface/65 sm:px-6">
         <Link href="/" aria-label="Vouch — home" className="flex items-center">
-          {/* Vouch wordmark: black ink on an opaque white PNG. The blend modes key the background
-              out against either theme so no white box shows on the zinc-50 (off-white) surface:
-              light → multiply drops the white bg, keeps black ink; dark → invert (black↔white)
-              then screen drops the now-black bg, keeps the white ink. `isolate` on the header is
-              required: without it the blend composites against page content scrolling under this
-              translucent backdrop-blur bar and the keying flickers. Intrinsic w/h reserve the box
-              (prevents first-paint reflow); h-6 w-auto scales it. */}
+          {/* Vouch wordmark: black ink on an opaque white PNG. Blend modes key the white bg out against
+              either theme (light → multiply keeps black ink; dark → invert+screen keeps white ink). The
+              pill's `isolate` composites the blend against its own backdrop, not scrolled content.
+              Intrinsic w/h reserve the box (no first-paint reflow); h-7 w-auto scales it. */}
           <img
             src="/logos/vouch/vouch.png"
             alt="Vouch"
             width={828}
             height={285}
-            className="h-6 w-auto mix-blend-multiply dark:mix-blend-screen dark:invert"
+            className="h-7 w-auto mix-blend-multiply dark:mix-blend-screen dark:invert"
           />
         </Link>
-        <nav className="hidden items-center gap-7 sm:flex" aria-label="Primary">
-          {NAV.map((item) => {
-            const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+
+        <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-8 sm:flex" aria-label="Primary">
+          {nav.map((item) => {
+            const active = !isHome && (pathname === item.href || pathname.startsWith(`${item.href}/`));
             return (
               <Link
                 key={item.href}
@@ -50,7 +63,7 @@ export function SiteHeader() {
                 )}
               >
                 {item.label}
-                {/* Editorial active/hover underline that wipes in from the left. */}
+                {/* Active/hover underline that wipes in from the left. */}
                 <span
                   aria-hidden
                   className={cn(
@@ -62,8 +75,26 @@ export function SiteHeader() {
             );
           })}
         </nav>
-        <div className="ml-auto">
-          <WalletConnectButton />
+
+        <div className="flex items-center gap-2">
+          {isHome ? (
+            <>
+              <Link href="/demo" className={cn(buttonVariants({ variant: "ghost" }), "hidden sm:inline-flex")}>
+                Demo
+              </Link>
+              <Link href="/dashboard" className={cn(buttonVariants(), "group gap-1.5")}>
+                Open App
+                <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link href="/demo" className={cn(buttonVariants({ variant: "ghost" }), "hidden sm:inline-flex")}>
+                Demo
+              </Link>
+              <WalletConnectButton />
+            </>
+          )}
         </div>
       </div>
     </header>

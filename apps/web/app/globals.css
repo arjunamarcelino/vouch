@@ -36,6 +36,16 @@
   }
 }
 
+/* In-page section links (floating nav): smooth-scroll, and land the target clear of the pill. */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+:target {
+  scroll-margin-top: 7rem;
+}
+
 /*
  * Editorial home motion + atmosphere. Kept CSS-only so the landing stays a fast server component:
  * a single orchestrated page-load reveal (staggered via inline animation-delay) plus a few texture

@@ -78,7 +78,7 @@ export default function Home() {
           <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
         </div>
 
-        <div className="mx-auto grid max-w-[88rem] gap-12 px-4 py-20 sm:px-6 sm:py-28 lg:grid-cols-12 lg:items-center lg:gap-8">
+        <div className="mx-auto grid max-w-[88rem] gap-12 px-4 pb-20 pt-14 sm:px-6 sm:pb-28 sm:pt-20 lg:grid-cols-12 lg:items-center lg:gap-8">
           {/* Left — the pitch */}
           <div className="lg:col-span-7">
             <div className="rise" style={delay(0)}>
