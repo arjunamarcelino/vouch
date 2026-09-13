@@ -101,11 +101,14 @@ export function JobDetail({ id }: { id: string }) {
   const currentOrdinal = JOB_STATES.indexOf(j.status);
   const steps = TIMELINE.map((s) => {
     const ord = JOB_STATES.indexOf(s);
+    // `ClaimPaid` is the resolution step: alias both `Completed` (paid & closed) and `ClaimPending`
+    // (claim open, being resolved) onto it so an active pending claim shows a current marker (review 111).
+    const isResolutionStep = s === "ClaimPaid";
     return {
       s,
-      label: s === "ClaimPaid" ? "Completed / Claim paid" : s,
+      label: isResolutionStep ? "Completed / Claim paid" : s,
       done: currentOrdinal >= ord && currentOrdinal !== -1,
-      current: j.status === s || (s === "ClaimPaid" && j.status === "Completed"),
+      current: j.status === s || (isResolutionStep && (j.status === "Completed" || j.status === "ClaimPending")),
     };
   });
   const run = (id_: JobActionId) => {
