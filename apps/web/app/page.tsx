@@ -10,11 +10,15 @@ import {
   Check,
   X,
   EyeOff,
+  Clock,
+  Layers,
+  Globe,
 } from "lucide-react";
 import { buttonVariants } from "@vouch/ui/components/button";
 import { cn } from "@vouch/ui/lib/utils";
 import { LogoMarquee } from "../components/common/LogoMarquee";
 import { ResolveTimeline } from "../components/home/ResolveTimeline";
+import { Reveal, CountUp } from "../components/home/motion";
 
 /**
  * Landing (WS-1) — the 20-second test, editorial/light "settlement-desk" register (de-generic pass,
@@ -52,6 +56,13 @@ const INTEGRATIONS = [
     name: "Chainlink CRE",
     body: "Runs the private test inside a TEE and signs the verdict — the only thing that can release a payout.",
   },
+];
+
+const STATS = [
+  { icon: Coins, value: 100, suffix: "", label: "USDC guarantee, provider-staked" },
+  { icon: Clock, value: 24, suffix: "h", label: "Confidential coverage window" },
+  { icon: Layers, value: 3, suffix: "", label: "Verifiable on-chain rails" },
+  { icon: Globe, value: 100, suffix: "%", label: "Settled & proven on-chain" },
 ];
 
 const NOT = ["Not a marketplace", "Not insurance", "Not plain escrow"];
@@ -147,6 +158,21 @@ export default function Home() {
             <GuaranteeTicket />
           </div>
         </div>
+      </section>
+
+      {/* ===================== STATS BAND ===================== */}
+      <section className="mx-auto max-w-[88rem] px-4 pb-16 sm:px-6 sm:pb-24" aria-label="At a glance">
+        <Reveal className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border bg-border shadow-sm lg:grid-cols-4">
+          {STATS.map((s) => (
+            <div key={s.label} className="bg-card px-6 py-7">
+              <s.icon className="size-5 text-primary" aria-hidden />
+              <div className="mt-4 font-mono text-4xl font-medium tracking-tight text-foreground">
+                <CountUp to={s.value} suffix={s.suffix} />
+              </div>
+              <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{s.label}</p>
+            </div>
+          ))}
+        </Reveal>
       </section>
 
       {/* ===================== BUILT-ON TRUST STRIP ===================== */}
