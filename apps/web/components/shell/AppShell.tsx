@@ -93,11 +93,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           {navLinks(collapsed)}
         </nav>
 
-        {collapsed ? null : (
-          <div className="mt-auto px-1">
-            <WalletConnectButton />
-          </div>
-        )}
+        <div className={cn("mt-auto", collapsed ? "flex justify-center" : "px-1")}>
+          <WalletConnectButton compact={collapsed} />
+        </div>
       </aside>
 
       {/* Mobile top bar + nav row */}
