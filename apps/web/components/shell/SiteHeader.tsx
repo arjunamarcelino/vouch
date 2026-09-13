@@ -14,6 +14,8 @@ import { HOME_NAV } from "../../lib/home-sections";
  * App shell header: a floating pill (asyah-style). Context-aware:
  *   - Landing ("/"): centered nav = in-page section anchors; right = Demo + Open App. No wallet here —
  *     the marketing page stays a public, no-connect surface.
+ *   - Demo ("/demo"): same marketing chrome (right = Demo + Open App) but no centered nav — the public
+ *     demo is a no-connect surface with no in-page sections.
  *   - App pages: centered nav = product routes (Dashboard / Create job); right = Demo + Connect Wallet.
  *     Create-job and the wallet only surface once you're inside the app.
  * The sticky <header> supplies only the floating inset; the inner pill is the blurred, bordered surface.
@@ -27,7 +29,11 @@ const APP_NAV = [
 export function SiteHeader() {
   const pathname = usePathname();
   const isHome = pathname === "/";
-  const nav = isHome ? HOME_NAV : APP_NAV;
+  const isDemo = pathname === "/demo";
+  // Marketing chrome (no product nav; right side = Demo + Open App) on the landing AND the public demo —
+  // both are no-connect surfaces. The demo has no in-page sections, so it carries no centered nav at all.
+  const marketingChrome = isHome || isDemo;
+  const nav = isHome ? HOME_NAV : isDemo ? [] : APP_NAV;
 
   // Scroll-spy: on the landing, highlight whichever section has scrolled past the nav line. The active
   // item is the last section whose top sits above the offset (nav height + a little), so it flips exactly
@@ -86,6 +92,7 @@ export function SiteHeader() {
           <TestnetBadge />
         </div>
 
+        {nav.length > 0 ? (
         <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-8 sm:flex" aria-label="Primary">
           {nav.map((item) => {
             const active = isHome
@@ -114,9 +121,10 @@ export function SiteHeader() {
             );
           })}
         </nav>
+        ) : null}
 
         <div className="flex items-center gap-2">
-          {isHome ? (
+          {marketingChrome ? (
             <>
               <Link href="/demo" className={cn(buttonVariants({ variant: "ghost" }), "hidden sm:inline-flex")}>
                 Demo
