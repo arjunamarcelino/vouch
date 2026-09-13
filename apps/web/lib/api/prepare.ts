@@ -56,5 +56,7 @@ export const prepareClaim = (jobId: string, key: string, commitment: string): Pr
 export const prepareResolveTimeout = (jobId: string, key: string): Promise<TransactionRequest> =>
   apiPost(`/claims/${jobId}/resolve-timeout/prepare`, R, "resolve-timeout prepare", undefined, key);
 
+// `preparedId` doubles as the Idempotency-Key: one prepared intent → one track. Stable across the
+// resume path (engine re-tracks the same preparedId after a refresh), so a repeat is a memoized replay.
 export const trackTx = (txHash: string, preparedId: string): Promise<TrackResult> =>
-  apiPost("/transactions/track", trackResultSchema, "track tx", { txHash, preparedId });
+  apiPost("/transactions/track", trackResultSchema, "track tx", { txHash, preparedId }, preparedId);
