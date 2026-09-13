@@ -2,8 +2,9 @@ import { TechStrip } from "../common/TechStrip";
 import { TestnetBadge } from "../common/TestnetBadge";
 
 /**
- * App shell footer: the "Built on" stack strip + a light legal line. Renders on every page via the
- * root layout. Third-party logos remain unmodified and link to their owners.
+ * App shell footer: the "Built on" stack strip + a light legal line. Rendered only by the `(marketing)`
+ * route-group layout (review 107), so it no longer self-gates on `pathname` — the gated app and login
+ * screen simply don't mount it.
  */
 export function SiteFooter() {
   return (

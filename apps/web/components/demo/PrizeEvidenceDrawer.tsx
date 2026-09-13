@@ -1,6 +1,6 @@
 "use client";
 
-import { Network, Coins, Cpu, Bot, ExternalLink } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import {
   Sheet,
   SheetTrigger,
@@ -22,32 +22,35 @@ import { ModePill } from "../common/indicators";
  * (configured + reachable via /health/integrations) or an explicit "Not configured — local simulation".
  * It renders REAL links only (the provenance-gated explorer helper); it never fabricates a tx hash or a
  * live endpoint. Chainlink CRE has no live API probe — its evidence is the sanitized `cre workflow
- * simulate` output committed to the repo, so that row is evidence-based, not a live/sim toggle.
+ * simulate` output committed to the repo, so that row is evidence-based, not a live/sim toggle. Styling
+ * mirrors the redesigned demo page: no per-row icons, a mono track eyebrow, and a font-display title.
  */
 
 function EvidenceRow({
-  icon: Icon,
+  eyebrow,
   title,
   live,
   liveLabel,
   children,
 }: {
-  icon: typeof Network;
+  eyebrow: string;
   title: string;
   live: boolean;
   liveLabel?: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-lg border border-border p-4">
-      <div className="flex items-center gap-2">
-        <Icon className="size-4 text-primary" aria-hidden />
-        <h3 className="text-sm font-semibold">{title}</h3>
-        <span className="ml-auto">
-          <ModePill live={live} liveLabel={liveLabel} simLabel={liveLabel ?? "Not configured · local simulation"} />
-        </span>
+    <section className="rounded-xl border border-border bg-card/60 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <span className="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-subtle-foreground">
+            {eyebrow}
+          </span>
+          <h3 className="font-display text-sm tracking-tight text-foreground sm:text-base">{title}</h3>
+        </div>
+        <ModePill live={live} liveLabel={liveLabel} simLabel={liveLabel ?? "Not configured · local simulation"} />
       </div>
-      <div className="mt-2 space-y-1 text-sm text-muted-foreground">{children}</div>
+      <div className="mt-2.5 space-y-1 text-sm leading-relaxed text-muted-foreground">{children}</div>
     </section>
   );
 }
@@ -83,14 +86,15 @@ export function PrizeEvidenceDrawer() {
         <SheetHeader>
           <SheetTitle>Prize evidence</SheetTitle>
           <SheetDescription id="evidence-desc">
-            Per-track provenance. Live rows reflect a reachable integration via the API readiness probe;
-            otherwise the UI runs a clearly-labeled local simulation and shows no fabricated links.
+            Provenance for each sponsor rail. A row reads LIVE only when its integration is reachable
+            through the API readiness probe; otherwise the demo runs a clearly-labeled local simulation
+            and shows no fabricated links or transaction hashes.
           </SheetDescription>
         </SheetHeader>
 
         <div className="space-y-3">
-          <EvidenceRow icon={Network} title="The Graph — reputation" live={mode.graph}>
-            <p>Provider reputation indexed from on-chain events; the load-bearing input to the risk quote.</p>
+          <EvidenceRow eyebrow="The Graph" title="Indexed reputation" live={mode.graph}>
+            <p>Provider reputation indexed from on-chain events — the load-bearing input to the risk quote.</p>
             {mode.graph && lastBlock ? (
               <p>
                 Last indexed block: <span className="font-medium tabular-nums text-foreground">{String(lastBlock)}</span>
@@ -101,7 +105,7 @@ export function PrizeEvidenceDrawer() {
             )}
           </EvidenceRow>
 
-          <EvidenceRow icon={Coins} title="Arc + USDC" live={mode.arc}>
+          <EvidenceRow eyebrow="Arc + Circle" title="USDC settlement" live={mode.arc}>
             <p>
               USDC escrow, collateral, and capped payouts settle on {arcTestnet.name} (chainId{" "}
               <span className="tabular-nums">{arcTestnet.id}</span>).
@@ -111,13 +115,13 @@ export function PrizeEvidenceDrawer() {
                 RPC head: <span className="font-medium tabular-nums text-foreground">{String(arcBlock)}</span>
               </p>
             ) : null}
-            <p className="flex flex-wrap gap-x-4 gap-y-1">
+            <p className="flex flex-wrap gap-x-4 gap-y-1 pt-0.5">
               {extLink(arcTestnet.blockExplorers.default.url, "Arcscan")}
               {usdcLink ? extLink(usdcLink, "USDC token") : null}
             </p>
           </EvidenceRow>
 
-          <EvidenceRow icon={Bot} title="Circle Agent Stack" live={mode.agent}>
+          <EvidenceRow eyebrow="Circle Agent Stack" title="Autonomous quoting" live={mode.agent}>
             <p>
               The autonomous agent quotes guarantee size from live reputation and posts a refundable
               bond from a policy-capped Circle wallet — it never settles the guarantee.
@@ -130,8 +134,8 @@ export function PrizeEvidenceDrawer() {
           </EvidenceRow>
 
           <EvidenceRow
-            icon={Cpu}
-            title="Chainlink CRE — confidential verdict"
+            eyebrow="Chainlink CRE"
+            title="Confidential verdict"
             live={false}
             liveLabel="Evidence: CLI simulation"
           >

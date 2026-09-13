@@ -1,12 +1,13 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Lock, Cpu, Wrench } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@vouch/ui/components/card";
 import { Badge } from "@vouch/ui/components/badge";
 import { buttonVariants } from "@vouch/ui/components/button";
 import { cn } from "@vouch/ui/lib/utils";
+import { APP_CONTAINER } from "../../lib/layout";
 import { JOB_STATES, type JobState } from "@vouch/shared/schemas";
 import { useJob, useClaimStatus, useAuthMe } from "../../lib/api/hooks";
 import { jobActions, viewerFromAuth, type JobActionId } from "../../lib/roles";
@@ -46,6 +47,15 @@ function AddressCell({ role, address }: { role: string; address: string }) {
   );
 }
 
+/** Lifecycle step dot color: current (primary), completed (success), or upcoming (muted). */
+function stepDotCls(st: { done: boolean; current: boolean }): string {
+  return st.current
+    ? "bg-primary text-primary-foreground"
+    : st.done
+      ? "bg-success text-success-foreground"
+      : "bg-muted text-muted-foreground";
+}
+
 export function JobDetail({ id }: { id: string }) {
   const me = useAuthMe();
   const engine = useTxEngine();
@@ -66,14 +76,14 @@ export function JobDetail({ id }: { id: string }) {
   const claim = useClaimStatus(id, true);
 
   if (job.isLoading) {
-    return <div className="mx-auto max-w-[88rem] px-4 py-10 text-sm text-muted-foreground">Loading job…</div>;
+    return <div className={cn(APP_CONTAINER, "text-sm text-muted-foreground")}>Loading job…</div>;
   }
   if (job.isError) {
     const notFound = job.error instanceof ApiClientError && job.error.isNotFound;
     return (
-      <div className="mx-auto max-w-[88rem] px-4 py-10">
-        <Link href="/dashboard" className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="size-4" aria-hidden /> Dashboard
+      <div className={APP_CONTAINER}>
+        <Link href="/app/jobs" className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="size-4" aria-hidden /> Back to jobs
         </Link>
         <Card>
           <CardContent className="p-6 text-sm">
@@ -88,7 +98,20 @@ export function JobDetail({ id }: { id: string }) {
   const viewer = viewerFromAuth(me.data);
   const nowSec = Math.floor(Date.now() / 1000);
   const actions = jobActions(j, viewer, nowSec);
+  const available = actions.filter((a) => a.available); // only render actions the viewer can actually take
   const currentOrdinal = JOB_STATES.indexOf(j.status);
+  const steps = TIMELINE.map((s) => {
+    const ord = JOB_STATES.indexOf(s);
+    // `ClaimPaid` is the resolution step: alias both `Completed` (paid & closed) and `ClaimPending`
+    // (claim open, being resolved) onto it so an active pending claim shows a current marker (review 111).
+    const isResolutionStep = s === "ClaimPaid";
+    return {
+      s,
+      label: isResolutionStep ? "Completed / Claim paid" : s,
+      done: currentOrdinal >= ord && currentOrdinal !== -1,
+      current: j.status === s || (isResolutionStep && (j.status === "Completed" || j.status === "ClaimPending")),
+    };
+  });
   const run = (id_: JobActionId) => {
     statusAtActionStart.current = j.status; // so the post-tx poll knows what "advanced" means
     const common = { jobId: id };
@@ -126,9 +149,9 @@ export function JobDetail({ id }: { id: string }) {
   const commitmentValid = isHash32(commitment);
 
   return (
-    <div className="mx-auto max-w-[88rem] px-4 py-10 sm:px-6">
-      <Link href="/dashboard" className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="size-4" aria-hidden /> Dashboard
+    <div className={APP_CONTAINER}>
+      <Link href="/app/jobs" className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+        <ArrowLeft className="size-4" aria-hidden /> Back to jobs
       </Link>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -136,7 +159,7 @@ export function JobDetail({ id }: { id: string }) {
         <StateBadge status={j.status} />
         <FreshnessBadge source="chain" />
         {me.data && (viewer.address === j.client.toLowerCase() || viewer.address === j.provider.toLowerCase()) ? (
-          <Badge variant="default">
+          <Badge variant="default" className="uppercase tracking-wide">
             You are the {viewer.address === j.client.toLowerCase() ? "client" : "provider"}
           </Badge>
         ) : null}
@@ -203,31 +226,45 @@ export function JobDetail({ id }: { id: string }) {
           {j.status === "Cancelled" || j.status === "Expired" ? (
             <p className="text-sm text-destructive">Terminal: {j.status}. Escrowed funds were refunded per the exit path.</p>
           ) : (
-            <ol className="space-y-2">
-              {TIMELINE.map((s) => {
-                const ord = JOB_STATES.indexOf(s);
-                const done = currentOrdinal >= ord && currentOrdinal !== -1;
-                const current = j.status === s || (s === "ClaimPaid" && j.status === "Completed");
-                return (
-                  <li key={s} className="flex items-center gap-3 text-sm">
-                    <span
-                      className={cn(
-                        "flex size-5 items-center justify-center rounded-full text-xs font-semibold",
-                        current ? "bg-primary text-primary-foreground" : done ? "bg-success text-success-foreground" : "bg-muted text-muted-foreground",
-                      )}
-                      aria-hidden
-                    >
-                      {done && !current ? "✓" : ""}
+            <>
+              {/* Mobile / tablet: vertical stepper */}
+              <ol className="space-y-2 lg:hidden">
+                {steps.map((st, i) => (
+                  <li key={st.s} className="flex items-center gap-3 text-sm">
+                    <span className={cn("flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold", stepDotCls(st))} aria-hidden>
+                      {st.done && !st.current ? "✓" : i + 1}
                     </span>
-                    <span className={cn(current ? "font-medium" : done ? "text-foreground" : "text-muted-foreground")}>
-                      {s === "ClaimPaid" ? "Completed / Claim paid" : s}
+                    <span className={cn(st.current ? "font-medium" : st.done ? "text-foreground" : "text-muted-foreground")}>
+                      {st.label}
                     </span>
                   </li>
-                );
-              })}
-            </ol>
+                ))}
+              </ol>
+
+              {/* Large desktop: horizontal stepper with connectors */}
+              <ol className="hidden items-start lg:flex">
+                {steps.map((st, i) => {
+                  const isLast = i === steps.length - 1;
+                  return (
+                    <Fragment key={st.s}>
+                      <li className="flex w-28 shrink-0 flex-col items-center gap-2 text-center">
+                        <span className={cn("flex size-6 items-center justify-center rounded-full text-xs font-semibold", stepDotCls(st))} aria-hidden>
+                          {st.done && !st.current ? "✓" : i + 1}
+                        </span>
+                        <span className={cn("text-xs leading-tight", st.current ? "font-medium text-foreground" : st.done ? "text-foreground" : "text-muted-foreground")}>
+                          {st.label}
+                        </span>
+                      </li>
+                      {!isLast ? (
+                        <span className={cn("mt-3 h-0.5 flex-1 rounded", steps[i + 1]?.done ? "bg-success" : "bg-border")} aria-hidden />
+                      ) : null}
+                    </Fragment>
+                  );
+                })}
+              </ol>
+            </>
           )}
-          <p className="mt-3 text-xs text-subtle-foreground">Lifecycle state is read from Arc (authoritative); the activity feed decorates it.</p>
+          <p className="mt-4 text-xs text-subtle-foreground">Lifecycle state is read from Arc (authoritative); the activity feed decorates it.</p>
         </CardContent>
       </Card>
 
@@ -263,20 +300,16 @@ export function JobDetail({ id }: { id: string }) {
         </CardContent>
       </Card>
 
-      {/* Actions */}
+      {/* Actions — only what the viewer can actually do in this state is shown. */}
       <Card className="mt-4">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <Wrench className="size-4 text-primary" aria-hidden /> Actions
-            {me.data ? <Badge variant="success">live</Badge> : <Badge variant="warning">connect to act</Badge>}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {!me.data ? (
-            <p className="text-sm text-muted-foreground">Connect your wallet and sign in to act on this job.</p>
-          ) : null}
-          {commitFor && needsCommitment(commitFor) ? (
-            <div className="rounded-md border border-input p-3">
+          {commitFor && needsCommitment(commitFor) && available.some((a) => a.id === commitFor) ? (
+            <div className="rounded-lg border border-input p-3">
               <label htmlFor="commitment" className="text-sm font-medium">
                 Submission commitment (bytes32)
               </label>
@@ -285,7 +318,7 @@ export function JobDetail({ id }: { id: string }) {
                 value={commitment}
                 onChange={(e) => setCommitment(e.target.value)}
                 placeholder="0x…"
-                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-1.5 font-mono text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="mt-1.5 w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-xs shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-describedby="commitment-help"
               />
               <p id="commitment-help" className="mt-1 text-xs text-subtle-foreground">
@@ -293,54 +326,45 @@ export function JobDetail({ id }: { id: string }) {
               </p>
             </div>
           ) : null}
-          <div className="flex flex-wrap gap-2">
-            {actions.map((a) => {
-              // CLAIM routes to the dedicated claim page (evidence hashed there), not an inline tx.
-              if (a.id === "CLAIM") {
-                return a.available ? (
-                  <Link key={a.id} href={`/jobs/${id}/claim`} className={buttonVariants({ size: "sm" })}>
-                    {a.label}
-                  </Link>
-                ) : (
+
+          {available.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No actions available to you in this state.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {available.map((a) => {
+                // CLAIM routes to the dedicated claim page (evidence hashed there), not an inline tx.
+                if (a.id === "CLAIM") {
+                  return (
+                    <Link key={a.id} href={`/app/jobs/${id}/claim`} className={buttonVariants({ size: "sm" })}>
+                      {a.label}
+                    </Link>
+                  );
+                }
+                const blocked = engine.isBusy || (needsCommitment(a.id) && commitFor === a.id && !commitmentValid);
+                const onClick = () => {
+                  if (needsCommitment(a.id) && commitFor !== a.id) {
+                    setCommitFor(a.id);
+                    return;
+                  }
+                  run(a.id);
+                };
+                return (
                   <button
                     key={a.id}
-                    disabled
-                    aria-disabled
-                    title={a.reason}
-                    className={cn(buttonVariants({ size: "sm" }), "pointer-events-none opacity-50")}
+                    onClick={onClick}
+                    disabled={blocked}
+                    aria-disabled={blocked}
+                    className={cn(
+                      buttonVariants({ variant: a.id === "EVAL_REJECT" || a.id === "CANCEL" ? "outline" : "default", size: "sm" }),
+                      blocked && "pointer-events-none opacity-50",
+                    )}
                   >
                     {a.label}
                   </button>
                 );
-              }
-              const blocked = !a.available || engine.isBusy || (needsCommitment(a.id) && commitFor === a.id && !commitmentValid);
-              const onClick = () => {
-                if (needsCommitment(a.id) && commitFor !== a.id) {
-                  setCommitFor(a.id);
-                  return;
-                }
-                run(a.id);
-              };
-              return (
-                <button
-                  key={a.id}
-                  onClick={onClick}
-                  disabled={blocked}
-                  aria-disabled={blocked}
-                  title={a.available ? undefined : a.reason}
-                  className={cn(
-                    buttonVariants({ variant: a.id === "EVAL_REJECT" || a.id === "CANCEL" ? "outline" : "default", size: "sm" }),
-                    blocked && "pointer-events-none opacity-50",
-                  )}
-                >
-                  {a.label}
-                </button>
-              );
-            })}
-          </div>
-          {actions.every((a) => !a.available) ? (
-            <p className="text-sm text-muted-foreground">No actions available to you in this state.</p>
-          ) : null}
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

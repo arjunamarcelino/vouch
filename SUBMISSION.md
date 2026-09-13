@@ -92,12 +92,11 @@ The novelty is the **post-acceptance coverage window** combined with a **confide
 
 ## Demo links
 
-- **Demo video (2–4 min, human-narrated):** *TBD — link pending.*
-- **Live app:** [https://withvouch.xyz](https://withvouch.xyz) *(deploying).* API `https://api.withvouch.xyz`, agent `https://agent.withvouch.xyz`. One-command local review via `docker-compose` (browse + read-live + `/health`; click-through mutation needs a funded wallet + browser wallet + SIWE).
+- **Live app:** [https://withvouch.xyz](https://withvouch.xyz). API `https://api.withvouch.xyz`, agent `https://agent.withvouch.xyz`. One-command local review via `docker-compose` (browse + read-live + `/health`; click-through mutation needs a funded wallet + browser wallet + SIWE).
 
 ## Repository & links
 
-- **Repository:** *TBD — public repository link pending.*
+- **Repository:** [https://github.com/arjunamarcelino/vouch](https://github.com/arjunamarcelino/vouch)
 - **Arc testnet** (chain id 5042002) — explorer [https://testnet.arcscan.app](https://testnet.arcscan.app), RPC `https://rpc.testnet.arc.io`:
   - `AssuranceHub` — `0xB30e054557533f28753B4ACdf646B393E2072bf9` (deploy tx `0x72c92d8d…`)
   - `QuoteBondEscrow` — `0x3ca2d854d5f042dd0ddd39eaf80644be0e80048c` (deploy tx `0x3a7cad0c…`)
@@ -119,4 +118,4 @@ Full model: [`docs/security.md`](docs/security.md) and [`README.md`](README.md).
 
 ## Team
 
-*TBD — team members and roles pending.*
+Arjuna Marcelino - Full Stack Developer

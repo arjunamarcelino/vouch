@@ -9,11 +9,11 @@ import {
 } from "lucide-react";
 import { buttonVariants } from "@vouch/ui/components/button";
 import { cn } from "@vouch/ui/lib/utils";
-import { LogoMarquee } from "../components/common/LogoMarquee";
-import { ResolveTimeline } from "../components/home/ResolveTimeline";
-import { ReceiptFlow } from "../components/home/ReceiptFlow";
-import { Reveal, CountUp } from "../components/home/motion";
-import { SECTION } from "../lib/home-sections";
+import { LogoMarquee } from "../../components/common/LogoMarquee";
+import { ResolveTimeline } from "../../components/home/ResolveTimeline";
+import { ReceiptFlow } from "../../components/home/ReceiptFlow";
+import { Reveal, CountUp } from "../../components/home/motion";
+import { SECTION } from "../../lib/home-sections";
 
 /**
  * Landing (WS-1) — the 20-second test, light/editorial register. Plus Jakarta Sans display + mono for
@@ -142,7 +142,7 @@ export default function Home() {
                 Demo
               </Link>
               <Link
-                href="/dashboard"
+                href="/app/dashboard"
                 className={cn(
                   buttonVariants({ size: "lg" }),
                   "group gap-2",
@@ -429,7 +429,7 @@ export default function Home() {
             <Link href="/demo" className={cn(buttonVariants({ variant: "ghost", size: "lg" }), "gap-2")}>
               Demo
             </Link>
-            <Link href="/dashboard" className={cn(buttonVariants({ size: "lg" }), "group gap-2")}>
+            <Link href="/app/dashboard" className={cn(buttonVariants({ size: "lg" }), "group gap-2")}>
               Open App
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
             </Link>

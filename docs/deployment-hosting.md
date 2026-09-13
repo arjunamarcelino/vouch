@@ -2,7 +2,7 @@
 
 Two review paths. **Path 1 (docker-compose)** gives judges a one-command local review with no dev
 tooling. **Path 2 (hosted)** is the `withvouch.xyz` scheme the maintainer deploys. Configs are
-**created here; not deployed** — see `docs/mainnet-readiness-checklist.md` for the mainnet gate.
+**created here; not deployed** — mainnet is a documented roadmap (see the Honest trust model in `SUBMISSION.md`), not a shipped state.
 
 > **Honest scope of the review stack:** Path 1 delivers **browse + read live data + `/health`**.
 > Click-through mutation (`openJob` / `acceptJob` / `openClaim`) is on-chain via the reviewer's own

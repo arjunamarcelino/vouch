@@ -6,28 +6,24 @@ import { usePathname } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { buttonVariants } from "@vouch/ui/components/button";
 import { cn } from "@vouch/ui/lib/utils";
-import { WalletConnectButton } from "../wallet/ConnectButton";
 import { TestnetBadge } from "../common/TestnetBadge";
+import { Wordmark } from "../common/Wordmark";
 import { HOME_NAV } from "../../lib/home-sections";
 
 /**
- * App shell header: a floating pill (asyah-style). Context-aware:
- *   - Landing ("/"): centered nav = in-page section anchors; right = Demo + Open App. No wallet here —
- *     the marketing page stays a public, no-connect surface.
- *   - App pages: centered nav = product routes (Dashboard / Create job); right = Demo + Connect Wallet.
- *     Create-job and the wallet only surface once you're inside the app.
- * The sticky <header> supplies only the floating inset; the inner pill is the blurred, bordered surface.
- * `isolate` keys the wordmark blend against the pill's own backdrop, not scrolled page content.
+ * Marketing header: a floating pill (asyah-style), mounted only by the (marketing) route group.
+ *   - Landing ("/"): centered nav = in-page section anchors; right = Demo + Open App.
+ *   - Demo ("/demo"): no centered nav (no in-page sections); right = Demo + Open App.
+ * No wallet/product nav here — the gated app renders those via AppShell. The sticky <header> supplies
+ * only the floating inset; `isolate` keys the wordmark blend against the pill's own backdrop.
  */
-const APP_NAV = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/jobs/new", label: "Create job" },
-];
 
 export function SiteHeader() {
   const pathname = usePathname();
   const isHome = pathname === "/";
-  const nav = isHome ? HOME_NAV : APP_NAV;
+  // Marketing-only header (review 107/108): it is mounted solely by the (marketing) route group, i.e.
+  // only on `/` and `/demo`. The landing carries the in-page section nav; the demo has none.
+  const nav = isHome ? HOME_NAV : [];
 
   // Scroll-spy: on the landing, highlight whichever section has scrolled past the nav line. The active
   // item is the last section whose top sits above the offset (nav height + a little), so it flips exactly
@@ -71,21 +67,12 @@ export function SiteHeader() {
       <div className="relative isolate mx-auto flex h-[4.5rem] max-w-[88rem] items-center justify-between gap-4 rounded-2xl border border-border bg-surface/80 px-4 shadow-lg shadow-black/[0.04] backdrop-blur-md supports-[backdrop-filter]:bg-surface/65 sm:px-6">
         <div className="flex items-center gap-2.5">
           <Link href="/" aria-label="Vouch — home" className="flex items-center">
-            {/* Vouch wordmark: black ink on an opaque white PNG. Blend modes key the white bg out against
-              either theme (light → multiply keeps black ink; dark → invert+screen keeps white ink). The
-              pill's `isolate` composites the blend against its own backdrop, not scrolled content.
-              Intrinsic w/h reserve the box (no first-paint reflow); h-7 w-auto scales it. */}
-            <img
-              src="/logos/vouch/vouch.png"
-              alt="Vouch"
-              width={828}
-              height={285}
-              className="h-7 w-auto mix-blend-multiply dark:mix-blend-screen dark:invert"
-            />
+            <Wordmark />
           </Link>
           <TestnetBadge />
         </div>
 
+        {nav.length > 0 ? (
         <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-8 sm:flex" aria-label="Primary">
           {nav.map((item) => {
             const active = isHome
@@ -114,26 +101,16 @@ export function SiteHeader() {
             );
           })}
         </nav>
+        ) : null}
 
         <div className="flex items-center gap-2">
-          {isHome ? (
-            <>
-              <Link href="/demo" className={cn(buttonVariants({ variant: "ghost" }), "hidden sm:inline-flex")}>
-                Demo
-              </Link>
-              <Link href="/dashboard" className={cn(buttonVariants(), "group gap-1.5")}>
-                Open App
-                <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
-              </Link>
-            </>
-          ) : (
-            <>
-              <Link href="/demo" className={cn(buttonVariants({ variant: "ghost" }), "hidden sm:inline-flex")}>
-                Demo
-              </Link>
-              <WalletConnectButton />
-            </>
-          )}
+          <Link href="/demo" className={cn(buttonVariants({ variant: "ghost" }), "hidden sm:inline-flex")}>
+            Demo
+          </Link>
+          <Link href="/app/dashboard" className={cn(buttonVariants(), "group gap-1.5")}>
+            Open App
+            <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
+          </Link>
         </div>
       </div>
     </header>
