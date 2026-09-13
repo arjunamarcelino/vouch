@@ -47,8 +47,10 @@ export function Reveal({
       ref={ref}
       style={{ transitionDelay: `${delay}ms` }}
       className={cn(
-        "transition-all duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[transform,opacity] motion-reduce:transition-none",
-        shown ? "translate-y-0 opacity-100 blur-0" : "translate-y-8 opacity-0 blur-[3px]",
+        "transition-all duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+        // Only promote a compositor layer while animating; drop `will-change` once revealed so ~a dozen
+        // of these don't keep layers promoted for the page's life.
+        shown ? "translate-y-0 opacity-100 blur-0" : "translate-y-8 opacity-0 blur-[3px] will-change-[transform,opacity]",
         className,
       )}
     >

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@vouch/ui/lib/utils";
 
 /**
@@ -20,15 +20,27 @@ const STEP_MS = 1100;
 
 export function ReceiptFlow() {
   const [active, setActive] = useState(0);
+  const [visible, setVisible] = useState(true);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Track visibility so the highlight only cycles while the ledger is on-screen.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(([e]) => setVisible(!!e?.isIntersecting), { threshold: 0.2 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   useEffect(() => {
+    if (!visible) return;
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
     const id = setInterval(() => setActive((i) => (i + 1) % ROWS.length), STEP_MS);
     return () => clearInterval(id);
-  }, []);
+  }, [visible]);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+    <div ref={ref} className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
       <div className="flex items-center justify-between border-b border-border bg-muted/40 px-5 py-3">
         <span className="font-mono text-xs uppercase tracking-[0.14em] text-subtle-foreground">
           Settlement ledger
