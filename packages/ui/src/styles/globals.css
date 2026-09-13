@@ -41,9 +41,9 @@
   --color-input: oklch(0.62 0.015 286); /* 3.65:1 vs #fff — interactive form borders (1.4.11) */
 
   /* Single blue accent — authoritative / "act here" only */
-  --color-primary: oklch(0.53 0.23 292); /* violet #7C3AED — single source for the accent */
-  --color-primary-foreground: oklch(0.985 0.001 286);
-  --color-accent-text: oklch(0.53 0.23 292); /* inline link text (light) */
+  --color-primary: oklch(0.53 0.23 292); /* violet ~#753EE2 — 5.9:1 text-on-white (AA); single accent source */
+  --color-primary-foreground: oklch(0.985 0.001 286); /* near-white on primary (AA) */
+  --color-accent-text: oklch(0.53 0.23 292); /* inline link text — 5.9:1 on white/card (AA) */
   --color-ring: oklch(0.53 0.23 292); /* focus ring = primary */
   /* Primary gradient — derived from the primary token so button + accent stay one source. Both stops
      are dark enough that primary-foreground text clears WCAG AA across the whole button (the old

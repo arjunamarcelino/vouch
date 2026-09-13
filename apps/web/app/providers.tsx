@@ -27,7 +27,9 @@ import { clearPendingTx } from "../lib/tx/persistence";
  * auto-switches light/dark with `prefers-color-scheme`; the `{ lightMode, darkMode }` object makes the
  * modal follow the OS without a flash. SIWE auth is layered on in a later unit.
  */
-const ACCENT = "#7C3AED"; // violet (matches --color-primary + the gradient button); RainbowKit wants a concrete color
+// Hex mirror of the single accent token `--color-primary` (oklch 0.53 0.23 292 ≈ #753EE2). RainbowKit
+// needs a concrete string, so this is the one place the accent is duplicated — keep it in sync with the token.
+const ACCENT = "#753EE2";
 
 const rainbowTheme = {
   lightMode: lightTheme({
