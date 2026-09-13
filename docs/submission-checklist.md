@@ -39,7 +39,7 @@ and [`chainlink-confidential-workflow.md`](chainlink-confidential-workflow.md).
 - [ ] **Architecture diagram** present (Arc explicit requirement) and exported (PNG).
 - [ ] At least one **Circle Agent Stack component** is cited and load-bearing (`@circle-fin/developer-controlled-wallets`).
 - [ ] Real **arcscan transaction links** listed and each resolves (bond post + refund + lifecycle txs).
-- [ ] **Mainnet readiness documented** ([`mainnet-readiness-checklist.md`](mainnet-readiness-checklist.md)).
+- [ ] **Mainnet readiness documented** (trust model + roadmap in [`SUBMISSION.md`](../SUBMISSION.md) and [`deployment-hosting.md`](deployment-hosting.md)).
 
 ## 4. Chainlink CRE track
 
