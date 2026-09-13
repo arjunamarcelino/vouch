@@ -1,11 +1,17 @@
+"use client";
+
+import { usePathname } from "next/navigation";
 import { TechStrip } from "../common/TechStrip";
 import { TestnetBadge } from "../common/TestnetBadge";
 
 /**
- * App shell footer: the "Built on" stack strip + a light legal line. Renders on every page via the
- * root layout. Third-party logos remain unmodified and link to their owners.
+ * App shell footer: the "Built on" stack strip + a light legal line. Renders on every page via the root
+ * layout EXCEPT `/login`, which is a full-height standalone auth screen with no chrome.
  */
 export function SiteFooter() {
+  const pathname = usePathname();
+  if (pathname === "/login") return null;
+
   return (
     <footer className="relative mt-24 border-t border-border bg-paper">
       <div className="mx-auto flex max-w-[88rem] flex-col gap-8 px-4 py-14 sm:px-6">

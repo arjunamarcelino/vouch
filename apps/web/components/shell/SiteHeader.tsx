@@ -72,6 +72,9 @@ export function SiteHeader() {
     };
   }, [isHome]);
 
+  // The login page is a standalone auth screen — it carries its own "Back to Homepage" link, no navbar.
+  if (pathname === "/login") return null;
+
   return (
     <header className="sticky top-0 z-30 px-4 pt-3 sm:px-6 sm:pt-4">
       <div className="relative isolate mx-auto flex h-[4.5rem] max-w-[88rem] items-center justify-between gap-4 rounded-2xl border border-border bg-surface/80 px-4 shadow-lg shadow-black/[0.04] backdrop-blur-md supports-[backdrop-filter]:bg-surface/65 sm:px-6">
