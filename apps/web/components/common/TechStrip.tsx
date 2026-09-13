@@ -5,14 +5,14 @@ import { cn } from "@vouch/ui/lib/utils";
  * variant (dark ink / brand color) and a dark-theme variant (white); USDC is full-color for both.
  * Official brand assets only, unmodified (per each brand's guidelines) — served from /public/logos.
  */
-type Mark = {
+export type Mark = {
   name: string;
   href: string;
   light: string; // shown in the light theme
   dark?: string; // shown in the dark theme (omit when one asset works on both)
 };
 
-const MARKS: Mark[] = [
+export const MARKS: Mark[] = [
   {
     name: "Arc",
     href: "https://www.arc.io",

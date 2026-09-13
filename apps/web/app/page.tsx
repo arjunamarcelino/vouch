@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { buttonVariants } from "@vouch/ui/components/button";
 import { cn } from "@vouch/ui/lib/utils";
-import { TechStrip } from "../components/common/TechStrip";
+import { LogoMarquee } from "../components/common/LogoMarquee";
 import { ResolveTimeline } from "../components/home/ResolveTimeline";
 
 /**
@@ -150,13 +150,18 @@ export default function Home() {
       </section>
 
       {/* ===================== BUILT-ON TRUST STRIP ===================== */}
-      <section className="border-y border-border bg-card/40">
-        <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
-          <TechStrip
-            size="sm"
-            label="Settles on"
-            className="justify-center gap-x-10 gap-y-3 text-center sm:justify-between"
-          />
+      <section className="border-y border-border bg-card/40 py-14 sm:py-16" aria-labelledby="rails-heading">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <div className="text-center">
+            <h2 id="rails-heading" className="font-display text-3xl tracking-tight sm:text-4xl">
+              Built on rails you can verify.
+            </h2>
+            <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
+              Escrow, confidential verification, and payout run on public infrastructure — every step is
+              auditable on-chain, never fabricated.
+            </p>
+          </div>
+          <LogoMarquee className="mt-10 sm:mt-12" />
         </div>
       </section>
 

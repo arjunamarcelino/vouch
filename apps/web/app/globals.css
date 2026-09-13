@@ -50,6 +50,24 @@
     }
   }
 
+  /* Seamless one-direction logo marquee: the track holds the logo set twice and shifts by exactly
+     one copy (-50%), so the loop point is invisible ("jangan patah"). Per-item horizontal padding —
+     not a flex gap — keeps the seam spacing identical to the inter-item spacing. */
+  @keyframes vouch-marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+  .animate-marquee {
+    animation: vouch-marquee var(--marquee-duration, 34s) linear infinite;
+  }
+  .animate-marquee:hover {
+    animation-play-state: paused;
+  }
+
   @keyframes vouch-progress {
     from {
       transform: scaleX(0);
@@ -112,6 +130,9 @@
     .sheen::after {
       animation: none;
       opacity: 0;
+    }
+    .animate-marquee {
+      animation: none;
     }
   }
 }
