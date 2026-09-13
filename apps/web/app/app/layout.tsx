@@ -49,9 +49,9 @@ export default function AppGateLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <>
+    <div className="flex h-dvh flex-col overflow-hidden">
       <AppShell>{children}</AppShell>
       <StatusBar />
-    </>
+    </div>
   );
 }

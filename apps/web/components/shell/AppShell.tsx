@@ -57,9 +57,9 @@ export function AppShell({ children }: { children: ReactNode }) {
     });
 
   return (
-    // Fill the screen minus the fixed status-bar footer (h-11 = 2.75rem). The shell itself never scrolls;
-    // only the content region does, so the page as a whole stays put.
-    <div className="flex h-[calc(100dvh-2.75rem)] flex-col overflow-hidden lg:flex-row">
+    // Fill the space the parent layout gives us (screen minus the in-flow StatusBar; review 109). The
+    // shell itself never scrolls — only the content region does — so the page as a whole stays put.
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
       {/* Desktop sidebar — full-height within the shell, collapsible to icons, scrolls internally. */}
       <aside
         className={cn(

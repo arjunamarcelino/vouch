@@ -74,11 +74,10 @@ export function StatusBar() {
   const dotTone = loading ? "bg-muted-foreground" : live ? "bg-success" : "bg-warning-fill";
 
   return (
-    <>
-      {/* Spacer so the fixed bar never covers page content / the footer's last line. */}
-      <div aria-hidden className="h-11" />
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80">
-        <div ref={rootRef} className="mx-auto flex h-11 max-w-[88rem] items-center gap-4 px-4 sm:px-6">
+    // In-flow footer (review 109): the parent app/demo layout places it, so no fixed positioning or
+    // spacer is needed and nothing hardcodes its height. The popover still opens upward (bottom-full).
+    <div className="shrink-0 border-t border-border bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80">
+      <div ref={rootRef} className="mx-auto flex h-11 max-w-[88rem] items-center gap-4 px-4 sm:px-6">
           {/* Live / simulation indicator */}
           <span className="inline-flex items-center gap-2 text-xs font-medium text-foreground">
             <span className="relative flex size-2">
@@ -140,6 +139,5 @@ export function StatusBar() {
           </div>
         </div>
       </div>
-    </>
   );
 }
