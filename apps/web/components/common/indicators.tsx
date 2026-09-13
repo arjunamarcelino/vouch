@@ -26,7 +26,7 @@ const STATE_META: Record<JobState, { label: string; variant: "default" | "succes
 
 export function StateBadge({ status }: { status: JobState }) {
   const meta = STATE_META[status];
-  return <Badge variant={meta.variant}>{meta.label}</Badge>;
+  return <Badge variant={meta.variant} className="uppercase tracking-wide">{meta.label}</Badge>;
 }
 
 const CLAIM_STATUS_META: Record<ClaimStatus, { label: string; variant: "default" | "success" | "warning" | "destructive" }> = {
@@ -40,7 +40,7 @@ const CLAIM_STATUS_META: Record<ClaimStatus, { label: string; variant: "default"
 /** Single source of truth for claim-status label + tone (shared by JobDetail + ClaimFlow). */
 export function ClaimBadge({ status }: { status: ClaimStatus }) {
   const meta = CLAIM_STATUS_META[status];
-  return <Badge variant={meta.variant}>{meta.label}</Badge>;
+  return <Badge variant={meta.variant} className="uppercase tracking-wide">{meta.label}</Badge>;
 }
 
 /** One live-vs-simulation pill (shared by the Prize Evidence drawer + demo stepper). */
