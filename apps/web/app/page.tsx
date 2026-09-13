@@ -16,13 +16,14 @@ import { Reveal, CountUp } from "../components/home/motion";
 import { SECTION } from "../lib/home-sections";
 
 /**
- * Landing (WS-1) — the 20-second test, editorial/light "settlement-desk" register (de-generic pass,
- * asyah-inspired): serif display headlines + mono for money & on-chain data, a warm-paper substrate
- * with soft accent washes and a fine ledger grid, and one orchestrated CSS-only load reveal. Every
- * factual claim is preserved from the prior copy — the problem (work can break after it's paid for),
- * the escrow-vs-assurance novelty, three steps, a concrete coding-agent example, and the three sponsor
- * rails. Static server component — renders fully without a wallet. Blue stays the single reserved
- * accent (primary CTA, the Vouch side of the comparison, the confidential proof, links).
+ * Landing (WS-1) — the 20-second test, light/editorial register. Plus Jakarta Sans display + mono for
+ * money & on-chain data, a warm-paper substrate with soft accent washes and a fine ledger grid, 3D
+ * WebP art via next/image, and scroll-driven reveals (see components/home/motion). Every factual claim
+ * is preserved from the prior copy — the problem (work can break after it's paid for), the
+ * escrow-vs-assurance novelty, the resolve timeline, a worked example, three pillars, and the three
+ * sponsor rails. Server component apart from the small client islands (Reveal/CountUp, ResolveTimeline,
+ * ReceiptFlow). Violet is the single reserved accent (primary gradient CTA, the Vouch side of the
+ * comparison, active nav, links) — one source of truth in @vouch/ui tokens.
  */
 
 // Inline stagger helper: sets the `--rise-delay` custom prop consumed by the `.rise` utility.
