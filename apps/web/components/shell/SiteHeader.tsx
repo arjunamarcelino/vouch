@@ -19,7 +19,7 @@ export function SiteHeader() {
   const pathname = usePathname();
   return (
     <header className="sticky top-0 z-30 isolate border-b border-border bg-surface/90 backdrop-blur supports-[backdrop-filter]:bg-surface/75">
-      <div className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-4 sm:px-6">
+      <div className="mx-auto flex h-16 max-w-6xl items-center gap-8 px-4 sm:px-6">
         <Link href="/" aria-label="Vouch — home" className="flex items-center">
           {/* Vouch wordmark: black ink on an opaque white PNG. The blend modes key the background
               out against either theme so no white box shows on the zinc-50 (off-white) surface:
@@ -36,7 +36,7 @@ export function SiteHeader() {
             className="h-6 w-auto mix-blend-multiply dark:mix-blend-screen dark:invert"
           />
         </Link>
-        <nav className="hidden items-center gap-1 sm:flex" aria-label="Primary">
+        <nav className="hidden items-center gap-7 sm:flex" aria-label="Primary">
           {NAV.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
@@ -45,13 +45,19 @@ export function SiteHeader() {
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  active
-                    ? "bg-muted text-primary"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  "group relative rounded-sm py-1 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
                 )}
               >
                 {item.label}
+                {/* Editorial active/hover underline that wipes in from the left. */}
+                <span
+                  aria-hidden
+                  className={cn(
+                    "absolute -bottom-0.5 left-0 h-px w-full origin-left bg-primary transition-transform duration-300",
+                    active ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100",
+                  )}
+                />
               </Link>
             );
           })}

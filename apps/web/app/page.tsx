@@ -168,42 +168,62 @@ export default function Home() {
             Escrow stops at the door. <span className="italic text-primary">Vouch stays inside.</span>
           </h2>
 
-          <div className="mt-10 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-            <div className="grid grid-cols-1 sm:grid-cols-[1.2fr_1fr_1fr]">
+          {/* Desktop: asyah-style spec sheet — no icons, the Vouch column tinted as one continuous block. */}
+          <div className="mt-10 hidden overflow-hidden rounded-2xl border border-border bg-card shadow-sm sm:block">
+            <div className="grid grid-cols-[1.1fr_1fr_1fr]">
               {/* Column heads */}
-              <div className="hidden sm:block" />
-              <div className="hidden items-center border-b border-border px-6 py-4 font-mono text-xs uppercase tracking-[0.12em] text-subtle-foreground sm:flex">
-                Plain escrow
-              </div>
-              <div className="relative hidden items-center gap-2 border-b border-primary/20 bg-primary/[0.04] px-6 py-4 font-mono text-xs uppercase tracking-[0.12em] text-primary sm:flex">
-                <ShieldCheck className="size-4" aria-hidden />
+              <div aria-hidden />
+              <div className="px-6 py-5 text-base font-semibold text-foreground">Plain escrow</div>
+              <div className="rounded-tr-2xl bg-primary/[0.05] px-6 py-5 text-base font-semibold text-primary">
                 Vouch
               </div>
 
-              {COMPARE.map((row) => (
-                <div key={row.label} className="contents">
-                  <div className="border-t border-border px-6 py-5 text-sm font-medium text-foreground">
-                    {row.label}
+              {COMPARE.map((row, i) => {
+                const last = i === COMPARE.length - 1;
+                return (
+                  <div key={row.label} className="contents">
+                    <div className="flex items-center justify-center border-t border-border px-6 py-6 text-center text-sm font-semibold text-foreground">
+                      {row.label}
+                    </div>
+                    <div className="flex items-center border-t border-border px-6 py-6 text-sm text-muted-foreground">
+                      {row.escrow}
+                    </div>
+                    <div
+                      className={cn(
+                        "flex items-center border-t border-primary/15 bg-primary/[0.05] px-6 py-6 text-sm text-primary",
+                        last && "rounded-br-2xl",
+                        row.highlight && "font-medium",
+                      )}
+                    >
+                      {row.vouch}
+                    </div>
                   </div>
-                  <div className="flex items-start gap-2.5 border-t border-border px-6 py-5 text-sm text-muted-foreground">
-                    <X className="mt-0.5 size-4 shrink-0 text-muted-foreground/60" aria-hidden />
-                    {row.escrow}
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Mobile: one stacked card per dimension, escrow vs the tinted Vouch value. */}
+          <div className="mt-8 space-y-4 sm:hidden">
+            {COMPARE.map((row) => (
+              <div key={row.label} className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+                <div className="border-b border-border px-4 py-3 text-sm font-semibold text-foreground">
+                  {row.label}
+                </div>
+                <div className="grid grid-cols-2 divide-x divide-border">
+                  <div className="px-4 py-3">
+                    <div className="font-mono text-[0.62rem] uppercase tracking-wide text-subtle-foreground">
+                      Plain escrow
+                    </div>
+                    <div className="mt-1 text-sm text-muted-foreground">{row.escrow}</div>
                   </div>
-                  <div
-                    className={cn(
-                      "flex items-start gap-2.5 border-t border-primary/20 bg-primary/[0.04] px-6 py-5 text-sm",
-                      row.highlight ? "font-medium text-primary" : "text-foreground",
-                    )}
-                  >
-                    <Check
-                      className={cn("mt-0.5 size-4 shrink-0", row.highlight ? "text-primary" : "text-success-text")}
-                      aria-hidden
-                    />
-                    {row.vouch}
+                  <div className="bg-primary/[0.05] px-4 py-3">
+                    <div className="font-mono text-[0.62rem] uppercase tracking-wide text-primary">Vouch</div>
+                    <div className="mt-1 text-sm text-primary">{row.vouch}</div>
                   </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
         </section>
 

@@ -132,7 +132,7 @@ export function JobDetail({ id }: { id: string }) {
       </Link>
 
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight tabular-nums">Job #{j.jobId}</h1>
+        <h1 className="font-display text-3xl tracking-tight tabular-nums sm:text-4xl">Job #{j.jobId}</h1>
         <StateBadge status={j.status} />
         <FreshnessBadge source="chain" />
         {me.data && (viewer.address === j.client.toLowerCase() || viewer.address === j.provider.toLowerCase()) ? (

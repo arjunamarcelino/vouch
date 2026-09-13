@@ -47,7 +47,7 @@ export function ProviderProfile({ address }: { address: string }) {
       </Link>
 
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">Provider</h1>
+        <h1 className="font-display text-3xl tracking-tight sm:text-4xl">Provider</h1>
         {link ? (
           <a href={link} target="_blank" rel="noopener noreferrer" className="font-mono text-sm text-primary hover:underline">
             {shortHex(address, 10, 8)}

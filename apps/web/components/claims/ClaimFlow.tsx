@@ -70,7 +70,7 @@ export function ClaimFlow({ id }: { id: string }) {
         <ArrowLeft className="size-4" aria-hidden /> Job #{id}
       </Link>
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">File a claim</h1>
+        <h1 className="font-display text-3xl tracking-tight sm:text-4xl">File a claim</h1>
         <StateBadge status={j.status} />
         {j.status === "InitiallyApproved" ? <CoverageCountdown coverageEndSec={Number(j.coverageEnd)} /> : null}
       </div>

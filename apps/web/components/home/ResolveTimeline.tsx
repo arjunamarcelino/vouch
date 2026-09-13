@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@vouch/ui/lib/utils";
 
 /**
  * "How a guarantee resolves" — an OKX-style stage timeline (ref: okx.ai "How Work Gets Done").
  * The rail shows stage TITLES only; a detail panel below swaps to the active stage. It auto-advances
- * on a dwell timer (with a progress bar telegraphing the next step), pauses while the reader hovers,
+ * on a dwell timer, pauses while the reader hovers,
  * and every node is clickable. Client component — the only interactive island on an otherwise static
  * landing. Each stage maps to a real on-chain moment in the guarantee lifecycle; blue stays the single
  * reserved accent (active node, filled connector, party/meta highlights).

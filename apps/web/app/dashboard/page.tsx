@@ -79,7 +79,7 @@ export default function DashboardPage() {
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+        <h1 className="font-display text-3xl tracking-tight sm:text-4xl">Dashboard</h1>
         <Link href="/jobs/new" className={cn(buttonVariants({ size: "sm" }), "gap-2")}>
           <Plus className="size-4" aria-hidden /> Create job
         </Link>
@@ -131,7 +131,7 @@ export default function DashboardPage() {
         <div className="mt-6 space-y-6">
           {grouped.buckets.map((bucket) => (
             <section key={bucket.key} aria-labelledby={`b-${bucket.key}`}>
-              <h2 id={`b-${bucket.key}`} className="mb-2 text-sm font-medium uppercase tracking-wide text-subtle-foreground">
+              <h2 id={`b-${bucket.key}`} className="mb-3 font-mono text-xs uppercase tracking-[0.14em] text-subtle-foreground">
                 {bucket.label} <span className="tabular-nums">({bucket.items.length})</span>
               </h2>
               <div className="space-y-2">
@@ -143,7 +143,7 @@ export default function DashboardPage() {
           ))}
           {grouped.syncing.length > 0 ? (
             <section aria-labelledby="b-sync">
-              <h2 id="b-sync" className="mb-2 text-sm font-medium uppercase tracking-wide text-subtle-foreground">
+              <h2 id="b-sync" className="mb-3 font-mono text-xs uppercase tracking-[0.14em] text-subtle-foreground">
                 Syncing <span className="tabular-nums">({grouped.syncing.length})</span>
               </h2>
               <div className="space-y-2">
