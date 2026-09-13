@@ -7,6 +7,7 @@ import { cn } from "@vouch/ui/lib/utils";
 import { useMyJobs, useAuthMe } from "../../../lib/api/hooks";
 import { bucketize } from "../../../lib/jobs";
 import { JobRow } from "../../../components/jobs/JobRow";
+import { JobsLoading, JobsError, JobsEmpty } from "../../../components/jobs/JobsFallbacks";
 import { PageHeader } from "../../../components/app/PageHeader";
 
 /**
@@ -49,21 +50,11 @@ export default function OverviewPage() {
         </div>
 
         {jobs.isLoading ? (
-          <p className="text-sm text-muted-foreground">Loading your jobs…</p>
+          <JobsLoading />
         ) : jobs.isError ? (
-          <Card>
-            <CardContent className="p-6 text-sm text-warning">Couldn&apos;t load your jobs right now.</CardContent>
-          </Card>
+          <JobsError />
         ) : recent.length === 0 ? (
-          <Card>
-            <CardContent className="p-8 text-center text-sm text-muted-foreground">
-              No jobs yet.{" "}
-              <Link href="/app/jobs/new" className="font-medium text-primary hover:underline">
-                Create one
-              </Link>{" "}
-              to attach a post-completion guarantee.
-            </CardContent>
-          </Card>
+          <JobsEmpty />
         ) : (
           <div className="space-y-2">
             {recent.map((j) => (

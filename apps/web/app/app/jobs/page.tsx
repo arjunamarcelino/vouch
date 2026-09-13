@@ -3,12 +3,12 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
-import { Card, CardContent } from "@vouch/ui/components/card";
 import { buttonVariants } from "@vouch/ui/components/button";
 import { cn } from "@vouch/ui/lib/utils";
 import { useMyJobs, useAuthMe } from "../../../lib/api/hooks";
 import { bucketize } from "../../../lib/jobs";
 import { JobRow } from "../../../components/jobs/JobRow";
+import { JobsLoading, JobsError, JobsEmpty } from "../../../components/jobs/JobsFallbacks";
 import { PageHeader } from "../../../components/app/PageHeader";
 
 /**
@@ -20,9 +20,12 @@ export default function JobsPage() {
   const me = useAuthMe();
   const jobs = useMyJobs(!!me.data);
 
-  const grouped = useMemo(() => {
+  // Non-empty buckets, with "syncing" appended as a pseudo-bucket so everything renders in one map (113).
+  const sections = useMemo(() => {
     const { buckets, syncing } = bucketize(jobs.data ?? []);
-    return { buckets: buckets.filter((b) => b.items.length > 0), syncing };
+    const shown = buckets.filter((b) => b.items.length > 0);
+    if (syncing.length > 0) shown.push({ key: "sync", label: "Syncing", states: [], items: syncing });
+    return shown;
   }, [jobs.data]);
 
   return (
@@ -37,50 +40,30 @@ export default function JobsPage() {
         }
       />
 
-      {jobs.isLoading ? (
-        <p className="mt-8 text-sm text-muted-foreground">Loading your jobs…</p>
-      ) : jobs.isError ? (
-        <Card className="mt-8">
-          <CardContent className="p-6 text-sm text-warning">Couldn&apos;t load your jobs right now.</CardContent>
-        </Card>
-      ) : (jobs.data?.length ?? 0) === 0 ? (
-        <Card className="mt-8">
-          <CardContent className="p-10 text-center text-sm text-muted-foreground">
-            No jobs yet.{" "}
-            <Link href="/app/jobs/new" className="font-medium text-primary hover:underline">
-              Create one
-            </Link>{" "}
-            to attach a post-completion guarantee.
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="mt-8 space-y-8">
-          {grouped.buckets.map((bucket) => (
-            <section key={bucket.key} aria-labelledby={`b-${bucket.key}`}>
-              <h2 id={`b-${bucket.key}`} className="mb-3 font-mono text-xs uppercase tracking-[0.14em] text-subtle-foreground">
-                {bucket.label} <span className="tabular-nums">({bucket.items.length})</span>
-              </h2>
-              <div className="space-y-2">
-                {bucket.items.map((j) => (
-                  <JobRow key={j.clientRequestId} job={j} />
-                ))}
-              </div>
-            </section>
-          ))}
-          {grouped.syncing.length > 0 ? (
-            <section aria-labelledby="b-sync">
-              <h2 id="b-sync" className="mb-3 font-mono text-xs uppercase tracking-[0.14em] text-subtle-foreground">
-                Syncing <span className="tabular-nums">({grouped.syncing.length})</span>
-              </h2>
-              <div className="space-y-2">
-                {grouped.syncing.map((j) => (
-                  <JobRow key={j.clientRequestId} job={j} />
-                ))}
-              </div>
-            </section>
-          ) : null}
-        </div>
-      )}
+      <div className="mt-8">
+        {jobs.isLoading ? (
+          <JobsLoading />
+        ) : jobs.isError ? (
+          <JobsError />
+        ) : (jobs.data?.length ?? 0) === 0 ? (
+          <JobsEmpty />
+        ) : (
+          <div className="space-y-8">
+            {sections.map((bucket) => (
+              <section key={bucket.key} aria-labelledby={`b-${bucket.key}`}>
+                <h2 id={`b-${bucket.key}`} className="mb-3 font-mono text-xs uppercase tracking-[0.14em] text-subtle-foreground">
+                  {bucket.label} <span className="tabular-nums">({bucket.items.length})</span>
+                </h2>
+                <div className="space-y-2">
+                  {bucket.items.map((j) => (
+                    <JobRow key={j.clientRequestId} job={j} />
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
