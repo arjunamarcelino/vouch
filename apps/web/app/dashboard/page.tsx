@@ -2,13 +2,13 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { Plus, Activity, CircleDot } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Card, CardContent } from "@vouch/ui/components/card";
 import { Badge } from "@vouch/ui/components/badge";
 import { buttonVariants } from "@vouch/ui/components/button";
 import { cn } from "@vouch/ui/lib/utils";
-import { JOB_STATES, type JobState, type MyJob, type Probe } from "@vouch/shared/schemas";
-import { useMyJobs, useAuthMe, useIntegrationsHealth } from "../../lib/api/hooks";
+import { JOB_STATES, type JobState, type MyJob } from "@vouch/shared/schemas";
+import { useMyJobs, useAuthMe } from "../../lib/api/hooks";
 import { StateBadge } from "../../components/common/indicators";
 
 /**
@@ -27,16 +27,6 @@ const BUCKETS: { key: string; label: string; states: JobState[] }[] = [
 
 function asJobState(s: string | null): JobState | null {
   return s && (JOB_STATES as readonly string[]).includes(s) ? (s as JobState) : null;
-}
-
-function HealthDot({ probe }: { probe: Probe }) {
-  const tone = probe.status === "up" ? "text-success" : probe.status === "degraded" ? "text-warning" : "text-destructive";
-  return (
-    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title={probe.error ?? probe.status}>
-      <CircleDot className={cn("size-3.5", tone)} aria-hidden />
-      {probe.name}
-    </span>
-  );
 }
 
 function JobRow({ job }: { job: MyJob }) {
@@ -59,7 +49,6 @@ function JobRow({ job }: { job: MyJob }) {
 
 export default function DashboardPage() {
   const me = useAuthMe();
-  const health = useIntegrationsHealth();
   const jobs = useMyJobs(!!me.data);
 
   // Bucket once per jobs change (not on every render, incl. the 30s health poll tick).
@@ -84,22 +73,6 @@ export default function DashboardPage() {
           <Plus className="size-4" aria-hidden /> Create job
         </Link>
       </div>
-
-      {/* Integration health strip */}
-      <Card className="mt-4">
-        <CardContent className="flex flex-wrap items-center gap-4 p-3">
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-subtle-foreground">
-            <Activity className="size-3.5" aria-hidden /> Integration health
-          </span>
-          {health.isLoading ? (
-            <span className="text-xs text-muted-foreground">checking…</span>
-          ) : health.data ? (
-            health.data.probes.map((p) => <HealthDot key={p.name} probe={p} />)
-          ) : (
-            <span className="text-xs text-muted-foreground">Sign in to view readiness · running local simulation</span>
-          )}
-        </CardContent>
-      </Card>
 
       {!me.data ? (
         <Card className="mt-6">
