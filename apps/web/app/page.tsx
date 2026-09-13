@@ -70,7 +70,7 @@ export default function Home() {
           <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
         </div>
 
-        <div className="mx-auto grid max-w-6xl gap-12 px-4 py-20 sm:px-6 sm:py-28 lg:grid-cols-12 lg:items-center lg:gap-8">
+        <div className="mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 sm:py-28 lg:grid-cols-12 lg:items-center lg:gap-8">
           {/* Left — the pitch */}
           <div className="lg:col-span-7">
             <div className="rise" style={delay(0)}>
@@ -151,7 +151,7 @@ export default function Home() {
 
       {/* ===================== BUILT-ON TRUST STRIP ===================== */}
       <section className="border-y border-border bg-card/40 py-14 sm:py-16" aria-labelledby="rails-heading">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="text-center">
             <h2 id="rails-heading" className="font-display text-3xl tracking-tight sm:text-4xl">
               Built on rails you can verify.
@@ -165,7 +165,7 @@ export default function Home() {
         </div>
       </section>
 
-      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
         {/* ===================== COMPARISON SPEC SHEET ===================== */}
         <section className="py-20 sm:py-24" aria-labelledby="compare-heading">
           <SectionHeading id="compare-heading">

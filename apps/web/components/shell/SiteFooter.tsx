@@ -7,7 +7,7 @@ import { TechStrip } from "../common/TechStrip";
 export function SiteFooter() {
   return (
     <footer className="relative mt-24 border-t border-border bg-paper">
-      <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-14 sm:px-6">
+      <div className="mx-auto flex max-w-7xl flex-col gap-8 px-4 py-14 sm:px-6">
         <div className="flex flex-col gap-8 sm:flex-row sm:items-end sm:justify-between">
           <p className="max-w-sm font-display text-2xl leading-snug tracking-tight text-foreground sm:text-3xl">
             Confidential outcome assurance for agentic work.

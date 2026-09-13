@@ -19,7 +19,7 @@ export function SiteHeader() {
   const pathname = usePathname();
   return (
     <header className="sticky top-0 z-30 isolate border-b border-border bg-surface/90 backdrop-blur supports-[backdrop-filter]:bg-surface/75">
-      <div className="mx-auto flex h-16 max-w-6xl items-center gap-8 px-4 sm:px-6">
+      <div className="mx-auto flex h-16 max-w-7xl items-center gap-8 px-4 sm:px-6">
         <Link href="/" aria-label="Vouch — home" className="flex items-center">
           {/* Vouch wordmark: black ink on an opaque white PNG. The blend modes key the background
               out against either theme so no white box shows on the zinc-50 (off-white) surface:
