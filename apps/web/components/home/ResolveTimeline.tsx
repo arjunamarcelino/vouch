@@ -79,15 +79,26 @@ const N = STAGES.length;
 export function ResolveTimeline() {
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [reduced, setReduced] = useState(false);
   const railRef = useRef<HTMLDivElement | null>(null);
   const nodeRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
-  // Dwell timer, keyed on `active` so both auto-advance and manual selection restart a full dwell.
+  // Honor prefers-reduced-motion (like ReceiptFlow) and react to live OS toggles.
   useEffect(() => {
-    if (paused) return;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReduced(mq.matches);
+    const onChange = () => setReduced(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
+  // Dwell timer, keyed on `active` so both auto-advance and manual selection restart a full dwell.
+  // Frozen under reduced motion — manual node clicks still advance it.
+  useEffect(() => {
+    if (paused || reduced) return;
     const id = setTimeout(() => setActive((i) => (i + 1) % N), DWELL_MS);
     return () => clearTimeout(id);
-  }, [active, paused]);
+  }, [active, paused, reduced]);
 
   // Keep the active node centered *within the rail only* when it overflows (mobile horizontal scroll).
   // NB: element.scrollIntoView() bubbles to every scrollable ancestor including the window, which on
@@ -100,8 +111,8 @@ export function ResolveTimeline() {
     const railBox = rail.getBoundingClientRect();
     const nodeBox = node.getBoundingClientRect();
     const delta = nodeBox.left + nodeBox.width / 2 - (railBox.left + railBox.width / 2);
-    rail.scrollBy({ left: delta, behavior: "smooth" });
-  }, [active]);
+    rail.scrollBy({ left: delta, behavior: reduced ? "auto" : "smooth" });
+  }, [active, reduced]);
 
   const stage = STAGES[active];
   if (!stage) return null;
@@ -144,7 +155,7 @@ export function ResolveTimeline() {
                     className="group flex flex-col items-center gap-3 px-2 focus-visible:outline-none"
                   >
                     <span className="relative flex size-[18px] items-center justify-center">
-                      {isActive && (
+                      {isActive && !reduced && (
                         <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary/40" />
                       )}
                       <span
