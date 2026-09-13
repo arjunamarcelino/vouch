@@ -36,7 +36,7 @@ export function LogoMarquee({ className, height = "h-8" }: { className?: string;
   return (
     <div
       className={cn(
-        "group relative overflow-hidden [mask-image:linear-gradient(to_right,transparent,#000_7%,#000_93%,transparent)]",
+        "relative overflow-hidden [mask-image:linear-gradient(to_right,transparent,#000_7%,#000_93%,transparent)]",
         className,
       )}
     >

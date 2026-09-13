@@ -540,5 +540,3 @@ function TicketRow({ label, children }: { label: string; children: React.ReactNo
     </div>
   );
 }
-
-/** Worked-example receipt: a vertical settlement flow with mono figures and status. */

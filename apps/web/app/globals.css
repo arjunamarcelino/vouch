@@ -83,19 +83,10 @@
     }
   }
   .animate-marquee {
-    animation: vouch-marquee var(--marquee-duration, 34s) linear infinite;
+    animation: vouch-marquee 34s linear infinite;
   }
   .animate-marquee:hover {
     animation-play-state: paused;
-  }
-
-  @keyframes vouch-progress {
-    from {
-      transform: scaleX(0);
-    }
-    to {
-      transform: scaleX(1);
-    }
   }
 
   @keyframes vouch-sheen {
