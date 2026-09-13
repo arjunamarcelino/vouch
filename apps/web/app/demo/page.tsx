@@ -58,10 +58,10 @@ export default function DemoPage() {
   const railLive: Record<Rail, boolean> = { arc: mode.arc, graph: mode.graph, cre: false };
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
+    <div className="mx-auto max-w-[88rem] px-4 py-10 sm:px-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Judge demo</h1>
+          <h1 className="font-display text-3xl tracking-tight sm:text-4xl">Judge demo</h1>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
             Watch a guarantee resolve end-to-end. Every step is labeled with the rail it exercises and
             whether that rail is live on testnet or a local simulation — nothing is fabricated.

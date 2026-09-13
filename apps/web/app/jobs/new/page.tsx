@@ -141,8 +141,8 @@ export default function CreateJobPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Create a job</h1>
+    <div className="mx-auto max-w-[88rem] px-4 py-10 sm:px-6">
+      <h1 className="font-display text-3xl tracking-tight sm:text-4xl">Create a job</h1>
       <p className="mt-1 text-sm text-muted-foreground">
         Attach a provider-funded, capped guarantee to AI-agent work. Private criteria are hashed in your
         browser — only the commitment is stored.

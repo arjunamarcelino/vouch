@@ -41,13 +41,13 @@ export function ProviderProfile({ address }: { address: string }) {
   const link = explorerAddressLink(address);
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
+    <div className="mx-auto max-w-[88rem] px-4 py-10 sm:px-6">
       <Link href="/dashboard" className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="size-4" aria-hidden /> Dashboard
       </Link>
 
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">Provider</h1>
+        <h1 className="font-display text-3xl tracking-tight sm:text-4xl">Provider</h1>
         {link ? (
           <a href={link} target="_blank" rel="noopener noreferrer" className="font-mono text-sm text-primary hover:underline">
             {shortHex(address, 10, 8)}

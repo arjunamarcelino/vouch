@@ -60,6 +60,12 @@ runtime `dependencies`, and `pnpm deploy --legacy --prod` (legacy because of cat
   real client IP, and enforce edge rate-limiting for anything public. This is why the agent is a
   **single instance** (see below).
 - **Swagger** (`/docs`, `/openapi.json`) is served off-mainnet; it is gated off when `CHAIN_ENV=arc-mainnet`.
+- **Web image optimizer needs `sharp`:** the landing serves art through `next/image` (`/_next/image`),
+  which requires `sharp` in production. It's a `@vouch/web` dependency and `apps/web/Dockerfile` runs on
+  `node:22-slim` (glibc), matching sharp's default prebuilt, so the `output:"standalone"` bundle traces
+  it and optimization works. If the web runtime ever moves to Alpine/musl (or you build on a different
+  arch than you run), install the matching sharp binary or `/_next/image` will 500. See
+  `docs/solutions/performance-issues/landing-image-payload-webp-next-image.md`.
 
 ## Agent = single always-on instance
 

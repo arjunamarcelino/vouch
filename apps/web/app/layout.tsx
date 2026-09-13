@@ -2,7 +2,18 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { headers } from "next/headers";
 import { cookieToInitialState } from "wagmi";
+import { Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
 import "./globals.css";
+
+/**
+ * Typography. Plus Jakarta Sans is the primary voice — a modern geometric sans used for BOTH display
+ * headlines (heavier, tight tracking — see the `.font-display` weight rule in globals.css) and body/UI,
+ * so the two "match" by being one family. Geist Mono stays for money + on-chain data (tabular). Each is
+ * exposed as a CSS var and mapped to a Tailwind `font-*` utility in globals.css so `font-display` /
+ * `font-sans` / `font-mono` resolve correctly.
+ */
+const fontSans = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-jakarta", display: "swap" });
+const fontMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", display: "swap" });
 import { getConfig } from "../lib/wagmi";
 import { Providers } from "./providers";
 import { SiteHeader } from "../components/shell/SiteHeader";
@@ -36,8 +47,12 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const initialState = cookieToInitialState(getConfig(), (await headers()).get("cookie"));
 
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className="flex min-h-dvh flex-col bg-surface text-foreground antialiased">
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${fontSans.variable} ${fontMono.variable}`}
+    >
+      <body className="flex min-h-dvh flex-col bg-surface font-sans text-foreground antialiased">
         <Providers initialState={initialState}>
           <a
             href="#main"

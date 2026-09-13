@@ -41,10 +41,15 @@
   --color-input: oklch(0.62 0.015 286); /* 3.65:1 vs #fff — interactive form borders (1.4.11) */
 
   /* Single blue accent — authoritative / "act here" only */
-  --color-primary: oklch(0.55 0.17 255); /* 4.92:1 as text-on-white AND white-on-it */
-  --color-primary-foreground: oklch(0.985 0.001 286);
-  --color-accent-text: oklch(0.55 0.17 255); /* inline link text (light) */
-  --color-ring: oklch(0.55 0.17 255); /* focus ring = primary */
+  --color-primary: oklch(0.53 0.23 292); /* violet ~#753EE2 — 5.9:1 text-on-white (AA); single accent source */
+  --color-primary-foreground: oklch(0.985 0.001 286); /* near-white on primary (AA) */
+  --color-accent-text: oklch(0.53 0.23 292); /* inline link text — 5.9:1 on white/card (AA) */
+  --color-ring: oklch(0.53 0.23 292); /* focus ring = primary */
+  /* Primary gradient — derived from the primary token so button + accent stay one source. Both stops
+     are dark enough that primary-foreground text clears WCAG AA across the whole button (the old
+     third stop #A78BFA failed under white text). */
+  --color-primary-from: oklch(0.51 0.22 274); /* indigo #4F46E5 — gradient start */
+  --gradient-primary: linear-gradient(135deg, var(--color-primary-from) 0%, var(--color-primary) 100%);
 
   /* Status — solid fills paired with near-white text (AA white-on-fill in both themes).
      The *-text tokens are the text-on-background variants for inline labels. */
@@ -65,11 +70,12 @@
 }
 
 /*
- * Dark palette (class-based — `.dark` on <html>). Neutral surfaces + foreground flip;
- * the primary fill stays identical for button identity (white-on-blue 4.92:1), while
- * inline accent/links use a brighter tint that reads on dark surfaces. Status solid fills
- * are intentionally theme-stable (white-on-fill stays AA), so only the *-text variants
- * brighten for dark backgrounds.
+ * Dark palette (class-based — `.dark` on <html>). DORMANT: the app is currently light-only (no `.dark`
+ * toggle is applied), so this block and the scattered `dark:` variants are not active. Kept as the basis
+ * for a future dark theme, NOT actively maintained — if dark is ever enabled, audit every surface first
+ * (notably `--color-paper`, which is defined for light only and would need a dark value).
+ * Neutral surfaces + foreground flip; the primary fill stays identical for button identity, while inline
+ * accent/links use a brighter tint that reads on dark surfaces.
  */
 :root.dark {
   --color-background: oklch(0.165 0.006 286); /* #0e0e11 */
@@ -87,10 +93,10 @@
   --color-border: oklch(0.274 0.006 286);
   --color-input: oklch(0.52 0.012 286); /* 3.49:1 vs card — form borders */
 
-  --color-primary: oklch(0.55 0.17 255); /* button fill, white text 4.92:1 */
+  --color-primary: oklch(0.53 0.23 292); /* violet button fill, white text */
   --color-primary-foreground: oklch(0.985 0.001 286);
-  --color-accent-text: oklch(0.7 0.15 255); /* #59a0f9 6.69:1 on card — inline links */
-  --color-ring: oklch(0.7 0.15 255); /* 7.19:1 vs bg */
+  --color-accent-text: oklch(0.72 0.15 295); /* brighter violet ~#A78BFA — inline links on dark */
+  --color-ring: oklch(0.72 0.15 295);
 
   --color-success-text: oklch(0.72 0.15 155); /* #43c07a 7.70:1 on dark */
   --color-warning-text: oklch(0.8 0.15 85); /* #eab532 9.50:1 on dark */

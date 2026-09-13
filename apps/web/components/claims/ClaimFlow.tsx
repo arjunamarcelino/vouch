@@ -34,9 +34,9 @@ export function ClaimFlow({ id }: { id: string }) {
   const claim = useClaimStatus(id, true);
   const [evidence, setEvidence] = useState("");
 
-  if (job.isLoading) return <div className="mx-auto max-w-3xl px-4 py-10 text-sm text-muted-foreground">Loading…</div>;
+  if (job.isLoading) return <div className="mx-auto max-w-[88rem] px-4 py-10 text-sm text-muted-foreground">Loading…</div>;
   if (job.isError || !job.data) {
-    return <div className="mx-auto max-w-3xl px-4 py-10 text-sm text-muted-foreground">Couldn&apos;t load this job.</div>;
+    return <div className="mx-auto max-w-[88rem] px-4 py-10 text-sm text-muted-foreground">Couldn&apos;t load this job.</div>;
   }
 
   const j = job.data;
@@ -65,12 +65,12 @@ export function ClaimFlow({ id }: { id: string }) {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
+    <div className="mx-auto max-w-[88rem] px-4 py-10 sm:px-6">
       <Link href={`/jobs/${id}`} className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="size-4" aria-hidden /> Job #{id}
       </Link>
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">File a claim</h1>
+        <h1 className="font-display text-3xl tracking-tight sm:text-4xl">File a claim</h1>
         <StateBadge status={j.status} />
         {j.status === "InitiallyApproved" ? <CoverageCountdown coverageEndSec={Number(j.coverageEnd)} /> : null}
       </div>
