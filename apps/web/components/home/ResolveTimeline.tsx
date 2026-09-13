@@ -152,7 +152,7 @@ export function ResolveTimeline() {
                     type="button"
                     onClick={() => setActive(i)}
                     aria-current={isActive ? "step" : undefined}
-                    className="group flex flex-col items-center gap-3 px-2 focus-visible:outline-none"
+                    className="group flex flex-col items-center gap-3 rounded-md px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   >
                     <span className="relative flex size-[18px] items-center justify-center">
                       {isActive && !reduced && (

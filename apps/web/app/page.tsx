@@ -388,7 +388,13 @@ export default function Home() {
                 {/* Brand logo(s): a static row on mobile/tablet; on lg, a centered overlay that fades on hover. */}
                 <div className="flex items-center gap-5 lg:absolute lg:inset-0 lg:justify-center lg:p-6 lg:transition-all lg:duration-300 lg:group-hover:-translate-y-1 lg:group-hover:opacity-0">
                   {it.logos.map((src) => (
-                    <img key={src} src={src} alt={it.name} className="h-7 w-auto max-w-[45%] object-contain lg:h-8" />
+                    <img
+                      key={src}
+                      src={src}
+                      alt=""
+                      aria-hidden
+                      className="h-7 w-auto max-w-[45%] object-contain lg:h-8"
+                    />
                   ))}
                 </div>
 
