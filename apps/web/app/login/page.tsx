@@ -97,15 +97,7 @@ function LoginInner() {
                 <WalletConnectButton />
                 {me.isLoading ? (
                   <p className="text-xs text-muted-foreground">Checking your session…</p>
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    Just exploring?{" "}
-                    <a href={`${LANDING_URL}/demo`} className="text-primary hover:underline">
-                      Open the judge demo
-                    </a>{" "}
-                    — no wallet required.
-                  </p>
-                )}
+                ) : null}
               </CardContent>
             </Card>
         </div>

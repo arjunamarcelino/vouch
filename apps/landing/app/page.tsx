@@ -1,4 +1,3 @@
-import Link from "next/link";
 import Image from "next/image";
 import type { CSSProperties } from "react";
 import {
@@ -14,6 +13,7 @@ import { ResolveTimeline } from "../components/home/ResolveTimeline";
 import { ReceiptFlow } from "../components/home/ReceiptFlow";
 import { Reveal, CountUp } from "../components/home/motion";
 import { SECTION } from "../lib/home-sections";
+import { APP_URL } from "../lib/env";
 
 /**
  * Landing (WS-1) — the 20-second test, light/editorial register. Plus Jakarta Sans display + mono for
@@ -138,11 +138,8 @@ export default function Home() {
             </p>
 
             <div className="rise mt-9 flex flex-wrap items-center gap-3" style={delay(240)}>
-              <Link href="/demo" className={cn(buttonVariants({ variant: "ghost", size: "lg" }), "gap-2")}>
-                Demo
-              </Link>
-              <Link
-                href="/app/dashboard"
+              <a
+                href={`${APP_URL}/app/dashboard`}
                 className={cn(
                   buttonVariants({ size: "lg" }),
                   "group gap-2",
@@ -150,7 +147,7 @@ export default function Home() {
               >
                 Open App
                 <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
-              </Link>
+              </a>
             </div>
 
           </div>
@@ -426,13 +423,10 @@ export default function Home() {
             Watch one resolve end to end — locked collateral to a DON-signed payout, live on-chain.
           </p>
           <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-            <Link href="/demo" className={cn(buttonVariants({ variant: "ghost", size: "lg" }), "gap-2")}>
-              Demo
-            </Link>
-            <Link href="/app/dashboard" className={cn(buttonVariants({ size: "lg" }), "group gap-2")}>
+            <a href={`${APP_URL}/app/dashboard`} className={cn(buttonVariants({ size: "lg" }), "group gap-2")}>
               Open App
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
-            </Link>
+            </a>
           </div>
         </div>
       </section>

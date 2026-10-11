@@ -6,17 +6,15 @@ import { usePathname } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { buttonVariants } from "@vouch/ui/components/button";
 import { cn } from "@vouch/ui/lib/utils";
-import { TestnetBadge } from "../common/TestnetBadge";
 import { Wordmark } from "../common/Wordmark";
 import { HOME_NAV } from "../../lib/home-sections";
 import { APP_URL } from "../../lib/env";
 
 /**
- * Marketing header: a floating pill (asyah-style), mounted only by the (marketing) route group.
- *   - Landing ("/"): centered nav = in-page section anchors; right = Demo + Open App.
- *   - Demo ("/demo"): no centered nav (no in-page sections); right = Demo + Open App.
- * No wallet/product nav here — the gated app renders those via AppShell. The sticky <header> supplies
- * only the floating inset; `isolate` keys the wordmark blend against the pill's own backdrop.
+ * Marketing header: a floating pill. On the landing ("/") the centered nav holds in-page section
+ * anchors; the right side has a single "Open App" CTA into the dApp deployment. No wallet/product nav
+ * here. The sticky <header> supplies only the floating inset; `isolate` keys the wordmark blend
+ * against the pill's own backdrop.
  */
 
 export function SiteHeader() {
@@ -70,7 +68,6 @@ export function SiteHeader() {
           <Link href="/" aria-label="Vouch — home" className="flex items-center">
             <Wordmark />
           </Link>
-          <TestnetBadge />
         </div>
 
         {nav.length > 0 ? (
@@ -105,9 +102,6 @@ export function SiteHeader() {
         ) : null}
 
         <div className="flex items-center gap-2">
-          <Link href="/demo" className={cn(buttonVariants({ variant: "ghost" }), "hidden sm:inline-flex")}>
-            Demo
-          </Link>
           <a href={`${APP_URL}/app/dashboard`} className={cn(buttonVariants(), "group gap-1.5")}>
             Open App
             <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden />

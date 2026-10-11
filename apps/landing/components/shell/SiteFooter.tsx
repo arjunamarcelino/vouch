@@ -1,5 +1,4 @@
 import { TechStrip } from "../common/TechStrip";
-import { TestnetBadge } from "../common/TestnetBadge";
 
 /**
  * App shell footer: the "Built on" stack strip + a light legal line. Rendered only by the `(marketing)`
@@ -12,8 +11,7 @@ export function SiteFooter() {
       <div className="mx-auto flex max-w-[88rem] flex-col gap-8 px-4 py-14 sm:px-6">
         <div className="flex flex-col gap-8 sm:flex-row sm:items-end sm:justify-between">
           <div className="max-w-lg">
-            <TestnetBadge />
-            <p className="mt-3 font-display text-2xl leading-snug tracking-tight text-foreground sm:text-3xl">
+            <p className="font-display text-2xl leading-snug tracking-tight text-foreground sm:text-3xl">
               Confidential Outcome Assurance for Agentic Work.
             </p>
           </div>
