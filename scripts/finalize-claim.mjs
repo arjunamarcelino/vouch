@@ -27,8 +27,10 @@ const RPC = (process.env.ARC_TESTNET_RPC_URL ?? process.env.ARC_RPC_URL ?? "http
 const HUB = getAddress((process.env.ASSURANCE_HUB ?? "0xB30e054557533f28753B4ACdf646B393E2072bf9").trim());
 const JOB_ID = BigInt(process.env.JOB_ID ?? (() => { throw new Error("set JOB_ID"); })());
 const COVERED = (process.env.COVERED ?? "true").toLowerCase() !== "false";
+const CHAIN_ID = Number(process.env.CHAIN_ID ?? 5042002);
+const EXPLORER = (process.env.EXPLORER_URL ?? "https://testnet.arcscan.app").replace(/\/$/, "");
 
-const arc = { id: 5042002, name: "Arc testnet", nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 }, rpcUrls: { default: { http: [RPC] } } };
+const arc = { id: CHAIN_ID, name: `Arc ${CHAIN_ID}`, nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 }, rpcUrls: { default: { http: [RPC] } } };
 
 const jobTuple = { type: "tuple", components: [
   { name: "client", type: "address" }, { name: "provider", type: "address" },
@@ -100,4 +102,4 @@ console.log(`tx: ${hash}`);
 const rcpt = await pub.waitForTransactionReceipt({ hash });
 const after = await pub.readContract({ address: HUB, abi, functionName: "getJob", args: [JOB_ID] });
 console.log(`status: ${rcpt.status}  job now in state ${after.status} ${Number(after.status) === 6 ? "= ClaimPaid ✅" : ""}`);
-console.log(`explorer: https://testnet.arcscan.app/tx/${hash}`);
+console.log(`explorer: ${EXPLORER}/tx/${hash}`);

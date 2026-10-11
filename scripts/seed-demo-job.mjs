@@ -22,7 +22,8 @@ const require = createRequire("/Users/arjuna/Documents/vouch/packages/cre-workfl
 const { createPublicClient, createWalletClient, http, getAddress, keccak256, toBytes, decodeEventLog } = require("viem");
 const { privateKeyToAccount } = require("viem/accounts");
 
-const RPC = (process.env.ARC_TESTNET_RPC_URL ?? "https://rpc.testnet.arc.io").trim();
+const RPC = (process.env.ARC_RPC_URL ?? process.env.ARC_TESTNET_RPC_URL ?? "https://rpc.testnet.arc.io").trim();
+const CHAIN_ID = Number(process.env.CHAIN_ID ?? 5042002);
 const HUB = getAddress((process.env.ASSURANCE_HUB ?? "0xB30e054557533f28753B4ACdf646B393E2072bf9").trim());
 const USDC = getAddress((process.env.ARC_USDC_ADDRESS ?? "0x3600000000000000000000000000000000000000").trim());
 const TARGET = (process.env.TARGET ?? "funded").toLowerCase();
@@ -39,7 +40,7 @@ const PRIV_COMMIT = keccak256(toBytes("vouch-demo-private"));
 const SUBMIT_COMMIT = keccak256(toBytes("vouch-demo-submission"));
 const EVIDENCE = keccak256(toBytes("vouch-demo-evidence"));
 
-const arc = { id: 5042002, name: "Arc testnet", nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 }, rpcUrls: { default: { http: [RPC] } } };
+const arc = { id: CHAIN_ID, name: `Arc ${CHAIN_ID}`, nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 }, rpcUrls: { default: { http: [RPC] } } };
 const erc20 = [
   { name: "approve", type: "function", stateMutability: "nonpayable", inputs: [{ type: "address" }, { type: "uint256" }], outputs: [{ type: "bool" }] },
   { name: "allowance", type: "function", stateMutability: "view", inputs: [{ type: "address" }, { type: "address" }], outputs: [{ type: "uint256" }] },

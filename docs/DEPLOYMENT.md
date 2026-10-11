@@ -109,6 +109,24 @@ Deploy block: **25456280** (= mainnet subgraph `startBlock`). Deployer / operato
    escrow/guarantee/payout flow is authoritative on its own. If Studio rejects `arc`, demo the
    contract flow directly — the agent quote path fail-closes without a live subgraph by design.
 
+### Live lifecycle proven on mainnet (jobId 1, covered claim → ClaimPaid)
+
+Full happy-path + covered-failure settlement, end-to-end on Arc mainnet (chain 5042). Client =
+operator `0x9A39bC…`, provider = `0x33F4F1…`; task fee + guarantee 0.05 USDC each. Final state
+`ClaimPaid (6)`, hub escrow balance 0, both wallets net-zero principal (gas only).
+
+| Step | Tx | Result |
+|---|---|---|
+| `openJob` (escrow task fee) | [`0x2836084b…`](https://explorer.arc.io/tx/0x2836084bdc69c9648068245d00603a318602cf1cd58482400043f0280939d37c) | Funded |
+| `acceptJob` (lock collateral) | [`0x3430c18d…`](https://explorer.arc.io/tx/0x3430c18d78d9dedd4d204c1d756b5654e4697410d82ef667a5b7da5cef199109) | AcceptedByProvider |
+| `submitDeliverable` | [`0xf791bb6a…`](https://explorer.arc.io/tx/0xf791bb6a4a68fb6ef2b7837a371c9bfe9745a13879872c80450df73b0aaf76cf) | Submitted |
+| `resolveInitialEvaluation(true)` | [`0x94bf13c2…`](https://explorer.arc.io/tx/0x94bf13c2f323da57a953e2e51c8a36fae43bf00f9cf666014830a93ad30f836c) | InitiallyApproved — task fee released, coverage opens |
+| `openClaim` | [`0x7d6bbd14…`](https://explorer.arc.io/tx/0x7d6bbd14d29a8d8283d2a9feb6f106a3a833ae4a774b667b92b5d1f917953bed) | ClaimPending |
+| `onReport(covered, 0.05)` | [`0x54a314db…`](https://explorer.arc.io/tx/0x54a314dbd7ea7b984db7e04db536a12f614c68c8b7c0469a7f631875afab2fbf) | **ClaimPaid** — GuaranteePaid to client |
+
+Driven by `scripts/seed-demo-job.mjs` (→ ClaimPending) + `scripts/finalize-claim.mjs` (trusted-relay
+`onReport`), both now chain-parameterized via `CHAIN_ID` / `ARC_RPC_URL` / `EXPLORER_URL`.
+
 ### One-line post-deploy edits (scaffolding already in place)
 
 - `packages/subgraph/networks.json` → the `"arc"` entry is pre-stubbed with a zero address +
