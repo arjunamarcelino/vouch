@@ -10,7 +10,7 @@
     "test": "graph test -v 0.6.0",
     "test:coverage": "graph test -v 0.6.0 -- -c",
     "preflight": "node scripts/preflight.mjs",
-    "deploy:studio": "node scripts/preflight.mjs && graph deploy",
+    "deploy:studio": "node scripts/preflight.mjs arc && graph deploy",
     "create:local": "graph create --node http://localhost:8020/ vouch/vouch-subgraph",
     "deploy:local": "node scripts/preflight.mjs && graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 vouch/vouch-subgraph",
     "health-check": "node scripts/health-check.mjs",

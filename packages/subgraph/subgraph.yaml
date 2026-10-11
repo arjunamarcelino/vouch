@@ -7,13 +7,13 @@ indexerHints:
 dataSources:
   - kind: ethereum
     name: AssuranceHub
-    network: arc-testnet
+    network: arc
     source:
-      # Deployed AssuranceHub on Arc testnet (2026-09-12; keep in sync with networks.json).
+      # Deployed AssuranceHub on Arc mainnet (2026-10-12; keep in sync with networks.json).
       address: "0xB30e054557533f28753B4ACdf646B393E2072bf9"
       abi: AssuranceHub
       # AssuranceHub deploy block — floors the scan to near chain head (fast sync).
-      startBlock: 61747921
+      startBlock: 25456280
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9

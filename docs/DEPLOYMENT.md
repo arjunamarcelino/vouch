@@ -127,6 +127,20 @@ operator `0x9A39bC…`, provider = `0x33F4F1…`; task fee + guarantee 0.05 USDC
 Driven by `scripts/seed-demo-job.mjs` (→ ClaimPending) + `scripts/finalize-claim.mjs` (trusted-relay
 `onReport`), both now chain-parameterized via `CHAIN_ID` / `ARC_RPC_URL` / `EXPLORER_URL`.
 
+### The Graph (Arc mainnet subgraph, live)
+
+Arc mainnet is a Graph-supported network (`arc`, `eip155:5042`) in Subgraph Studio. The subgraph is
+deployed and synced (indexes `AssuranceHub` from block 25456280):
+
+- Query endpoint: `https://api.studio.thegraph.com/query/1760065/vouch/v0.1.0`
+- Deployment CID: `QmViL5UHhMLLTZLBxwXP235uKKPbnAWhZPuhK1BtfV5z1x`
+- Verified indexed: job `0x01` → `CLAIM_PAID`, claim `covered=true`, provider
+  `0x33F4F1…` `claimsUpheld=1` / `lastUpheldClaimRateBps=10000`, guaranteePayout `50000`.
+  `hasIndexingErrors: false`.
+
+Manifest: `subgraph.yaml` `network: arc`. Redeploy via `pnpm --filter @vouch/subgraph deploy:studio`
+(now preflights the `arc` network).
+
 ### One-line post-deploy edits (scaffolding already in place)
 
 - `packages/subgraph/networks.json` → the `"arc"` entry is pre-stubbed with a zero address +
