@@ -7,7 +7,6 @@ import { LayoutDashboard, Briefcase, ChevronsLeft, ChevronsRight } from "lucide-
 import { cn } from "@vouch/ui/lib/utils";
 import { WalletConnectButton } from "../wallet/ConnectButton";
 import { Wordmark } from "../common/Wordmark";
-import { TestnetBadge } from "../common/TestnetBadge";
 import { LANDING_URL } from "../../lib/env";
 
 /**
@@ -59,12 +58,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           collapsed ? "w-16 px-2" : "w-60 px-4",
         )}
       >
-        {/* Logo + testnet, centered horizontally */}
+        {/* Logo, centered horizontally */}
         <div className="flex flex-col items-center gap-2">
           <a href={LANDING_URL} aria-label="Vouch — home" className="flex items-center justify-center">
             {collapsed ? <img src="/favicon.svg" alt="Vouch" className="size-7" /> : <Wordmark />}
           </a>
-          {collapsed ? null : <TestnetBadge />}
         </div>
 
         {/* Collapse toggle */}
