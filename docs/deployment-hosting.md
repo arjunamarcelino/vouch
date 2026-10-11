@@ -13,10 +13,15 @@ tooling. **Path 2 (hosted)** is the `withvouch.xyz` scheme the maintainer deploy
 
 | Service | Domain | Host | Notes |
 |---|---|---|---|
-| web (`@vouch/web`, Next.js 16) | `https://withvouch.xyz` | Vercel | `NEXT_PUBLIC_*` are **build-time** env |
+| landing (`@vouch/landing`, Next.js 16) | `https://withvouch.xyz` | Vercel | marketing, **wallet-free**; `NEXT_PUBLIC_*` build-time |
+| web / dApp (`@vouch/web`, Next.js 16) | `https://app.withvouch.xyz` | Vercel | the gated app; `NEXT_PUBLIC_*` build-time |
 | api (`@vouch/api`, NestJS 11) | `https://api.withvouch.xyz` | container | `apps/api/Dockerfile` |
 | agent (`@vouch/agent`, Fastify) | `https://agent.withvouch.xyz` | container | prefer **private/api-only**; single instance |
 | Postgres | — | managed | never publicly exposed |
+
+The landing and dApp are **separate Vercel projects**, cross-linked by env: landing's "Open App" CTA →
+`NEXT_PUBLIC_APP_URL`; the app's home/demo links → `NEXT_PUBLIC_LANDING_URL`. The API's `WEB_ORIGIN`
+CORS allowlist must include **both** origins.
 
 ## Path 1 — one-command local review
 
@@ -30,8 +35,10 @@ Open **http://localhost:3000 only** — the `__Host-vouch_session` cookie requir
 
 ## Path 2 — hosted deploy (maintainer)
 
-**web on Vercel:** set Root Directory = `apps/web` (Vercel auto-detects Turborepo), or use
-`apps/web/vercel.json`. Set every `NEXT_PUBLIC_*` as **build-time** Environment Variables (they are
+**Two Vercel projects**, one per app: dApp with Root Directory = `apps/web` (or `apps/web/vercel.json`),
+landing with Root Directory = `apps/landing` (or `apps/landing/vercel.json`). Point `withvouch.xyz` at
+the landing project and `app.withvouch.xyz` at the web project. Set every `NEXT_PUBLIC_*` as **build-time**
+Environment Variables per project (they are
 inlined into the browser bundle; they are also declared in `turbo.json` `tasks.build.env` so remote
 cache never serves a stale bundle). `serverExternalPackages` + `transpilePackages` + **pinned wagmi
 v2** must be preserved (a fresh install that drifts wagmi→v3 breaks RainbowKit).

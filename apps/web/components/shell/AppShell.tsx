@@ -8,6 +8,7 @@ import { cn } from "@vouch/ui/lib/utils";
 import { WalletConnectButton } from "../wallet/ConnectButton";
 import { Wordmark } from "../common/Wordmark";
 import { TestnetBadge } from "../common/TestnetBadge";
+import { LANDING_URL } from "../../lib/env";
 
 /**
  * App chrome for the gated `/app/*` surface: a persistent, collapsible side menu instead of the marketing
@@ -60,9 +61,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       >
         {/* Logo + testnet, centered horizontally */}
         <div className="flex flex-col items-center gap-2">
-          <Link href="/" aria-label="Vouch — home" className="flex items-center justify-center">
+          <a href={LANDING_URL} aria-label="Vouch — home" className="flex items-center justify-center">
             {collapsed ? <img src="/favicon.svg" alt="Vouch" className="size-7" /> : <Wordmark />}
-          </Link>
+          </a>
           {collapsed ? null : <TestnetBadge />}
         </div>
 
@@ -88,9 +89,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Mobile top bar + nav row */}
       <div className="lg:hidden">
         <div className="flex items-center justify-between gap-3 border-b border-border bg-card/40 px-4 py-3">
-          <Link href="/" aria-label="Vouch — home" className="flex items-center">
+          <a href={LANDING_URL} aria-label="Vouch — home" className="flex items-center">
             <Wordmark />
-          </Link>
+          </a>
           <WalletConnectButton />
         </div>
         <nav className="flex gap-1 overflow-x-auto border-b border-border px-3 py-2" aria-label="App">

@@ -16,6 +16,10 @@ export const WALLETCONNECT_PROJECT_ID =
 /** Optional read-only RPC override (unauthenticated only). Falls back to the chain's default. */
 export const RPC_URL_OVERRIDE = process.env.NEXT_PUBLIC_ARC_RPC_URL;
 
+/** Absolute URL of the marketing site (a SEPARATE deployment — apps/landing). The app's home/demo
+ * links point back out here. */
+export const LANDING_URL = process.env.NEXT_PUBLIC_LANDING_URL ?? "http://localhost:3003";
+
 /** Join a path onto the API base (single trailing-slash-safe helper — no duplicated trim). */
 export function apiUrl(path: string): string {
   return `${API_BASE_URL.replace(/\/$/u, "")}${path}`;

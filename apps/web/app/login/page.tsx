@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense, useEffect } from "react";
-import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAccount } from "wagmi";
@@ -10,6 +9,7 @@ import { Card, CardContent } from "@vouch/ui/components/card";
 import { useAuthMe } from "../../lib/api/hooks";
 import { WalletConnectButton } from "../../components/wallet/ConnectButton";
 import { TestnetBadge } from "../../components/common/TestnetBadge";
+import { LANDING_URL } from "../../lib/env";
 
 /**
  * Sign-in page for the gated `/app/*` surface. The wallet + SIWE flow runs through RainbowKit
@@ -50,12 +50,12 @@ function LoginInner() {
   return (
     <div className="relative grid min-h-dvh lg:grid-cols-2">
       {/* Floating back link — top-left of the page, over the asset panel on desktop / the form on mobile. */}
-      <Link
-        href="/"
+      <a
+        href={LANDING_URL}
         className="absolute left-6 top-10 z-10 inline-flex items-center gap-1.5 rounded-sm text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:left-10 sm:top-12 lg:left-12"
       >
         <ArrowLeft className="size-4" aria-hidden /> Back to Homepage
-      </Link>
+      </a>
 
       {/* Left — brand asset panel (hero register). Hidden below lg; the sign-in stands alone on mobile. */}
       <div className="relative hidden overflow-hidden lg:flex lg:flex-col lg:justify-center lg:p-12 xl:p-16">
@@ -100,9 +100,9 @@ function LoginInner() {
                 ) : (
                   <p className="text-xs text-muted-foreground">
                     Just exploring?{" "}
-                    <Link href="/demo" className="text-primary hover:underline">
+                    <a href={`${LANDING_URL}/demo`} className="text-primary hover:underline">
                       Open the judge demo
-                    </Link>{" "}
+                    </a>{" "}
                     — no wallet required.
                   </p>
                 )}

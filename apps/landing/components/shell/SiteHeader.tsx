@@ -9,6 +9,7 @@ import { cn } from "@vouch/ui/lib/utils";
 import { TestnetBadge } from "../common/TestnetBadge";
 import { Wordmark } from "../common/Wordmark";
 import { HOME_NAV } from "../../lib/home-sections";
+import { APP_URL } from "../../lib/env";
 
 /**
  * Marketing header: a floating pill (asyah-style), mounted only by the (marketing) route group.
@@ -107,10 +108,10 @@ export function SiteHeader() {
           <Link href="/demo" className={cn(buttonVariants({ variant: "ghost" }), "hidden sm:inline-flex")}>
             Demo
           </Link>
-          <Link href="/app/dashboard" className={cn(buttonVariants(), "group gap-1.5")}>
+          <a href={`${APP_URL}/app/dashboard`} className={cn(buttonVariants(), "group gap-1.5")}>
             Open App
             <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
-          </Link>
+          </a>
         </div>
       </div>
     </header>

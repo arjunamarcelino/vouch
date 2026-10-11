@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { StatusBar } from "../../../components/shell/StatusBar";
+import { StatusBar } from "../../components/shell/StatusBar";
 
 /**
  * The public demo keeps the app's Live/Networks status footer (review 107) — it's the one marketing
