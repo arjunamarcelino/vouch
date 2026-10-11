@@ -22,7 +22,7 @@ export function SiteFooter() {
 
         <div className="flex flex-col gap-2 font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
           <span>© 2026 Vouch</span>
-          <span>Sponsor logos are property of their respective owners.</span>
+          <span>All logos and trademarks are property of their respective owners.</span>
         </div>
       </div>
     </footer>
