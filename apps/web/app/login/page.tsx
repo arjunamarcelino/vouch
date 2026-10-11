@@ -8,7 +8,6 @@ import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { Card, CardContent } from "@vouch/ui/components/card";
 import { useAuthMe } from "../../lib/api/hooks";
 import { WalletConnectButton } from "../../components/wallet/ConnectButton";
-import { TestnetBadge } from "../../components/common/TestnetBadge";
 import { LANDING_URL } from "../../lib/env";
 
 /**
@@ -82,8 +81,7 @@ function LoginInner() {
       {/* Right — sign in, vertically centered in the column. */}
       <div className="flex items-center justify-center px-4 py-16 sm:px-6">
         <div className="w-full max-w-md text-center">
-            <TestnetBadge />
-            <h1 className="mt-4 font-display text-3xl tracking-tight sm:text-4xl">Sign in to Vouch</h1>
+            <h1 className="font-display text-3xl tracking-tight sm:text-4xl">Sign in to Vouch</h1>
             <p className="mt-2 text-sm text-muted-foreground">
               Connect your wallet and sign the one-time message to access your dashboard, jobs, and
               coverage. Nothing is submitted on-chain here — signing only proves you own the address.
