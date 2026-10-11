@@ -76,14 +76,16 @@ assertion passes). CRE identity is unchanged: `workflowId = keccak256("vouch-ass
 = `0xd38944d8afd25c7f280faf6f59d673e021c285abb59160d25bc8d2a28fb5e467`,
 `workflowName = bytes10("vouchclaim")` = `0x766f756368636c61696d…`.
 
-### Contracts (fill in after deploy)
+### Contracts (live on Arc mainnet, 2026-10-12)
 
-| Contract | Address | Deploy tx |
-|---|---|---|
-| `AssuranceHub` | `0x…` *(TBD)* | `0x…` *(TBD)* |
-| `QuoteBondEscrow` | `0x…` *(TBD)* | `0x…` *(TBD)* |
+| Contract | Address | Deploy tx | Block |
+|---|---|---|---|
+| `AssuranceHub` | [`0xB30e054557533f28753B4ACdf646B393E2072bf9`](https://explorer.arc.io/address/0xB30e054557533f28753B4ACdf646B393E2072bf9) | [`0x5872bad6…`](https://explorer.arc.io/tx/0x5872bad67b2835a53a0a28b92b3da5829455dfc5a9232be5ed6b8f9cd98b5b6d) | 25456280 |
+| `QuoteBondEscrow` | [`0x3ca2d854D5f042dd0ddd39Eaf80644be0e80048c`](https://explorer.arc.io/address/0x3ca2d854D5f042dd0ddd39Eaf80644be0e80048c) | [`0x7e4395c4…`](https://explorer.arc.io/tx/0x7e4395c4cdc76360b90f24a2c425f191f218c8ca0f602e4c7cb26f362f2e75b7) | 25456336 |
 
-Deploy block: **TBD** (= mainnet subgraph `startBlock`).
+Deploy block: **25456280** (= mainnet subgraph `startBlock`). Deployer / operator EOA (all roles):
+`0x9A39bC6C499C4f51336692871233164Ae621D52E`. `AssuranceHub.usdc()` verified = the canonical
+`0x3600…0000` predeploy; total deploy gas ≈ 0.064 USDC.
 
 ### Deploy steps
 
