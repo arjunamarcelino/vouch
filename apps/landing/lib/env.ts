@@ -4,6 +4,7 @@
  * override. NEVER put a keyed/authenticated RPC, a subgraph admin key, or any write credential here.
  * Reputation/subgraph data is read through `apps/api` (server-side freshness gate), never direct.
  */
+import { chainForEnv, type ChainEnv } from "@vouch/shared/chains";
 
 /** Base URL of the NestJS API (`apps/api`). Same-site in prod so the SIWE cookie is first-party. */
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
@@ -15,6 +16,10 @@ export const WALLETCONNECT_PROJECT_ID =
 
 /** Optional read-only RPC override (unauthenticated only). Falls back to the chain's default. */
 export const RPC_URL_OVERRIDE = process.env.NEXT_PUBLIC_ARC_RPC_URL;
+
+/** Active chain env + viem chain (display-only on the marketing site — explorer links, chain name/id). */
+export const CHAIN_ENV = (process.env.NEXT_PUBLIC_CHAIN_ENV ?? "development") as ChainEnv;
+export const activeChain = chainForEnv(CHAIN_ENV);
 
 /** Absolute URL of the gated dApp (a SEPARATE deployment — apps/web). The "Open App" CTA links here. */
 export const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";

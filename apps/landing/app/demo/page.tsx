@@ -7,6 +7,7 @@ import { cn } from "@vouch/ui/lib/utils";
 import { useIntegrationsHealth, useTopProviders } from "../../lib/api/hooks";
 import { resolveMode } from "../../lib/mode";
 import { shortHex } from "../../lib/format";
+import { activeChain } from "../../lib/env";
 import { PrizeEvidenceDrawer } from "../../components/demo/PrizeEvidenceDrawer";
 import { TechStrip } from "../../components/common/TechStrip";
 import { ModePill } from "../../components/common/indicators";
@@ -84,7 +85,7 @@ export default function DemoPage() {
           </h1>
           <p className="mx-auto mt-6 max-w-3xl text-lg leading-relaxed text-muted-foreground">
             Six steps from a funded job to a DON-signed payout. Each step names the rail it runs on and
-            whether that rail is <span className="font-medium text-foreground">live on Arc testnet</span>{" "}
+            whether that rail is <span className="font-medium text-foreground">live on {activeChain.name}</span>{" "}
             or a clearly-labeled local simulation — nothing here is fabricated. The stepper narrates; the
             evidence drawer shows real provenance.
           </p>

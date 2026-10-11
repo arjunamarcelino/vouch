@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAccount, usePublicClient, useSendTransaction, useSwitchChain } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
 import { BaseError, WaitForTransactionReceiptTimeoutError, type Hex } from "viem";
-import { arcTestnet } from "@vouch/shared/chains";
+import { activeChain } from "../env";
 import type { TransactionRequest, TxAction } from "@vouch/shared/schemas";
 import { ApiClientError } from "../api/client";
 import { trackTx } from "../api/prepare";
@@ -81,7 +81,7 @@ export function useTxEngine() {
       const transport: TxTransport =
         address && publicClient
           ? createLiveTransport({
-              chainId: arcTestnet.id,
+              chainId: activeChain.id,
               receiptTimeoutMs: RECEIPT_TIMEOUT_MS,
               sendTransaction: sendTransactionAsync,
               waitForTransactionReceipt: (args) => publicClient.waitForTransactionReceipt(args),
@@ -90,10 +90,10 @@ export function useTxEngine() {
 
       const persist = (stage: "submitted" | "tracking", hash: string, preparedId: string) => {
         if (address) {
-          savePendingTx(address, arcTestnet.id, { action, jobId, preparedId, txHash: hash, stage, updatedAt: Date.now() });
+          savePendingTx(address, activeChain.id, { action, jobId, preparedId, txHash: hash, stage, updatedAt: Date.now() });
         }
       };
-      const clearPersisted = () => clearPendingTx(address ?? "", arcTestnet.id);
+      const clearPersisted = () => clearPendingTx(address ?? "", activeChain.id);
       // Scoped + fire-and-forget: a rejected refetch must NOT be able to flip `done` → `error` (P2-2).
       const invalidateScoped = () => {
         void queryClient.invalidateQueries({ queryKey: queryKeys.myJobs });
@@ -116,15 +116,15 @@ export function useTxEngine() {
         setFlow({ stage: "preparing", action });
 
         // 1. Chain assertion — switch explicitly (covers an undefined/unknown wallet chain too).
-        if (walletChainId !== arcTestnet.id) {
+        if (walletChainId !== activeChain.id) {
           setFlow({ stage: "switchingChain", action });
-          await switchChainAsync({ chainId: arcTestnet.id });
+          await switchChainAsync({ chainId: activeChain.id });
         }
 
         // 2. Separate approval stage — same chainId/zero-value guards as the main tx (security P3).
         if (input.approval && (await input.approval.isNeeded())) {
           const approveTx = await input.approval.prepare(newKey());
-          if (approveTx.chainId !== arcTestnet.id || approveTx.value !== "0") {
+          if (approveTx.chainId !== activeChain.id || approveTx.value !== "0") {
             setFlow({ stage: "error", action, code: "BAD_APPROVAL", message: "Unexpected approval transaction parameters." });
             return;
           }
@@ -139,7 +139,7 @@ export function useTxEngine() {
 
         // 3. Prepare the main action (fresh idempotency key) + sanity-guard the server's calldata.
         const tx = await input.prepare(newKey());
-        if (tx.chainId !== arcTestnet.id) {
+        if (tx.chainId !== activeChain.id) {
           setFlow({ stage: "error", action, code: "CHAIN_MISMATCH", message: "Prepared for a different chain." });
           return;
         }
@@ -212,12 +212,12 @@ export function useTxEngine() {
     if (!address || !publicClient) return;
     if (resumedFor.current === address) return;
     resumedFor.current = address;
-    const pending = loadPendingTx(address, arcTestnet.id);
+    const pending = loadPendingTx(address, activeChain.id);
     if (!pending?.txHash) return;
     const hash = pending.txHash as Hex;
     const action = pending.action;
     let cancelled = false;
-    const clear = () => clearPendingTx(address, arcTestnet.id);
+    const clear = () => clearPendingTx(address, activeChain.id);
     void (async () => {
       setFlow({ stage: "submitted", action, hash });
       try {

@@ -1,10 +1,11 @@
 import { http, cookieStorage, createStorage, createConfig, type Config } from "wagmi";
 import { injected } from "wagmi/connectors";
-import { arcTestnet } from "@vouch/shared/chains";
-import { API_BASE_URL, RPC_URL_OVERRIDE } from "./env";
+import { arcTestnet, arcMainnet } from "@vouch/shared/chains";
+import { API_BASE_URL, RPC_URL_OVERRIDE, activeChain } from "./env";
 
 /**
- * wagmi config for the Arc testnet dApp. `ssr: true` + `cookieStorage` is MANDATORY for App-Router
+ * wagmi config for the Arc dApp (chain selected by CHAIN_ENV via `activeChain`). `ssr: true` +
+ * `cookieStorage` is MANDATORY for App-Router
  * hydration without a flash/mismatch (plan §RI-1) — the Server-Component layout reads the cookie into
  * `initialState`, so `getConfig()` MUST be server-safe and is called per-request on the server and once
  * in the browser.
@@ -21,13 +22,17 @@ import { API_BASE_URL, RPC_URL_OVERRIDE } from "./env";
  * The single Arc chain definition lives in `@vouch/shared/chains`; we never re-`defineChain` here.
  */
 export function getConfig(): Config {
+  // Only `activeChain` is registered, but the chain type is a union (arcTestnet | arcMainnet), so wagmi's
+  // transports Record is keyed by both ids — point both at the one active transport to satisfy the type.
+  const transport = http(RPC_URL_OVERRIDE ?? activeChain.rpcUrls.default.http[0]);
   return createConfig({
-    chains: [arcTestnet],
+    chains: [activeChain],
     connectors: [injected()],
     ssr: true,
     storage: createStorage({ storage: cookieStorage }),
     transports: {
-      [arcTestnet.id]: http(RPC_URL_OVERRIDE ?? arcTestnet.rpcUrls.default.http[0]),
+      [arcTestnet.id]: transport,
+      [arcMainnet.id]: transport,
     },
   });
 }

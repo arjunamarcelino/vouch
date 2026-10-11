@@ -4,6 +4,15 @@
  * override. NEVER put a keyed/authenticated RPC, a subgraph admin key, or any write credential here.
  * Reputation/subgraph data is read through `apps/api` (server-side freshness gate), never direct.
  */
+import { chainForEnv, type ChainEnv } from "@vouch/shared/chains";
+
+/** Active chain env — the SINGLE client source for which Arc chain the dApp signs/sends on. Mirrors the
+ * api's `CHAIN_ENV` so SIWE chainId + tx chainId match what the api verifies. */
+export const CHAIN_ENV = (process.env.NEXT_PUBLIC_CHAIN_ENV ?? "development") as ChainEnv;
+
+/** The active viem chain (arc-mainnet → 5042, else arc-testnet → 5042002). Every wallet/tx/explorer
+ * path MUST read this, never a hardcoded chain, so a single env flip moves the whole dApp. */
+export const activeChain = chainForEnv(CHAIN_ENV);
 
 /** Base URL of the NestJS API (`apps/api`). Same-site in prod so the SIWE cookie is first-party. */
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";

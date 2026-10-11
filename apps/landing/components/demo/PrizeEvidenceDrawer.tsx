@@ -11,7 +11,8 @@ import {
 } from "@vouch/ui/components/sheet";
 import { buttonVariants } from "@vouch/ui/components/button";
 import { cn } from "@vouch/ui/lib/utils";
-import { USDC_ADDRESS, arcTestnet } from "@vouch/shared/chains";
+import { USDC_ADDRESS } from "@vouch/shared/chains";
+import { activeChain } from "../../lib/env";
 import { useIntegrationsHealth } from "../../lib/api/hooks";
 import { resolveMode } from "../../lib/mode";
 import { explorerAddressLink } from "../../lib/format";
@@ -107,8 +108,8 @@ export function PrizeEvidenceDrawer() {
 
           <EvidenceRow eyebrow="Arc + Circle" title="USDC settlement" live={mode.arc}>
             <p>
-              USDC escrow, collateral, and capped payouts settle on {arcTestnet.name} (chainId{" "}
-              <span className="tabular-nums">{arcTestnet.id}</span>).
+              USDC escrow, collateral, and capped payouts settle on {activeChain.name} (chainId{" "}
+              <span className="tabular-nums">{activeChain.id}</span>).
             </p>
             {mode.arc && arcBlock ? (
               <p>
@@ -116,7 +117,7 @@ export function PrizeEvidenceDrawer() {
               </p>
             ) : null}
             <p className="flex flex-wrap gap-x-4 gap-y-1 pt-0.5">
-              {extLink(arcTestnet.blockExplorers.default.url, "Arcscan")}
+              {extLink(activeChain.blockExplorers.default.url, activeChain.blockExplorers.default.name)}
               {usdcLink ? extLink(usdcLink, "USDC token") : null}
             </p>
           </EvidenceRow>

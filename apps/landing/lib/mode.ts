@@ -1,4 +1,5 @@
 import type { IntegrationsHealth, Probe } from "@vouch/shared/schemas";
+import { activeChain } from "./env";
 
 /**
  * Dual-mode resolver (plan §Dual-mode). Derives, from the `/health/integrations` probe report, whether
@@ -40,7 +41,7 @@ export function resolveMode(health: IntegrationsHealth | null | undefined): Mode
   };
 }
 
-/** Label a datum's provenance for the UI ("Live on Arc testnet" vs "Local simulation"). */
+/** Label a datum's provenance for the UI ("Live on Arc" vs "Local simulation"). */
 export function modeLabel(isLive: boolean): string {
-  return isLive ? "Live · Arc testnet" : "Local simulation";
+  return isLive ? `Live · ${activeChain.name}` : "Local simulation";
 }

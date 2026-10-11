@@ -5,6 +5,7 @@ import { cn } from "@vouch/ui/lib/utils";
 import { buttonVariants } from "@vouch/ui/components/button";
 import type { TxFlow } from "../../lib/tx/engine";
 import { explorerTxLink } from "../../lib/format";
+import { activeChain } from "../../lib/env";
 
 /**
  * Inline transaction-status region for a `TxFlow` (plan §Wallet/TX UX). Announces via `aria-live` (an
@@ -21,7 +22,7 @@ function view(flow: TxFlow): { tone: Tone; title: string; detail?: string; hash?
     case "preparing":
       return { tone: "pending", title: "Preparing transaction…", confirmed: false };
     case "switchingChain":
-      return { tone: "pending", title: "Switch your wallet to Arc testnet…", confirmed: false };
+      return { tone: "pending", title: `Switch your wallet to ${activeChain.name}…`, confirmed: false };
     case "approving":
       return { tone: "pending", title: "Step 1 of 2 — approve USDC", detail: "Confirm the USDC approval in your wallet.", confirmed: false };
     case "awaitingSignature":

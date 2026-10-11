@@ -5,6 +5,7 @@ import { ShieldCheck, ShieldAlert, Database, Activity, CircleCheck, CircleSlash 
 import { Badge } from "@vouch/ui/components/badge";
 import { cn } from "@vouch/ui/lib/utils";
 import type { JobState, ClaimStatus } from "@vouch/shared/schemas";
+import { activeChain } from "../../lib/env";
 
 /**
  * Small shared indicators reused across dashboard / job detail (dedup — one countdown, one state badge,
@@ -46,7 +47,7 @@ export function ClaimBadge({ status }: { status: ClaimStatus }) {
 /** One live-vs-simulation pill (shared by the Prize Evidence drawer + demo stepper). */
 export function ModePill({
   live,
-  liveLabel = "Live · Arc testnet",
+  liveLabel = `Live · ${activeChain.name}`,
   simLabel = "Local simulation",
 }: {
   live: boolean;

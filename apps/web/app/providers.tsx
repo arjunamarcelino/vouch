@@ -11,7 +11,7 @@ import {
   type AuthenticationStatus,
 } from "@rainbow-me/rainbowkit";
 import "@rainbow-me/rainbowkit/styles.css";
-import { arcTestnet } from "@vouch/shared/chains";
+import { activeChain } from "../lib/env";
 import { getConfig } from "../lib/wagmi";
 import { getQueryClient } from "../lib/query";
 import { makeAuthAdapter } from "../lib/auth";
@@ -66,7 +66,7 @@ function AuthGate({ children }: { children: ReactNode }) {
   useEffect(() => {
     const prev = prevAddress.current;
     if (prev !== undefined && prev !== address) {
-      if (prev) clearPendingTx(prev, arcTestnet.id);
+      if (prev) clearPendingTx(prev, activeChain.id);
       // Ordered logout (review 105): drop the identity OPTIMISTICALLY so the gate can never observe a
       // stale-but-truthy session, THEN end the server session, and only clear (which re-fetches
       // /auth/me) once logout has landed — so a slow logout can't be lost to a winning me-refetch that

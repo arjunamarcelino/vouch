@@ -1,5 +1,6 @@
 import { formatUnits, parseUnits } from "viem";
-import { USDC_DECIMALS, arcTestnet } from "@vouch/shared/chains";
+import { USDC_DECIMALS } from "@vouch/shared/chains";
+import { activeChain } from "./env";
 import { HEX32_RE, HEX_ADDRESS_RE } from "@vouch/shared/schemas";
 
 /**
@@ -55,7 +56,7 @@ export function parseUsdcInput(input: string): string {
   return parseUnits(trimmed, USDC_DECIMALS).toString();
 }
 
-const EXPLORER = arcTestnet.blockExplorers.default.url.replace(/\/$/u, "");
+const EXPLORER = activeChain.blockExplorers.default.url.replace(/\/$/u, "");
 const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
 
 /**
