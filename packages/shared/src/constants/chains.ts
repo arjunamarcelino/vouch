@@ -33,10 +33,10 @@ export const arcMainnet = defineChain({
   name: "Arc",
   nativeCurrency: { name: "USD Coin", symbol: "USDC", decimals: 18 },
   rpcUrls: {
-    default: { http: [""] },
+    default: { http: ["https://rpc.drpc.mainnet.arc.io"] },
   },
   blockExplorers: {
-    default: { name: "Arcscan", url: "https://arcscan.app" },
+    default: { name: "Arc Explorer", url: "https://explorer.arc.io" },
   },
 });
 

@@ -67,6 +67,54 @@ schema's `z.string().url()` (rejected by the javy/WASM zod) → `z.string().trim
 `emitReport` throwing on a dry-run SUCCESS-without-txHash. A live enclave **deploy** (`--broadcast` on a
 DON) still needs private-beta enrollment; the simulate PAYOUT above is the accepted evidence.
 
+## Arc Mainnet deployment (Arc Microgrants)
+
+**Network:** Arc mainnet — chain id **5042** (`eip155:5042`) · RPC `https://rpc.drpc.mainnet.arc.io`
+· explorer `https://explorer.arc.io` · USDC predeploy `0x3600000000000000000000000000000000000000`
+(same address as testnet; verified live to have bytecode — `Deploy.s.sol`'s `usdc.code.length > 0`
+assertion passes). CRE identity is unchanged: `workflowId = keccak256("vouch-assurance-v1")`
+= `0xd38944d8afd25c7f280faf6f59d673e021c285abb59160d25bc8d2a28fb5e467`,
+`workflowName = bytes10("vouchclaim")` = `0x766f756368636c61696d…`.
+
+### Contracts (fill in after deploy)
+
+| Contract | Address | Deploy tx |
+|---|---|---|
+| `AssuranceHub` | `0x…` *(TBD)* | `0x…` *(TBD)* |
+| `QuoteBondEscrow` | `0x…` *(TBD)* | `0x…` *(TBD)* |
+
+Deploy block: **TBD** (= mainnet subgraph `startBlock`).
+
+### Deploy steps
+
+1. Fill `packages/contracts/.env` (copy from `.env.example`): `ARC_MAINNET_RPC_URL`,
+   `ARC_USDC_ADDRESS` (canonical predeploy), the two CRE identity values above,
+   `CRE_WORKFLOW_OWNER` / `CRE_FORWARDER_ADDRESS` (operator relay EOA — trusted-relay model, non-zero
+   suffices), `ADMIN_ADDRESS` / `EVALUATOR_ADDRESS` / `FEE_RECIPIENT_ADDRESS`, `PRIVATE_KEY`
+   (deployer funded with real USDC for gas).
+2. Deploy (Foundry `arc_mainnet` alias is wired in `foundry.toml`):
+   ```
+   cd packages/contracts
+   forge script script/Deploy.s.sol:Deploy --rpc-url arc_mainnet --broadcast
+   forge script script/DeployEscrow.s.sol:DeployEscrow --rpc-url arc_mainnet --broadcast
+   # optional verify: --verify --verifier blockscout --verifier-url https://explorer.arc.io/api/
+   ```
+3. Prove one real lifecycle on mainnet (`openJob → acceptJob → approve → withdrawCollateral`, or a
+   covered claim) and record the tx hashes in the Contracts table / a lifecycle table here.
+4. Repoint the app: set `CHAIN_ENV=arc-mainnet` in the `apps/*` envs so `withvouch.xyz` serves mainnet.
+5. (Optional — only if The Graph supports the `arc` mainnet network) update the subgraph per the
+   lockstep checklist below and redeploy. The microgrant does **not** require the subgraph; the
+   escrow/guarantee/payout flow is authoritative on its own. If Studio rejects `arc`, demo the
+   contract flow directly — the agent quote path fail-closes without a live subgraph by design.
+
+### One-line post-deploy edits (scaffolding already in place)
+
+- `packages/subgraph/networks.json` → the `"arc"` entry is pre-stubbed with a zero address +
+  `startBlock 0` (fail-closed placeholder); replace both with the real mainnet address + deploy block.
+- `packages/subgraph/subgraph.yaml` → change `network: arc-testnet` → `network: arc`, and the
+  `address` + `startBlock` to match networks.json (preflight enforces the match; run
+  `pnpm --filter @vouch/subgraph preflight arc`).
+
 ## Redeploy checklist (update these in lockstep)
 
 When `AssuranceHub` is redeployed, the deployed coordinates live in several tracked files across two

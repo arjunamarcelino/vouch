@@ -32,7 +32,10 @@ shrink_run_limit = 5000
 
 [rpc_endpoints]
 arc_testnet = "${ARC_TESTNET_RPC_URL}"
+arc_mainnet = "${ARC_MAINNET_RPC_URL}"
 
 # Arcscan is Blockscout — `forge verify-contract --verifier blockscout` (key ignored).
 [etherscan]
 arc_testnet = { key = "${ARCSCAN_API_KEY}", chain = 5042002, url = "https://testnet.arcscan.app/api/" }
+# ⚠️ Confirm Arc mainnet explorer verify URL/API path (Blockscout `/api/`) before relying on --verify.
+arc_mainnet = { key = "${ARCSCAN_API_KEY}", chain = 5042, url = "https://explorer.arc.io/api/" }
